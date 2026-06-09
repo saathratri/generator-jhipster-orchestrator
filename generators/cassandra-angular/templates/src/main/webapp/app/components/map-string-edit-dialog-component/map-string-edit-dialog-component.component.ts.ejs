@@ -1,0 +1,34 @@
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MaterialModule } from '../../shared/material.module';
+
+@Component({
+  // eslint-disable-next-line @angular-eslint/component-selector
+  selector: 'app-map-string-edit-dialog-component',
+  standalone: true,
+  imports: [MaterialModule, CommonModule, ReactiveFormsModule, MatDialogModule], // ✅ Use ReactiveFormsModule
+  templateUrl: './map-string-edit-dialog-component.component.html',
+  styleUrls: ['./map-string-edit-dialog-component.component.css'],
+})
+export class MapStringEditDialogComponent {
+  dialogRef = inject<MatDialogRef<MapStringEditDialogComponent>>(MatDialogRef);
+  data = inject<{ key: string; value: string }>(MAT_DIALOG_DATA);
+
+  form: FormGroup = new FormGroup({
+      key: new FormControl({ value: this.data.key, disabled: true }), // ✅ Read-only key
+      value: new FormControl(this.data.value, Validators.required), // ✅ Required value field
+    });
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onSave(): void {
+    if (this.form.valid) {
+      this.dialogRef.close(this.form.get('value')?.value);
+    }
+  }
+}
+

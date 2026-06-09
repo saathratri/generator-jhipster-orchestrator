@@ -1,0 +1,102 @@
+<%_
+  // The resolve reads one route param per key field and calls service.find(<each key>); the
+  // service returns Observable<HttpResponse<I>>. A 0-arg vitest.fn mock is assignable to any
+  // find signature (so this works for single- and multi-key entities regardless of key type).
+  const composite = primaryKeySaathratri.composite;
+  const keyNames = composite ? primaryKeySaathratri.ids.map(f => f.fieldName) : [primaryKey.name];
+  const paramsLiteral = `{ ${keyNames.map((n, i) => `${n}: 'val-${i + 1}'`).join(', ')} }`;
+  const findArgs = keyNames.map((n, i) => `'val-${i + 1}'`).join(', ');
+_%>
+import { beforeEach, describe, expect, it, vitest } from 'vitest';
+import { HttpResponse } from '@angular/common/http';
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, ActivatedRouteSnapshot, Router, convertToParamMap } from '@angular/router';
+
+import { lastValueFrom, of } from 'rxjs';
+
+import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+import { sampleWithRequiredData } from '../<%= entityFileName %>.test-samples';
+import { <%= entityAngularName %>Service } from '../service/<%= entityFileName %>.service';
+
+import <%= entityInstance %>Resolve from './<%= entityFileName %>-routing-resolve.service';
+
+describe('<%= entityAngularName %> routing resolve service', () => {
+  let mockRouter: Router;
+  let mockActivatedRouteSnapshot: ActivatedRouteSnapshot;
+  let service: <%= entityAngularName %>Service;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({}),
+            },
+          },
+        },
+      ],
+    });
+    mockRouter = TestBed.inject(Router);
+    vitest.spyOn(mockRouter, 'navigate');
+    mockActivatedRouteSnapshot = TestBed.inject(ActivatedRoute).snapshot;
+    service = TestBed.inject(<%= entityAngularName %>Service);
+  });
+
+  describe('resolve', () => {
+    it('should return I<%= entityAngularName %> returned by find', async () => {
+      // GIVEN
+      service.find = vitest.fn(() => of(new HttpResponse({ body: sampleWithRequiredData })));
+      mockActivatedRouteSnapshot.params = <%- paramsLiteral %>;
+
+      // WHEN
+      await new Promise<void>(resolve => {
+        TestBed.runInInjectionContext(() => {
+          <%= entityInstance %>Resolve(mockActivatedRouteSnapshot).subscribe({
+            next(result) {
+              // THEN
+              expect(service.find).toHaveBeenCalledWith(<%- findArgs %>);
+              expect(result).toEqual(sampleWithRequiredData);
+              resolve();
+            },
+          });
+        });
+      });
+    });
+
+    it('should return null if id is not provided', async () => {
+      // GIVEN
+      service.find = vitest.fn();
+      mockActivatedRouteSnapshot.params = {};
+
+      // WHEN
+      await new Promise<void>(resolve => {
+        TestBed.runInInjectionContext(() => {
+          <%= entityInstance %>Resolve(mockActivatedRouteSnapshot).subscribe({
+            next(result) {
+              // THEN
+              expect(service.find).not.toHaveBeenCalled();
+              expect(result).toEqual(null);
+              resolve();
+            },
+          });
+        });
+      });
+    });
+
+    it('should navigate to 404 when find returns an empty body', async () => {
+      // GIVEN — the resolver navigates to 404 (and completes empty) when the entity is not found
+      service.find = vitest.fn(() => of(new HttpResponse<I<%= entityAngularName %>>({ body: null })));
+      mockActivatedRouteSnapshot.params = <%- paramsLiteral %>;
+
+      // WHEN
+      await TestBed.runInInjectionContext(async () => {
+        await expect(lastValueFrom(<%= entityInstance %>Resolve(mockActivatedRouteSnapshot))).rejects.toThrowError('no elements in sequence');
+        // THEN
+        expect(service.find).toHaveBeenCalledWith(<%- findArgs %>);
+        expect(mockRouter.navigate).toHaveBeenCalledWith(['404']);
+      });
+    });
+  });
+});

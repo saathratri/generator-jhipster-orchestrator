@@ -1,0 +1,42 @@
+/* Make title stand out */
+.dialog-title {
+  margin-bottom: 15px;
+  font-size: 22px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Ensure content takes up full available space */
+.dialog-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  overflow-y: auto;
+}
+
+/* Make text fields wider */
+.full-width {
+  margin-top: 6px; /* ✅ Adds a 3px shim above the button */
+  width: 100%; /* ✅ Ensures text fields stretch full width */
+}
+
+/* Ensure buttons are properly aligned */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px; /* Adds spacing between buttons */
+}
+
+.large-toggle .mat-slide-toggle-thumb {
+  width: 28px;
+  height: 28px;
+}
+
+mat-slide-toggle {
+  transform: scale(1.5); /* Adjust the scale factor as needed */
+  transform-origin: left; /* Adjust origin if needed */
+  /* Optionally use translateX to fix shift */
+  /* transform: scale(1.2) translateX(-5px); */
+}
+

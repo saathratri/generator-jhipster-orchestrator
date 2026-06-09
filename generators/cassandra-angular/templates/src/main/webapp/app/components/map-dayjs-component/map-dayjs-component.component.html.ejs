@@ -1,0 +1,57 @@
+<div class="container">
+  <!-- Loop through existing data rows -->
+  @for (entry of mapDetails | keyvalue; track entry.key) {
+  <div class="input-row">
+    <mat-form-field appearance="outline" class="form-field">
+      <mat-label>Key</mat-label>
+      <input matInput [value]="entry.key" readonly />
+    </mat-form-field>
+
+    <app-date-time
+      [formControl]="getControlForEntry(entry)"
+      dateTimeLabel="Value"
+      [labelClass]="'form-label'"
+      [isRequired]="true"
+      [disabled]="true"
+      (isValid)="onDateTimeValid(entry.key, $event)"
+      (dirtyStateChange)="updateDirtyState($event)"
+      class="form-field">
+    </app-date-time>
+
+    <div class="action-buttons">
+      <button type="button" mat-icon-button (click)="openEditDayjsDialog(entry.key, entry.value)" [attr.data-cy]="fieldName + '-row-' + entry.key + '-edit'">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button type="button" mat-icon-button (click)="deleteRow(entry.key)" [attr.data-cy]="fieldName + '-row-' + entry.key + '-delete'">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Add new key-value pair -->
+  <form [formGroup]="form" class="input-row">
+    <mat-form-field appearance="outline" class="form-field">
+      <mat-label>Key</mat-label>
+      <input matInput formControlName="newKey" (blur)="form.controls['newKey'].markAsTouched()" [attr.data-cy]="fieldName + '-add-key'" />
+      @if (form.controls['newKey'].invalid && form.controls['newKey'].touched) { <mat-error>
+        Key is required
+      </mat-error> }
+    </mat-form-field>
+
+    <app-date-time
+      formControlName="newValue"
+      [fieldName]="fieldName + '-add-datetime'"
+      dateTimeLabel="Value"
+      [labelClass]="'form-label'"
+      [isRequired]="true"
+      (isValid)="onDateTimeValid('newValue', $event)"
+      (dirtyStateChange)="updateDirtyState($event)"
+      class="form-field" [attr.data-cy]="fieldName + '-add-datetime'">
+    </app-date-time>
+
+    <button type="button" mat-raised-button color="primary" [disabled]="form.invalid" (click)="addNewRow()" class="add-button" [attr.data-cy]="fieldName + '-add-button'">
+      Add
+    </button>
+  </form>
+</div>

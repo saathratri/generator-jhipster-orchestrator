@@ -1,0 +1,369 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<&_
+ // Register sections and max allowed fragments, 0 for unlimited.
+  fragments.registerSections({
+    importSection: 0,
+    staticImportSection: 0,
+    annotationSection: 0,
+    extendsSection: 1,
+    additionalInterfacesSection: 0,
+    classStaticFieldsSection: 0,
+    classFieldsSection: 0,
+    classAdditionalFieldsSection: 0,
+    classAdditionalFieldsMethodsSection: 0,
+<%_ for (const field of fields) { _%>
+    field<%- field.fieldNameCapitalized %>CustomDeclarationSection: 1,
+    field<%- field.fieldNameCapitalized %>CustomMethodsSection: 1,
+    field<%- field.fieldNameCapitalized %>AnnotationSection: 0,
+  <%_ if (field.fieldWithContentType) { _%>
+    field<%- field.fieldNameCapitalized %>ContentTypeAnnotationSection: 0,
+  <%_ } _%>
+    field<%- field.fieldNameCapitalized %>CustomSetSection: 1,
+<%_ } _%>
+  });
+-&>
+package <%= entityAbsolutePackage %>.domain;
+
+<&- fragments.staticImportSection() -&>
+<&- fragments.importSection() -&>
+<%_ if (!dtoMapstruct && (entityApiDescription || importApiModelProperty)) { _%>
+import io.swagger.v3.oas.annotations.media.Schema;
+<%_ } _%>
+<%_ for (const field of fields.filter(field => !field.javaInherited && !field.transient && (embedded || !field.id || !primaryKey.composite))) { _%>
+  <%_
+    if(field.fieldTypeSetSaathratri) {
+  _%>
+import java.util.Set;
+   <%_ 
+       break;
+     }
+   _%>
+   <%_
+    if(field.fieldTypeMapSaathratri) {
+  _%>
+import java.util.Map;
+   <%_ 
+       break;
+     }
+   _%>
+<%_ } _%>
+import java.io.Serializable;
+<%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
+import com.datastax.oss.driver.api.core.data.CqlVector;
+<%_ } _%>
+<%_ if (anyFieldIsBigDecimal) { _%>
+import java.math.BigDecimal;
+<%_ } if (anyFieldIsInstant) { _%>
+import java.time.Instant;
+<%_ } if (anyFieldIsLocalDate) { _%>
+import java.time.LocalDate;
+<%_ } if (anyFieldIsZonedDateTime) { _%>
+import java.time.ZonedDateTime;
+<%_ } if (anyFieldIsDuration) { _%>
+import java.time.Duration;
+<%_ } if (entityContainsCollectionField) { _%>
+import java.util.HashSet;
+import java.util.Set;
+<%_ } _%>
+<%_ if (anyFieldIsUUID) { _%>
+import java.util.UUID;
+<%_ }
+Object.keys(uniqueEnums).forEach(function(element) { _%>
+
+import <%= entityAbsolutePackage %>.domain.enumeration.<%= element %>;
+<%_ }); _%>
+<%_ if (!updatableEntity) { _%>
+import java.util.Objects;
+<%_ } _%>
+
+
+<%_ if (entityJavadoc) { _%>
+<%- entityJavadoc %>
+<%_ } else { _%>
+/**
+ * A <%= persistClass %>.
+ */
+<%_ } _%>
+<%_ if (!dtoMapstruct && entityApiDescription) { _%>
+@Schema(description = "<%- entityApiDescription %>")
+<%_ } _%>
+<&- fragments.annotationSection() -&>
+@SuppressWarnings("common-java:DuplicatedBlocks")
+public class <%= persistClass %> <&- fragments.extendsSection() -&>implements Serializable<&- fragments.additionalInterfacesSection() -&> {
+
+    private static final long serialVersionUID = 1L;
+
+<%_ if (!embedded && primaryKeySaathratri.composite) { 
+  const pkName = primaryKeySaathratri.ids.length > 1 ? 'id' : primaryKeySaathratri.name;
+  const pkNameCapitalized = this._.upperFirst(pkName); _%>
+_%>
+    @Id
+  private <%= entityClass %>Id <%= primaryKeySaathratri.name %>;
+<%_ } else { _%>
+  @Id
+  @Column("<%- primaryKey.fields[0].fieldNameAsDatabaseColumn %>")
+  @CassandraType(type = <%= primaryKey.fields[0].options.customAnnotation[1] %>)
+    private <%= primaryKey.type %> <%= primaryKey.name %>;
+
+<%_ } _%>
+<&- fragments.classStaticFieldsSection() -&>
+<&- fragments.classFieldsSection() -&>
+<%_ for (const field of fields.filter(field => !field.javaInherited && !field.transient && (embedded || !field.id))) { _%>
+  <%_ if(!field.isCompositePrimaryKeyField ) { _%>
+<&- fragments.field<%- field.fieldNameCapitalized %>CustomDeclarationSection() -&>
+<&_ if (!fragments.field<%- field.fieldNameCapitalized %>CustomDeclarationSection()) { -&>
+  <%_ if (field.fieldJavadoc) { _%>
+<%- field.fieldJavadoc %>
+  <%_ } _%>
+  <%_ if (!dtoMapstruct && field.fieldApiDescription) { _%>
+    @Schema(description = "<%- field.fieldApiDescription %>"<% if (field.fieldValidationRequired) { %>, required = true<% } %>)
+  <%_ } _%>
+<&- fragments.field<%- field.fieldNameCapitalized %>AnnotationSection() -&>
+  <%_
+    if(field.fieldTypeVectorSaathratri) {
+  _%>
+    private CqlVector<Float> <%= field.fieldName %>;
+  <%_
+    } else if(field.fieldTypeSetSaathratri) {
+  _%>
+  private Set<<%= field.javaFieldType %>> <%= field.fieldName %>;
+  <%_
+    } else if(field.fieldTypeMapSaathratri) {
+  _%>
+  private Map<String, <%= field.javaFieldType %>> <%= field.fieldName %>;
+  <%_
+    } else {
+  _%>
+    private <%= field.javaFieldType %> <%= field.fieldName %>;
+  <%_
+    }
+  _%> 
+<&_ } -&>
+<%_ } _%>
+<%_ } _%>
+<&- fragments.classAdditionalFieldsSection() -&>
+
+<%_ if (primaryKeySaathratri.composite) { _%>
+  public <%= entityClass %>Id get<%= primaryKeySaathratri.nameCapitalized %>() {
+    return this.<%= primaryKeySaathratri.name %>;
+  }
+
+  public void set<%= primaryKeySaathratri.nameCapitalized %>(<%= entityClass %>Id <%= primaryKeySaathratri.name %>) {
+      this.<%= primaryKeySaathratri.name %> = <%= primaryKeySaathratri.name %>;
+  }
+
+  <%_ if (fluentMethods) { _%>
+    public <%= persistClass %> <%= primaryKeySaathratri.name %>(<%= entityClass %>Id <%= primaryKeySaathratri.name %>) {
+        this.<%= primaryKeySaathratri.name %> = <%= primaryKeySaathratri.name %>;
+        return this;
+    }
+    <%_ } _%>
+
+  <%_ } else { _%>
+    public <%= primaryKey.type %> get<%= primaryKey.nameCapitalized %>() {
+        return this.<%= primaryKey.name %>;
+    }
+    public void set<%= primaryKey.nameCapitalized %>(<%= primaryKey.type %> <%= primaryKey.name %>) {
+        this.<%= primaryKey.name %> = <%= primaryKey.name %>;
+    }
+    <%_ if (fluentMethods) { _%>
+      public <%= persistClass %> <%= primaryKey.name %>(<%= primaryKey.type %> <%= primaryKey.name %>) {
+          this.<%= primaryKey.name %> = <%= primaryKey.name %>;
+          return this;
+      }
+  <%_ } _%>
+
+<%_ } _%>
+    // jhipster-needle-entity-add-field - JHipster will add fields here
+<%_ for (const field of fields.filter(field => !field.transient && (embedded || !field.id || !primaryKey.composite))) { _%>
+  <%_ if(!field.isCompositePrimaryKeyField ) { _%>
+<&- fragments.field<%- field.fieldNameCapitalized %>CustomMethodsSection() -&>
+<&_ if (!fragments.field<%- field.fieldNameCapitalized %>CustomMethodsSection()) { -&>
+  <%_
+    if(field.fieldTypeVectorSaathratri) {
+  _%>
+    public CqlVector<Float> get<%= field.fieldInJavaBeanMethod %>() {
+        return this.<%= field.fieldName %>;
+    }
+  <%_ if (fluentMethods) { _%>
+
+    public <%= persistClass %> <%= field.fieldName %>(CqlVector<Float> <%= field.fieldName %>) {
+        this.set<%= field.fieldInJavaBeanMethod %>(<%= field.fieldName %>);
+        return this;
+    }
+  <%_ } _%>
+  <%_
+    } else if(field.fieldTypeSetSaathratri) {
+  _%>
+  public Set<<%= field.javaFieldType %>> get<%= field.fieldInJavaBeanMethod %>() {
+        return this.<%= field.fieldName %>;
+    }
+  <%_ if (fluentMethods) { _%>
+
+    public <%= persistClass %> <%= field.fieldName %>(Set<<%= field.javaFieldType %>> <%= field.fieldName %>) {
+        this.set<%= field.fieldInJavaBeanMethod %>(<%= field.fieldName %>);
+        return this;
+    }
+  <%_ } _%>
+  <%_
+    } else if(field.fieldTypeMapSaathratri) {
+  _%>
+  public Map<String, <%= field.javaFieldType %>> get<%= field.fieldInJavaBeanMethod %>() {
+        return this.<%= field.fieldName %>;
+    }
+  <%_ if (fluentMethods) { _%>
+
+    public <%= persistClass %> <%= field.fieldName %>(Map<String, <%= field.javaFieldType %>> <%= field.fieldName %>) {
+        this.set<%= field.fieldInJavaBeanMethod %>(<%= field.fieldName %>);
+        return this;
+    }
+  <%_ } _%>
+  <%_
+    } else {
+  _%>
+    <%_ if (field.fieldName !== 'id') { _%>
+    public <%= field.javaFieldType %> get<%= field.fieldInJavaBeanMethod %>() {
+        return this.<%= field.fieldName %>;
+    }
+  <%_ if (fluentMethods) { _%>
+
+    public <%= persistClass %> <%= field.fieldName %>(<%= field.javaFieldType %> <%= field.fieldName %>) {
+        this.set<%= field.fieldInJavaBeanMethod %>(<%= field.fieldName %>);
+        return this;
+    }
+  <%_ } _%>
+    <%_ } _%>
+  <%_
+    }
+  _%> 
+
+  <&- fragments.field<%- field.fieldNameCapitalized %>CustomSetSection() -&>
+  <&_ if (!fragments.field<%- field.fieldNameCapitalized %>CustomSetSection()) { -&>
+  <%_
+    if(field.fieldTypeVectorSaathratri) {
+  _%>
+    public void set<%= field.fieldInJavaBeanMethod %>(CqlVector<Float> <%= field.fieldName %>) {
+        this.<%= field.fieldName %> = <%= field.fieldName %>;
+    }
+  <%_
+    } else if(field.fieldTypeSetSaathratri) {
+  _%>
+    public void set<%= field.fieldInJavaBeanMethod %>(Set<<%= field.javaFieldType %>> <%= field.fieldName %>) {
+      this.<%= field.fieldName %> = <%= field.fieldName %>;
+    }
+  <%_
+    } else if(field.fieldTypeMapSaathratri) {
+  _%>
+    public void set<%= field.fieldInJavaBeanMethod %>(Map<String, <%= field.javaFieldType %>> <%= field.fieldName %>) {
+      this.<%= field.fieldName %> = <%= field.fieldName %>;
+    }
+  <%_
+    } else {
+  _%>
+  <%_ if (field.fieldName !== 'id') { _%>
+    public void set<%= field.fieldInJavaBeanMethod %>(<%= field.javaFieldType %> <%= field.fieldName %>) {
+        this.<%= field.fieldName %> = <%= field.fieldName %>;
+    }
+  <%_ } _%>
+  <%_ } _%> 
+  <&_ } -&>
+  <%_ if (field.fieldWithContentType) { _%>
+
+    public String get<%= field.fieldInJavaBeanMethod %>ContentType() {
+        return this.<%= field.fieldName %>ContentType;
+    }
+    <%_ if (fluentMethods) { _%>
+
+    public <%= persistClass %> <%= field.fieldName %>ContentType(String <%= field.fieldName %>ContentType) {
+        this.<%= field.fieldName %>ContentType = <%= field.fieldName %>ContentType;
+        return this;
+    }
+    <%_ } _%>
+
+    public void set<%= field.fieldInJavaBeanMethod %>ContentType(String <%= field.fieldName %>ContentType) {
+        this.<%= field.fieldName %>ContentType = <%= field.fieldName %>ContentType;
+    }
+  <%_ } _%>
+<&_ } -&>
+<%_ } _%>
+
+
+
+  <%_ } _%>
+
+
+
+
+
+<&- fragments.classAdditionalFieldsMethodsSection('\n\n') -&>
+    // jhipster-needle-entity-add-getters-setters - JHipster will add getters and setters here
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof <%= persistClass %>)) {
+            return false;
+        }
+<%_ if (!embedded) { _%>
+  <%_ if (primaryKeySaathratri.composite) { _%>
+        return get<%= primaryKeySaathratri.nameCapitalized %>() != null && get<%= primaryKeySaathratri.nameCapitalized %>().equals(((<%= persistClass %>) o).get<%= primaryKeySaathratri.nameCapitalized %>());
+  <%_ } else { _%>
+        return get<%= primaryKey.nameCapitalized %>() != null && get<%= primaryKey.nameCapitalized %>().equals(((<%= persistClass %>) o).get<%= primaryKey.nameCapitalized %>());
+  <%_ } _%>
+<%_ } else { _%>
+        return false;
+<%_ } _%>
+    }
+
+    @Override
+    public int hashCode() {
+<%_ if (updatableEntity) { _%>
+        // see https://vladmihalcea.com/how-to-implement-equals-and-hashcode-using-the-jpa-entity-identifier/
+        return getClass().hashCode();
+<%_ } else { _%>
+        return Objects.hashCode(get<%= primaryKey.nameCapitalized %>());
+<%_ } _%>
+    }
+
+    // prettier-ignore
+    @Override
+    public String toString() {
+        return "<%= persistClass %>{" +
+<%_ if (!embedded) { _%>
+  <%_ if (primaryKeySaathratri.composite) { _%>
+            "<%= primaryKeySaathratri.name %>=" + get<%= primaryKeySaathratri.nameCapitalized %>() +
+  <%_ } else { _%>
+            "<%= primaryKey.name %>=" + get<%= primaryKey.nameCapitalized %>() +
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const field of fields.filter(field => !field.id && !field.transient)) {
+  if(!field.isCompositePrimaryKeyField ) {
+  const isNumeric = field.fieldTypeNumeric; _%>
+            ", <%= field.fieldName %>=<% if (! isNumeric) { %>'<% } %>" + get<%= field.fieldInJavaBeanMethod %>() <% if (! isNumeric) { %>+ "'" <% } %>+
+  <%_ if (field.fieldWithContentType) { _%>
+            ", <%= field.fieldName %>ContentType='" + get<%= field.fieldInJavaBeanMethod %>ContentType() + "'" +
+  <%_ } _%>
+<%_ } _%>
+<%_ } _%>
+            "}";
+    }
+}

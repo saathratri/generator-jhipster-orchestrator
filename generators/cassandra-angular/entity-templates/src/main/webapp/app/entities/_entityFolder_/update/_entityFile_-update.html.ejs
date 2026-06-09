@@ -1,0 +1,561 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%_ /* Saathratri modification - PDF badge styles with blue border and hover effect */ _%>
+<style>
+  .saathratri-pdf-badge-link {
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+  }
+  .saathratri-pdf-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e53935;
+    color: white;
+    font-weight: bold;
+    border-radius: 4px;
+    border: 2px solid #1976d2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .saathratri-pdf-badge:hover {
+    border-color: #0d47a1;
+    box-shadow: 0 4px 8px rgba(25,118,210,0.4);
+    transform: scale(1.05);
+  }
+  .saathratri-pdf-badge-sm {
+    width: 40px;
+    height: 52px;
+    font-size: 0.6rem;
+  }
+  .saathratri-pdf-badge-lg {
+    width: 60px;
+    height: 78px;
+    font-size: 0.75rem;
+  }
+</style>
+<%_ /* End Saathratri modification */ _%>
+<div class="d-flex justify-content-center">
+    <div class="col-8">
+        <form name="editForm" novalidate (ngSubmit)="save()" [formGroup]="editForm">
+            <h2 id="<%= jhiPrefixDashed %>-<%= entityFileName %>-heading" data-cy="<%= entityClass %>CreateUpdateHeading">__jhiTranslateTag__('<%- i18nKeyPrefix %>.home.createOrEditLabel')</h2>
+
+            <div>
+                <<%= jhiPrefixDashed %>-alert-error></<%= jhiPrefixDashed %>-alert-error>
+
+<%_ if (primaryKeySaathratri.composite) { _%>
+    <div formGroupName="<%= primaryKeySaathratri.name %>">
+    <%_ for (const field of primaryKeySaathratri.ids.filter(field => !field.hidden && ((primaryKeySaathratri.composite && field.fieldName !== 'id') || !primaryKeySaathratri.composite))) {
+  const fieldName = field.fieldName;
+  const fieldNameHumanized = field.fieldNameHumanized;
+  const fieldType = field.fieldType;
+  const fieldTypeBlobContent = field.fieldTypeBlobContent;
+  const readonly = field.readonly;
+  let fieldInputType = 'text';
+  const translationKey = field.fieldTranslationKey;
+    if (field.fieldTypeNumeric && !field.fieldTypeLocalDateSaathratri && !field.fieldTypeTimedSaathratri) {
+    fieldInputType = 'number';
+    } else if (field.fieldTypeLocalDate || field.fieldTypeLocalDateSaathratri) {
+    fieldInputType = 'date';
+    } else if (field.fieldTypeTimed || field.fieldTypeTimedSaathratri) {
+    fieldInputType = 'datetime-local';
+  } else if (field.fieldTypeBoolean) {
+    fieldInputType = 'checkbox';
+  } else if (field.fieldTypeBinary && !field.blobContentTypeText) {
+    fieldInputType = 'hidden';
+  }
+_%>
+
+                <div class="mb-3">
+                    <%_ if(!field.fieldTypeLocalDate && !field.fieldTypeLocalDateSaathratri && !field.fieldTypeTimed && !field.fieldTypeTimedSaathratri) { _%>
+                    <label class="form-label" for="field_<%= fieldName %>"<% if (field.documentation) { if (enableTranslation) { %> [ngbTooltip]="'<%= i18nKeyPrefix %>.help.<%= fieldName %>' | translate"<% } else { %> ngbTooltip="<%= field.documentation %>"<% } } %>>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</label>
+                    <%_ } _%>
+  <%_ if (field.fieldIsEnum) { _%>
+                    <select class="form-control" name="<%= fieldName %>" formControlName="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>">
+    <%_ const enumPrefix = frontendAppName + '.'+ fieldType; _%>
+                        <option [ngValue]="null"><% if (enableTranslation) { %>{{ '<%= enumPrefix %>.null' | translate }}<% } %></option>
+                    @for (<%= this._.lowerFirst(fieldType) %> of <%- this._.lowerFirst(fieldType) %>Values; track $index) {
+                        <option [value]="<%= this._.lowerFirst(fieldType) %>">__jhiTranslatePipeEnum__('<%= enumPrefix %>', { "value": "<%= this._.lowerFirst(fieldType) %>" })</option>
+                    }
+                    </select>
+  <%_ } else { _%>
+    <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+                    <div>
+      <%_ if (field.blobContentTypeImage) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value) {
+                            <img [src]="'data:' + editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType')!.value + ';base64,' + editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value" style="max-height: 100px" alt="<%= entityInstance %>"/>
+                        }
+        <%_ } _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value) {
+                            <div class="form-text text-danger clearfix">
+        <%_ if (field.blobContentTypeAny) { _%>
+                                <%_ /* Saathratri modification - PDF clickable icon */ _%>
+                                @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType')!.value === 'application/pdf') {
+                                  <a class="pull-start saathratri-pdf-badge-link" (click)="openFile(editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value!, editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType')!.value!)">
+                                    <div class="saathratri-pdf-badge saathratri-pdf-badge-sm">PDF</div>
+                                  </a>
+                                } @else {
+                                  <a class="pull-start" (click)="openFile(editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value!, editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType')!.value!)">__jhiTranslateTag__('entity.action.open')</a>
+                                }
+                                <%_ /* End Saathratri modification */ _%>
+                                <br><span class="pull-start">{{ editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType')!.value }}, {{ byteSize(editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value!) }}</span>
+        <%_ } else { _%>
+                                <span class="pull-start">{{ editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType')!.value }}, {{ byteSize(editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.value!) }}</span>
+        <%_ } _%>
+        <%_ if (field.blobContentTypeImage) { _%>
+                                <button type="button" (click)="clearInputImage('<%= fieldName %>', '<%= fieldName %>ContentType', 'file_<%= fieldName %>')" class="btn btn-secondary btn-xs pull-end">
+        <%_ } else { _%>
+                                <button type="button" (click)="editForm.patchValue({ <%= primaryKeySaathratri.name %>.<%= fieldName %>: undefined, <%= primaryKeySaathratri.name %>.<%= fieldName %>ContentType: undefined });"
+                                        class="btn btn-secondary btn-xs pull-end">
+        <%_ } _%>
+                                    <fa-icon icon="times"></fa-icon>
+                                </button>
+                            </div>
+                        }
+                            <input type="file" id="file_<%= fieldName %>" data-cy="<%= fieldName %>" (change)="setFileData($event, '<%= fieldName %>', <% if (fieldTypeBlobContent === 'image') { %>true)" accept="image/*"<% if (enableTranslation) { %> <%= jhiPrefix %>Translate="entity.action.addimage"<% } %><% } else { %>false)"<% if (enableTranslation) { %> <%= jhiPrefix %>Translate="entity.action.addblob"<% } %><% } %>/>
+                        </div>
+        <%_ } _%>
+        <%_ if (field.fieldTypeLocalDate || field.fieldTypeLocalDateSaathratri) { _%>
+        
+                        <mat-form-field appearance="fill" class="full-width">
+                        <mat-label>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</mat-label>
+                        <br>
+                        <input
+                            matInput
+                            [matDatepicker]="<%= fieldName %>Picker"
+                            id="field_<%= fieldName %>"
+                            data-cy="<%= fieldName %>"
+                            formControlName="<%= fieldName %>"
+                        />
+                        <mat-datepicker-toggle matSuffix [for]="<%= fieldName %>Picker"></mat-datepicker-toggle>
+                        <mat-datepicker #<%= fieldName %>Picker></mat-datepicker>
+                        </mat-form-field>
+
+        <%_ } else if (field.fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+
+                        <app-date-time
+                            fieldName="<%= fieldName %>"
+                            formControlName="<%= fieldName %>"
+                            [dateTimeLabel]="'<%= i18nKeyPrefix %>.<%= fieldName %>' | translate"
+                            [labelClass]="'form-label'"
+                            [isRequired]="true"
+                            (isValid)="onDateTimeValid('<%= primaryKeySaathratri.name %>.<%= fieldName %>', $event)"
+                            (dirtyStateChange)="updateDirtyState($event)"
+                            [isNew]="isNew">
+                        </app-date-time>
+                        @if (isNew) {
+                        <button type="button" class="btn btn-primary" (click)="generateDateTime('<%= primaryKeySaathratri.name %>.<%= fieldName %>')">Generate</button>
+                        <button
+                            type="button"
+                            class="btn btn-danger"
+                            (click)="resetDateTime('<%= primaryKeySaathratri.name %>.<%= fieldName %>')"
+                            [disabled]="!isDateTimeDirty['<%= primaryKeySaathratri.name %>.<%= fieldName %>']">
+                            Reset
+                        </button>
+                        }
+        <%_ } else if (field.blobContentTypeText) { _%>
+                        <textarea class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                                formControlName="<%= fieldName %>"<% if (readonly) { %> [readonly]="true"<% } %>></textarea>
+        <%_ } else if (field.fieldTypeBoolean) { _%>
+                        <input type="<%= fieldInputType %>" class="form-check" name="<%= fieldName %>" id="field_<%= fieldName %>"
+                            data-cy="<%= fieldName %>" formControlName="<%= fieldName %>" <% if (readonly) { %> [readonly]="true"<% } %>/>
+        <%_ } else if (field.fieldTypeUuidSaathratri) { _%>
+            <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                formControlName="<%= fieldName %>"/>
+            @if (isNew) {
+            <button type="button" class="btn btn-primary" data-cy="<%= fieldName %>-generate" (click)="generateUUID('<%= primaryKeySaathratri.name %>.<%= fieldName %>')">Generate</button>
+            <button type="button" class="btn btn-danger" data-cy="<%= fieldName %>-reset" (click)="reset('<%= primaryKeySaathratri.name %>.<%= fieldName %>')" [disabled]="isResetDisabled['<%= primaryKeySaathratri.name %>.<%= fieldName %>']">
+                Reset
+            </button>
+            }
+        <%_ } else if (field.fieldTypeTimeUuidSaathratri) { _%>
+            <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                formControlName="<%= fieldName %>"/>
+            @if (isNew) {
+            <button type="button" class="btn btn-primary" data-cy="<%= fieldName %>-generate" (click)="generateTimeUUID('<%= primaryKeySaathratri.name %>.<%= fieldName %>')">Generate</button>
+            <button
+                type="button"
+                class="btn btn-danger"
+                data-cy="<%= fieldName %>-reset"
+                (click)="reset('<%= primaryKeySaathratri.name %>.<%= fieldName %>')"
+                [disabled]="isResetDisabled['<%= primaryKeySaathratri.name %>.<%= fieldName %>']">
+                Reset
+            </button>
+            }
+        <%_ } else { _%>
+                        <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                            formControlName="<%= fieldName %>"/>
+        <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+                        <input type="hidden" class="form-control" name="<%= fieldName %>ContentType" id="field_<%= fieldName %>ContentType"
+                            formControlName="<%= fieldName %>ContentType" />
+        <%_ } _%>
+        <%_ } _%>
+    <%_ } _%>
+    <%_ if (field.fieldValidate) { _%>
+                    @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.invalid && (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.dirty || editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')!.touched)) {
+                        <div>
+        <%_ if (field.fieldValidationRequired) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.required) {
+                            <small class="form-text text-danger">__jhiTranslateTag__('entity.validation.required')</small>
+                        }
+        <%_ } _%>
+        <%_ if (field.fieldValidationMinLength) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.minlength) {
+                            <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.minlength', { "min": <%- field.fieldValidateRulesMinlength %> })</small>
+                        }
+        <%_ } _%>
+        <%_ if (field.fieldValidationMaxLength) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.maxlength) {
+                            <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.maxlength', { "max": <%- field.fieldValidateRulesMaxlength %> })</small>
+                        }
+        <%_ } _%>
+        <%_ if (field.fieldValidationMin) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.min) {
+                            <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.min', { "min": <%- field.fieldValidateRulesMin %> })</small>
+                        }
+        <%_ } _%>
+        <%_ if (field.fieldValidationMax) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.max) {
+                            <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.max', { "max": <%- field.fieldValidateRulesMax %> })</small>
+                        }
+        <%_ } _%>
+        <%_ if (field.fieldValidationPattern) { _%>
+                        @if (editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.pattern) {
+                            <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.pattern', { "pattern": "<%- fieldNameHumanized %>" })</small>
+                        }
+        <%_ } _%>
+        <%_ if (field.fieldTypeNumeric || field.fieldTypeDuration) { _%>
+                            <small class="form-text text-danger"
+                                [hidden]="!editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.number">__jhiTranslateTag__('entity.validation.number')</small>
+        <%_ } _%>
+        <%_ if (field.fieldTypeTimed) { _%>
+                            <small class="form-text text-danger"
+                                [hidden]="!editForm.get('<%= primaryKeySaathratri.name %>.<%= fieldName %>')?.errors?.datetimelocal">__jhiTranslateTag__('entity.validation.datetimelocal')</small>
+        <%_ } _%>
+                        </div>
+                    }
+    <%_ } _%>
+                    </div>
+<%_ } _%>
+    </div>
+<%_ } _%>
+<%_ for (const field of fields.filter(field => !field.hidden && ((!field.isCompositePrimaryKeyField && primaryKeySaathratri.composite && field.fieldName !== 'id') || !primaryKeySaathratri.composite))) {
+    const fieldName = field.fieldName;
+    const fieldNameHumanized = field.fieldNameHumanized;
+    const fieldType = field.fieldType;
+    const fieldTypeBlobContent = field.fieldTypeBlobContent;
+    const readonly = field.readonly;
+    let fieldInputType = 'text';
+    const translationKey = field.fieldTranslationKey;
+    if (field.fieldTypeNumeric && !field.fieldTypeLocalDateSaathratri && !field.fieldTypeTimedSaathratri) {
+    fieldInputType = 'number';
+    } else if (field.fieldTypeLocalDate || field.fieldTypeLocalDateSaathratri) {
+    fieldInputType = 'date';
+    } else if (field.fieldTypeTimed || field.fieldTypeTimedSaathratri) {
+    fieldInputType = 'datetime-local';
+  } else if (field.fieldTypeBoolean) {
+    fieldInputType = 'checkbox';
+  } else if (field.fieldTypeBinary && !field.blobContentTypeText) {
+    fieldInputType = 'hidden';
+  }
+_%>
+
+                <div class="mb-3">
+                    <%_ if(field.fieldTypeMapDayjsSaathratri || (!field.fieldTypeLocalDate && !field.fieldTypeLocalDateSaathratri && !field.fieldTypeTimed && !field.fieldTypeTimedSaathratri)) { _%>
+                    <label class="form-label" for="field_<%= fieldName %>"<% if (field.documentation) { if (enableTranslation) { %> [ngbTooltip]="'<%= i18nKeyPrefix %>.help.<%= fieldName %>' | translate"<% } else { %> ngbTooltip="<%= field.documentation %>"<% } } %>>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</label>
+                    <%_ } _%>
+                    <%_ if (field.fieldIsEnum) { _%>
+                    <select class="form-control" name="<%= fieldName %>" formControlName="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>">
+    <%_ const enumPrefix = frontendAppName + '.'+ fieldType; _%>
+                        <option [ngValue]="null"><% if (enableTranslation) { %>{{ '<%= enumPrefix %>.null' | translate }}<% } %></option>
+                    @for (<%= this._.lowerFirst(fieldType) %> of <%- this._.lowerFirst(fieldType) %>Values; track $index) {
+                        <option [value]="<%= this._.lowerFirst(fieldType) %>">__jhiTranslatePipeEnum__('<%= enumPrefix %>', { "value": "<%= this._.lowerFirst(fieldType) %>" })</option>
+                    }
+                    </select>
+  <%_ } else if(field.id) { _%>
+    <%_ if (field.fieldTypeLocalDate || field.fieldTypeLocalDateSaathratri) { _%>
+                    <mat-form-field appearance="fill" class="full-width">
+                        <mat-label>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</mat-label>
+                        <br>
+                        <input
+                        matInput
+                        [matDatepicker]="<%= fieldName %>Picker"
+                        id="field_<%= fieldName %>"
+                        data-cy="<%= fieldName %>"
+                        formControlName="<%= fieldName %>"
+                        />
+                        <mat-datepicker-toggle matSuffix [for]="<%= fieldName %>Picker"></mat-datepicker-toggle>
+                        <mat-datepicker #<%= fieldName %>Picker></mat-datepicker>
+                    </mat-form-field>
+    <%_ } else if (field.fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+            <app-date-time
+                fieldName="<%= fieldName %>"
+                formControlName="<%= fieldName %>"
+                [dateTimeLabel]="'<%= i18nKeyPrefix %>.<%= fieldName %>' | translate"
+                [labelClass]="'form-label'"
+                [isRequired]="false"
+                (isValid)="onDateTimeValid('<%= fieldName %>', $event)"
+                (dirtyStateChange)="updateDirtyState($event)"
+                [isNew]="isNew">
+            </app-date-time>
+            @if (isNew) {
+            <button type="button" class="btn btn-primary" (click)="generateDateTime('<%= fieldName %>')">Generate</button>
+            <button
+                type="button"
+                class="btn btn-danger"
+                (click)="resetDateTime('<%= fieldName %>')"
+                [disabled]="!isDateTimeDirty['<%= fieldName %>']">
+                Reset
+            </button>
+            }
+    <%_ } else if (field.fieldTypeTimeUuidSaathratri) { _%>
+            <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                formControlName="<%= fieldName %>"/>
+            @if (isNew) {
+            <button type="button" class="btn btn-primary" data-cy="<%= fieldName %>-generate" (click)="generateTimeUUID('<%= fieldName %>')">Generate</button>
+            <button
+                type="button"
+                class="btn btn-danger"
+                data-cy="<%= fieldName %>-reset"
+                (click)="reset('<%= fieldName %>')"
+                [disabled]="isResetDisabled['<%= fieldName %>']">
+                Reset
+            </button>
+            }
+    <%_ } else if (field.fieldTypeUuidSaathratri) { _%>
+            <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                formControlName="<%= fieldName %>"/>
+            @if (isNew) {
+            <button type="button" class="btn btn-primary" data-cy="<%= fieldName %>-generate" (click)="generateUUID('<%= fieldName %>')">Generate</button>
+            <button type="button" class="btn btn-danger" data-cy="<%= fieldName %>-reset" (click)="reset('<%= fieldName %>')" [disabled]="isResetDisabled['<%= fieldName %>']">
+                Reset
+            </button>
+            }
+    <%_ } else { _%>
+        <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+        formControlName="<%= fieldName %>"/>
+    <%_ } _%>
+  <%_ } else { _%>
+    <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+                    <div>
+      <%_ if (field.blobContentTypeImage) { _%>
+                    @if (editForm.get('<%= fieldName %>')!.value) {
+                        <img [src]="'data:' + editForm.get('<%= fieldName %>ContentType')!.value + ';base64,' + editForm.get('<%= fieldName %>')!.value" style="max-height: 100px" alt="<%= entityInstance %>"/>
+                    }
+      <%_ } _%>
+                    @if (editForm.get('<%= fieldName %>')!.value) {
+                        <div class="form-text text-danger clearfix">
+      <%_ if (field.blobContentTypeAny) { _%>
+                            <%_ /* Saathratri modification - PDF clickable icon */ _%>
+                            @if (editForm.get('<%= fieldName %>ContentType')!.value === 'application/pdf') {
+                              <a class="pull-start saathratri-pdf-badge-link" (click)="openFile(editForm.get('<%= fieldName %>')!.value!, editForm.get('<%= fieldName %>ContentType')!.value!)">
+                                <div class="saathratri-pdf-badge saathratri-pdf-badge-sm">PDF</div>
+                              </a>
+                            } @else {
+                              <a class="pull-start" (click)="openFile(editForm.get('<%= fieldName %>')!.value!, editForm.get('<%= fieldName %>ContentType')!.value!)">__jhiTranslateTag__('entity.action.open')</a>
+                            }
+                            <%_ /* End Saathratri modification */ _%>
+                            <br><span class="pull-start">{{ editForm.get('<%= fieldName %>ContentType')!.value }}, {{ byteSize(editForm.get('<%= fieldName %>')!.value!) }}</span>
+      <%_ } else { _%>
+                            <span class="pull-start">{{ editForm.get('<%= fieldName %>ContentType')!.value }}, {{ byteSize(editForm.get('<%= fieldName %>')!.value!) }}</span>
+      <%_ } _%>
+      <%_ if (field.blobContentTypeImage) { _%>
+                            <button type="button" (click)="clearInputImage('<%= fieldName %>', '<%= fieldName %>ContentType', 'file_<%= fieldName %>')" class="btn btn-secondary btn-xs pull-end">
+      <%_ } else { _%>
+                            <button type="button" (click)="editForm.patchValue({ <%= fieldName %>: undefined, <%= fieldName %>ContentType: undefined });"
+                                    class="btn btn-secondary btn-xs pull-end">
+      <%_ } _%>
+                                  <fa-icon icon="times"></fa-icon>
+                            </button>
+                        </div>
+                    }
+                        <input type="file" id="file_<%= fieldName %>" data-cy="<%= fieldName %>" (change)="setFileData($event, '<%= fieldName %>', <% if (fieldTypeBlobContent === 'image') { %>true)" accept="image/*"<% if (enableTranslation) { %> <%= jhiPrefix %>Translate="entity.action.addimage"<% } %><% } else { %>false)"<% if (enableTranslation) { %> <%= jhiPrefix %>Translate="entity.action.addblob"<% } %><% } %>/>
+                    </div>
+    <%_ } _%>
+    <%_ if (field.fieldTypeSetSaathratri) { _%>
+            <app-set-string-component
+                fieldName="<%= field.fieldName %>"
+                [inputFields]="inputFields<%= this._.upperFirst(field.fieldName) %>"
+                (dataChange)="handle<%= this._.upperFirst(field.fieldName) %>InputChange($event)">
+            </app-set-string-component>
+    <%_ } else if (field.fieldTypeMapBooleanSaathratri) { _%>
+            <app-map-boolean-component
+                fieldName="<%= field.fieldName %>"
+                [inputFields]="inputFields<%= this._.upperFirst(field.fieldName) %>"
+                (dataChange)="handle<%= this._.upperFirst(field.fieldName) %>InputChange($event)">
+            </app-map-boolean-component>
+    <%_ } else if (field.fieldTypeMapNumberSaathratri) { _%>
+            <app-map-number-component
+                fieldName="<%= field.fieldName %>"
+                [inputFields]="inputFields<%= this._.upperFirst(field.fieldName) %>"
+                (dataChange)="handle<%= this._.upperFirst(field.fieldName) %>InputChange($event)">
+            </app-map-number-component>
+    <%_ } else if (field.fieldTypeMapStringSaathratri) { _%>
+            <app-map-string-component
+                fieldName="<%= field.fieldName %>"
+                [inputFields]="inputFields<%= this._.upperFirst(field.fieldName) %>"
+                (dataChange)="handle<%= this._.upperFirst(field.fieldName) %>InputChange($event)">
+            </app-map-string-component>
+    <%_ } else if (field.fieldTypeMapDayjsSaathratri) { _%>
+            <app-map-dayjs-component
+                fieldName="<%= field.fieldName %>"
+                [inputFields]="inputFields<%= this._.upperFirst(field.fieldName) %>"
+                (dataChange)="handle<%= this._.upperFirst(field.fieldName) %>InputChange($event)">
+            </app-map-dayjs-component>
+    <%_ } else if (field.fieldTypeLocalDate || field.fieldTypeLocalDateSaathratri) { _%>
+                    <mat-form-field appearance="fill" class="full-width">
+                        <mat-label>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</mat-label>
+                        <br>
+                        <input
+                        matInput
+                        [matDatepicker]="<%= fieldName %>Picker"
+                        id="field_<%= fieldName %>"
+                        data-cy="<%= fieldName %>"
+                        formControlName="<%= fieldName %>"
+                        />
+                        <mat-datepicker-toggle matSuffix [for]="<%= fieldName %>Picker"></mat-datepicker-toggle>
+                        <mat-datepicker #<%= fieldName %>Picker></mat-datepicker>
+                    </mat-form-field>
+    <%_ } else if (field.fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+                    <app-date-time
+                        fieldName="<%= fieldName %>"
+                        formControlName="<%= fieldName %>"
+                        [dateTimeLabel]="'<%= i18nKeyPrefix %>.<%= fieldName %>' | translate"
+                        [labelClass]="'form-label'"
+                        [isRequired]="false"
+                        (isValid)="onDateTimeValid('<%= fieldName %>', $event)"
+                        (dirtyStateChange)="updateDirtyState($event)"
+                        [isNew]="isNew">
+                    </app-date-time>
+                    <button type="button" class="btn btn-primary" (click)="generateDateTime('<%= fieldName %>')">Generate</button>
+                    <button
+                        type="button"
+                        class="btn btn-danger"
+                        (click)="resetDateTime('<%= fieldName %>')"
+                        [disabled]="!isDateTimeDirty['<%= fieldName %>']"> 
+                        Reset 
+                    </button>
+    <%_ } else if (field.blobContentTypeText) { _%>
+                    <textarea class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                              formControlName="<%= fieldName %>"<% if (readonly) { %> [readonly]="true"<% } %>></textarea>
+    <%_ } else if (field.fieldTypeBoolean) { _%>
+                    <input type="<%= fieldInputType %>" class="form-check" name="<%= fieldName %>" id="field_<%= fieldName %>"
+                           data-cy="<%= fieldName %>" formControlName="<%= fieldName %>" <% if (readonly) { %> [readonly]="true"<% } %>/>
+    <%_ } else if (field.fieldTypeTimeUuidSaathratri) { _%>
+            <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                formControlName="<%= fieldName %>"/>
+            <button type="button" class="btn btn-primary" (click)="generateTimeUUID('<%= fieldName %>')">Generate</button>
+            <button
+                type="button"
+                class="btn btn-danger"
+                (click)="reset('<%= fieldName %>')"
+                [disabled]="isResetDisabled['<%= fieldName %>']"> 
+                Reset 
+            </button>
+    <%_ } else if (field.fieldTypeUuidSaathratri) { _%>
+            <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                formControlName="<%= fieldName %>"/>
+            <button type="button" class="btn btn-primary" (click)="generateUUID('<%= fieldName %>')">Generate</button>
+            <button type="button" class="btn btn-danger" (click)="reset('<%= fieldName %>')" [disabled]="isResetDisabled['<%= fieldName %>']">
+                Reset
+            </button>
+    <%_ } else { _%>
+                    <input type="<%= fieldInputType %>" class="form-control" name="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>"
+                             formControlName="<%= fieldName %>"/>
+      <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+                    <input type="hidden" class="form-control" name="<%= fieldName %>ContentType" id="field_<%= fieldName %>ContentType"
+                           formControlName="<%= fieldName %>ContentType" />
+      <%_ } _%>
+    <%_ } _%>
+  <%_ } _%>
+    <%_ if (field.fieldValidate || field.fieldValidateSaathratri) { _%>
+                @if (editForm.get('<%= fieldName %>')!.invalid && (editForm.get('<%= fieldName %>')!.dirty || editForm.get('<%= fieldName %>')!.touched)) {
+                    <div>
+      <%_ if (field.fieldValidationRequired || field.fieldValidationRequiredSaathratri) { _%>
+                    @if (editForm.get('<%= fieldName %>')?.errors?.required) {
+                        <small class="form-text text-danger">__jhiTranslateTag__('entity.validation.required')</small>
+                    }
+    <%_ } _%>
+    <%_ if (field.fieldValidationMinLength) { _%>
+                    @if (editForm.get('<%= fieldName %>')?.errors?.minlength) {
+                        <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.minlength', { "min": <%- field.fieldValidateRulesMinlength %> })</small>
+                    }
+    <%_ } _%>
+    <%_ if (field.fieldValidationMaxLength) { _%>
+                    @if (editForm.get('<%= fieldName %>')?.errors?.maxlength) {
+                        <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.maxlength', { "max": <%- field.fieldValidateRulesMaxlength %> })</small>
+                    }
+    <%_ } _%>
+    <%_ if (field.fieldValidationMin) { _%>
+                    @if (editForm.get('<%= fieldName %>')?.errors?.min) {
+                        <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.min', { "min": <%- field.fieldValidateRulesMin %> })</small>
+                    }
+    <%_ } _%>
+    <%_ if (field.fieldValidationMax) { _%>
+                    @if (editForm.get('<%= fieldName %>')?.errors?.max) {
+                        <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.max', { "max": <%- field.fieldValidateRulesMax %> })</small>
+                    }
+    <%_ } _%>
+    <%_ if (field.fieldValidationPattern) { _%>
+                    @if (editForm.get('<%= fieldName %>')?.errors?.pattern) {
+                        <small class="form-text text-danger">__jhiTranslateValidationTag__('entity.validation.pattern', { "pattern": "<%- fieldNameHumanized %>" })</small>
+                    }
+    <%_ } _%>
+    <%_ if (field.fieldTypeNumeric || field.fieldTypeDuration) { _%>
+                        <small class="form-text text-danger"
+                            [hidden]="!editForm.get('<%= fieldName %>')?.errors?.number">__jhiTranslateTag__('entity.validation.number')</small>
+    <%_ } _%>
+      <%_ if (field.fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+                        <small class="form-text text-danger"
+                            [hidden]="!editForm.get('<%= fieldName %>')?.errors?.datetimelocal">__jhiTranslateTag__('entity.validation.datetimelocal')</small>
+    <%_ } _%>
+                    </div>
+                }
+
+    <%_ } _%>
+                </div>
+
+<%_ } _%>
+            </div>
+
+<%_ for (const vf of fields.filter(f => f.fieldTypeVectorSaathratri)) { _%>
+            <div class="mb-3">
+                <label class="form-label" for="field_<%= vf.fieldName %>"><%= vf.sourceFieldNameCapitalizedSaathratri %> Embedding</label>
+                @if (<%= entityInstance %>?.<%= vf.fieldName %> && <%= entityInstance %>!.<%= vf.fieldName %>!.length > 0) {
+                    <textarea id="field_<%= vf.fieldName %>" class="form-control font-monospace" readonly rows="4" style="font-size: 0.75rem;">{{ <%= entityInstance %>!.<%= vf.fieldName %>! | json }}</textarea>
+                } @else {
+                    <div id="field_<%= vf.fieldName %>" class="form-control bg-light"><small class="text-muted"><em>Not generated yet</em></small></div>
+                }
+            </div>
+<%_ } _%>
+
+            <div>
+                <button type="button" id="cancel-save" data-cy="entityCreateCancelButton" class="btn btn-secondary" (click)="previousState()">
+                    <fa-icon icon="ban"></fa-icon>&nbsp;<span>__jhiTranslateTag__('entity.action.cancel')</span>
+                </button>
+
+                <button type="submit" id="save-entity" data-cy="entityCreateSaveButton" [disabled]="editForm.invalid || isSaving<%_ if( anyFieldIsTimeDerivedSaathratri ) { _%> || !areAllDateTimeFieldsValid <%_ } _%>" class="btn btn-primary">
+                    <fa-icon icon="save"></fa-icon>&nbsp;<span>__jhiTranslateTag__('entity.action.save')</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

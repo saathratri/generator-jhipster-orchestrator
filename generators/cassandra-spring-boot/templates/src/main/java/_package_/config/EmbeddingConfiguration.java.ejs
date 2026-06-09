@@ -1,0 +1,47 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+-%>
+package <%= packageName %>.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.openai.client.OpenAIClient;
+import com.openai.client.okhttp.OpenAIOkHttpClient;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.document.MetadataMode;
+import org.springframework.ai.openai.OpenAiEmbeddingModel;
+import org.springframework.ai.openai.OpenAiEmbeddingOptions;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Configuration for the AI embedding service.
+ * Manually creates the EmbeddingModel bean to gracefully handle missing API keys.
+ */
+@Configuration
+public class EmbeddingConfiguration {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EmbeddingConfiguration.class);
+
+    @Value("${spring.ai.openai.api-key:${OPENAI_API_KEY:}}")
+    private String openaiApiKey;
+
+    @Bean
+    @ConditionalOnMissingBean(EmbeddingModel.class)
+    public EmbeddingModel embeddingModel() {
+        if (openaiApiKey == null || openaiApiKey.isBlank()) {
+            LOG.warn("OpenAI API key not configured. AI search features will be unavailable. " +
+                     "Set the spring.ai.openai.api-key property or SPRING_AI_OPENAI_API_KEY environment variable.");
+            return null;
+        }
+
+        LOG.info("Configuring OpenAI embedding model for AI search features.");
+        OpenAIClient openAiClient = OpenAIOkHttpClient.builder().apiKey(openaiApiKey).build();
+        OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
+            .model("text-embedding-3-small")
+            .build();
+        return new OpenAiEmbeddingModel(openAiClient, MetadataMode.EMBED, options);
+    }
+}

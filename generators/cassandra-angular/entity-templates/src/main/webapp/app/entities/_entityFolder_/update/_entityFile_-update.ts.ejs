@@ -1,0 +1,492 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+import { Component, inject, OnInit<% if (anyFieldHasImageContentType) { %>, ElementRef<% } %> } from '@angular/core';
+<%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
+import { JsonPipe } from '@angular/common';
+<%_ } _%>
+import { FormGroup } from '@angular/forms';
+import { HttpResponse } from '@angular/common/http';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
+import { finalize } from 'rxjs/operators';
+
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { Alert } from 'app/shared/alert/alert';
+import { AlertError } from 'app/shared/alert/alert-error';
+<%_ if (enableTranslation) { _%>
+import { TranslateDirective } from 'app/shared/language';
+import { TranslateModule } from '@ngx-translate/core';
+<%_ } _%>
+import { MaterialModule } from 'app/shared/material.module';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+
+import { <%= entityAngularName %>FormService, <%= entityAngularName %>FormGroup } from './<%= entityFileName %>-form.service';
+<%_ if (anyFieldIsDateDerived || anyFieldIsDateDerivedSaathratri) { _%>
+import dayjs from 'dayjs/esm';
+import { DATE_FORMAT, DATE_TIME_FORMAT } from 'app/config/input.constants';
+import { dateLongToFormattedString, datetimeLongToFormattedString } from '../../../../shared/date/saathratri-local-dayjs-and-utc-unix-utils';
+<%_ } _%>
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+import { DateTimeComponent } from 'app/components/date-time/date-time.component';
+<%_ } _%>
+<%_ if (anyFieldIsSetSaathratri) { _%>
+import { SetStringComponent } from 'app/components/set-string-component/set-string-component.component';
+<%_ } _%>
+<%_ if (anyFieldIsMapBooleanSaathratri) { _%>
+import { MapBooleanComponent } from 'app/components/map-boolean-component/map-boolean-component.component';
+<%_ } _%>
+<%_ if (anyFieldIsMapNumberSaathratri) { _%>
+import { MapNumberComponent } from 'app/components/map-number-component/map-number-component.component';
+<%_ } _%>
+<%_ if (anyFieldIsMapStringSaathratri) { _%>
+import { MapStringComponent } from 'app/components/map-string-component/map-string-component.component';
+<%_ } _%>
+<%_ if (anyFieldIsMapDayjsSaathratri) { _%>
+import { MapDayjsComponent } from 'app/components/map-dayjs-component/map-dayjs-component.component';
+<%_ } _%>
+
+import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+import { <%= entityAngularName %>Service } from '../service/<%= entityFileName %>.service';
+<%_ if (anyFieldIsBlobDerived) { _%>
+import { AlertErrorModel } from 'app/shared/alert/alert-error.model';
+import { EventManager, EventWithContent } from 'app/core/util/event-manager.service';
+import { DataUtils, FileLoadError } from 'app/core/util/data-util.service';
+<%_ } _%>
+<%_ const enumImports = generateEntityClientEnumImports(fields); _%>
+<%_ enumImports.forEach( (importedPath, importedType) => { _%>
+import { <%- importedType %> } from '<%- importedPath %>';
+<%_ }); _%>
+<%_ if (anyFieldIsUUIDSaathratri) { _%>
+import { v4 as uuidv4 } from 'uuid'; // Import UUID (UUID v4)
+<%_ } _%>
+<%_ if (anyFieldIsTimeUUIDSaathratri) { _%>
+import { v1 as uuidv1 } from 'uuid'; // Import TimeUUID (UUID v1)
+<%_ } _%>
+
+@Component({
+    selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>-update',
+    templateUrl: './<%= entityFileName %>-update.html',
+    imports: [
+      FontAwesomeModule,
+      Alert,
+      AlertError,
+<%_ if (enableTranslation) { _%>
+      TranslateDirective,
+      TranslateModule,
+<%_ } _%>
+      FormsModule,
+      ReactiveFormsModule,
+      MaterialModule,
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+      DateTimeComponent,
+<%_ } _%>
+<%_ if (anyFieldIsSetSaathratri) { _%>
+      SetStringComponent,
+<%_ } _%>
+<%_ if (anyFieldIsMapBooleanSaathratri) { _%>
+      MapBooleanComponent,
+<%_ } _%>
+<%_ if (anyFieldIsMapNumberSaathratri) { _%>
+      MapNumberComponent,
+<%_ } _%>
+<%_ if (anyFieldIsMapStringSaathratri) { _%>
+      MapStringComponent,
+<%_ } _%>
+<%_ if (anyFieldIsMapDayjsSaathratri) { _%>
+      MapDayjsComponent,
+<%_ } _%>
+<%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
+      JsonPipe,
+<%_ } _%>
+    ],
+})
+export class <%= entityAngularName %>UpdateComponent implements OnInit {
+    isSaving = false;
+    // Saathratri:
+    isNew = false;
+    
+    <%_ if(anyFieldIsTimeDerivedSaathratri) { _%>
+        isDateTimeValid: Record<string, boolean> = {};
+        // Track the dirty state for each date-time field
+        isDateTimeDirty: Record<string, boolean> = {};
+    <%_ } _%>
+    <%= entityInstance %>: I<%= entityAngularName %> | null = null;
+<%_ enumImports.forEach( (importedPath, importedType) => { _%>
+    <%- this._.lowerFirst(importedType) %>Values = Object.keys(<%- importedType %>);
+<%_ }); _%>
+
+<%_ if (anyFieldIsSetSaathratri) { _%>
+    <%_ for (const field of fields) {
+        if (field.fieldTypeSetSaathratri) {
+        const fieldName = field.fieldName;
+    _%>
+        inputFields<%= this._.upperFirst(fieldName) %>: Set<string> = new Set<string>(); // Start with one input field
+    <%_ 
+        } 
+    }
+    _%>
+<%_ } _%>
+
+<%_ if (anyFieldIsMapSaathratri) { _%>
+    <%_ for (const field of fields) {
+        const fieldName = field.fieldName;
+        const fieldType = field.fieldType;
+
+        if (field.fieldTypeMapSaathratri) {
+    _%>
+        inputFields<%= this._.upperFirst(fieldName) %>: Record<string, <%_ if (field.fieldTypeMapDayjsSaathratri) { _%>dayjs.Dayjs<%_ } else { _%><%= field.tsType %><%_ } _%>> = {}; // Start with one input field
+    <%_ 
+        } 
+    }
+    _%>
+<%_ } _%>
+
+<%_ if (anyFieldIsBlobDerived) { _%>
+    protected dataUtils = inject(DataUtils);
+    protected eventManager = inject(EventManager);
+<%_ } _%>
+    protected <%= entityInstance %>Service = inject(<%= entityAngularName %>Service);
+    protected <%= entityInstance %>FormService = inject(<%= entityAngularName %>FormService);
+<%_ if (anyFieldHasImageContentType) { _%>
+    protected elementRef = inject(ElementRef);
+<%_ } _%>
+    protected activatedRoute = inject(ActivatedRoute);
+    protected router = inject(Router);
+
+    <%_ if (anyFieldIsUUIDSaathratri || anyFieldIsTimeUUIDSaathratri) { _%>
+        protected isResetDisabled: Record<string, boolean> = {}; // Track reset button states
+        private lastSavedValues: Record<string, any> = {}; // Store last valid values
+    <%_ } _%>
+
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    editForm: <%= entityAngularName %>FormGroup = this.<%= entityInstance %>FormService.create<%= entityAngularName %>FormGroup();
+
+    ngOnInit(): void {
+      <%_
+        // Saathratri Modification
+      _%>
+              this.isNew = this.activatedRoute.snapshot.routeConfig?.path === 'new' ? true : false;
+      <%_
+        // End of Saathratri Modification
+_%>
+        this.activatedRoute.data.subscribe(({ <%= entityInstance %> }) => {
+       <%_ if (anyFieldIsDateDerived || anyFieldIsDateDerivedSaathratri) { _%>
+	    <%_ 
+	        // Saathratri: Composite Primary Key Code
+	        if (primaryKeySaathratri.composite) { 
+	    _%>
+	            if (<%= entityInstance %>?.<%= primaryKeySaathratri.name %> !== undefined && 
+                    <%- getCompositePrimaryKeyClientUpdateComponentUndefinedCheck(entityInstance, primaryKeySaathratri) %>) {
+	    <%_ 
+	        // Saathratri: Single-value Primary Key Code
+	        } else { 
+	    _%>
+	            if (<%= entityInstance %>?.<%= primaryKey.name %> === undefined) {
+	    <%_ 
+	        }
+	        // Saathratri 
+	    _%>
+                const today = dayjs().startOf('day');
+            <%_ for (const field of fields) {
+                const fieldName = field.fieldName;
+            _%>
+                <%_ if (field.fieldTypeTimed) { _%>
+                <%= entityInstance %>.<%= fieldName %> = today;
+<%_ } _%>
+            <%_ } _%>
+            }
+       <%_ } _%>
+            this.<%= entityInstance %> = <%= entityInstance %>;
+            if (<%= entityInstance %>) {
+                this.updateForm(<%= entityInstance %>);
+            } else {
+                this.initializeResetButtonStates();
+            }
+
+        });
+
+        <%_ if (anyFieldIsUUIDSaathratri || anyFieldIsTimeUUIDSaathratri) { _%>
+            // Listen for changes to enable/disable reset button
+            Object.keys(this.editForm.controls).forEach((field) => {
+                    this.editForm.get(field)?.valueChanges.subscribe(() => {
+                    this.isResetDisabled[field] = true; // Disable reset button on load
+                    this.updateResetButtonState(field);
+                });
+            });
+        <%_ } _%>
+    }
+
+<%_ if (anyFieldIsBlobDerived) { _%>
+    byteSize(base64String: string): string {
+        return this.dataUtils.byteSize(base64String);
+    }
+
+    openFile(base64String: string, contentType: string | null | undefined): void {
+        this.dataUtils.openFile(base64String, contentType);
+    }
+
+    setFileData(event: Event, field: string, isImage: boolean): void {
+        this.dataUtils.loadFileToForm(event, this.editForm, field, isImage).subscribe({
+            error: (err: FileLoadError) =>
+                this.eventManager.broadcast(
+                    new EventWithContent<AlertErrorModel>('<%= frontendAppName %>.error', { <% if (enableTranslation) { %>...err, key: 'error.file.' + err.key<% } else { %>message: err.message<% } %> })
+                )
+        });
+    }
+
+  <%_ if (anyFieldHasImageContentType) { _%>
+    clearInputImage(field: string, fieldContentType: string, idInput: string): void {
+        this.editForm.patchValue({
+            [field]: null,
+            [fieldContentType]: null
+        });
+        if (idInput && this.elementRef.nativeElement.querySelector('#' + idInput)) {
+            this.elementRef.nativeElement.querySelector('#' + idInput).value = null;
+        }
+    }
+  <%_ } _%>
+<%_ } _%>
+
+    previousState(): void {
+        this.router.navigate(['/<%= microserviceName.toLowerCase() %>/<%= entityFileName %>']);
+    }
+
+    save(): void {
+        this.isSaving = true;
+        const <%= entityInstance %> = this.<%= entityInstance %>FormService.get<%= entityAngularName %>(this.editForm);
+       
+        <%_ for (const field of fields) {
+                const fieldName = field.fieldName;
+                const fieldType = field.fieldType;
+
+                if (field.fieldTypeMapSaathratri || field.fieldTypeSetSaathratri) {
+        _%>
+                    <%= entityInstance %>.<%=  fieldName %> = this.inputFields<%= this._.upperFirst(fieldName) %>;
+        <%_ 
+                }
+            }
+        _%>
+
+        <%_ if(primaryKeySaathratri.composite) { _%>
+<%_ if (updatableEntity) { _%>
+         if (this.isNew) {
+                        this.subscribeToSaveResponse(this.<%= entityInstance %>Service.create(<%= entityInstance %>));
+        } else {
+<%_ } _%>
+                        this.subscribeToSaveResponse(this.<%= entityInstance %>Service.update(<%= entityInstance %>));
+<%_ if (updatableEntity) { _%>
+        }
+            <%_ } _%>
+        <%_ } else { _%>
+            <%_ if (updatableEntity) { _%>
+                    // Update the last saved values when saving
+                    Object.keys(this.editForm.controls).forEach((field) => {
+                        this.lastSavedValues[field] = this.editForm.get(field)?.value;
+                    });
+
+                    // Single-value Primary Key  
+                    if(this.isNew) {
+                        this.subscribeToSaveResponse(this.<%= entityInstance %>Service.create(<%= entityInstance %>));
+                    } else {
+                        this.subscribeToSaveResponse(this.<%= entityInstance %>Service.update(<%= entityInstance %>)); 
+                    }
+            <%_ } _%>
+<%_ } _%>
+    }
+
+    <%_ if(anyFieldIsTimeDerivedSaathratri) { _%>
+        onDateTimeValid(controlName: string, isValid: boolean): void {
+            this.isDateTimeValid[controlName] = isValid;
+        }
+        
+        get areAllDateTimeFieldsValid(): boolean {
+
+             <%_ for (const field of fields) { _%>
+                <%_ if (field.fieldTypeTimedSaathratri) { _%>
+                    const <%= field.fieldName %>Control = this.editForm.get('<%= field.fieldName %>');
+                <%_ } _%>
+            <%_ } _%>
+            
+            <%_ let first = true; _%>
+            return (<%_ for (const field of fields) { _%>
+                <%_ if (field.fieldTypeTimedSaathratri) { _%>
+                    <%_ if(!first) { _%> && <%_ } _%>(!<%= field.fieldName %>Control?.hasError('required') || this.isDateTimeValid['<%= field.fieldName %>'])
+                <%_ 
+                        first = false;
+                    }
+                _%>
+            <%_ } _%>
+            );
+        }
+
+        // Generate today's date and current time
+        generateDateTime(field: string): void {
+            const currentTimestamp = Date.now(); // Get current timestamp in milliseconds
+            this.editForm.get(field)?.setValue(currentTimestamp);
+            this.updateDirtyState({ field, isDirty: true }); // Mark the field as dirty
+        }
+
+        // Update dirty state when event is emitted from child
+        updateDirtyState(event: { field: string; isDirty: boolean }): void {
+            this.isDateTimeDirty[event.field] = event.isDirty; // Store dirty state correctly
+        }
+
+        // Reset specific field and mark it as pristine
+        resetDateTime(field: string): void {
+            this.updateDirtyState({ field, isDirty: false }); // Mark the field as pristine
+            this.editForm.get(field)?.reset();
+        }
+    <%_ } _%>
+
+    <%_ if (anyFieldIsUUIDSaathratri) { _%>
+        // Generate a new UUID and update the form
+        generateUUID(field: string): void {
+            const newUUID = uuidv4();
+            this.editForm.get(field)?.setValue(newUUID);
+            this.updateResetButtonState(field);
+        }
+    <%_ } _%>
+
+    <%_ if (anyFieldIsTimeUUIDSaathratri) { _%>
+        // Generate a new TimeUUID and update the form
+        generateTimeUUID(field: string): void {
+            const newTimeUUID = uuidv1();
+            this.editForm.get(field)?.setValue(newTimeUUID);
+            this.updateResetButtonState(field);
+        }
+    <%_ } _%>
+
+    <%_ if (anyFieldIsUUIDSaathratri || anyFieldIsTimeUUIDSaathratri) { _%>
+        // Clear the TimeUUID field
+        reset(field: string): void {
+            const lastValue = this.lastSavedValues[field];
+            const currentValue = this.editForm.get(field)?.value;
+
+            // Only reset if the value has changed
+            if (currentValue !== lastValue) {
+                this.editForm.get(field)?.setValue(lastValue, { emitEvent: false });
+            }
+
+            // Ensure reset button gets disabled after restoring the previous value
+            this.updateResetButtonState(field);
+        }
+
+        updateResetButtonState(field: string): void {
+            const lastValue = this.lastSavedValues[field];
+            const currentValue = this.editForm.get(field)?.value;
+            
+            if(currentValue === null) {
+                this.isResetDisabled[field] = true; // Disable if null
+            } else {
+                this.isResetDisabled[field] = currentValue === lastValue; // Disable if unchanged
+            }
+        }
+    <%_ } _%>
+
+    <%_ if (anyFieldIsSetSaathratri) { _%>
+
+        <%_ for (const field of fields) {
+            if (field.fieldTypeSetSaathratri) {
+            const fieldName = field.fieldName;
+        _%>
+            handle<%= this._.upperFirst(fieldName) %>InputChange(updatedFields: Set<string>): void {
+                this.inputFields<%= this._.upperFirst(fieldName) %> = new Set(updatedFields); // Update parent data when child component emits changes
+            }
+        <%_ 
+            } 
+        }
+        _%>
+    <%_ } _%>
+
+    <%_ if (anyFieldIsMapSaathratri) { _%>
+
+        <%_ for (const field of fields) {
+            const fieldName = field.fieldName;
+            const fieldType = field.fieldType;
+            if (field.fieldTypeMapSaathratri) {
+        _%>
+            handle<%= this._.upperFirst(fieldName) %>InputChange(updatedFields: Record<string, <%_ if (field.fieldTypeMapDayjsSaathratri) { _%>dayjs.Dayjs<%_ } else { _%><%= field.tsType %><%_ } _%>>): void {
+                this.inputFields<%= this._.upperFirst(fieldName) %> = { ...updatedFields }; // Update parent with new values from child
+            }
+        <%_ 
+            } 
+        }
+        _%>
+    <%_ } _%>
+
+    protected subscribeToSaveResponse(result: Observable<HttpResponse<I<%= entityAngularName %>>>): void {
+        result.pipe(finalize(() => this.onSaveFinalize())).subscribe({
+            next: () => this.onSaveSuccess(),
+            error: () => this.onSaveError()
+        });
+    }
+
+    protected onSaveSuccess(): void {
+        this.previousState();
+    }
+
+    protected onSaveError(): void {
+        // Api for inheritance.
+    }
+
+    protected onSaveFinalize(): void {
+        this.isSaving = false;
+    }
+
+    protected updateForm(<%= entityInstance %>: I<%= entityAngularName %>): void {
+        this.<%= entityInstance %> = <%= entityInstance %>;
+        this.<%= entityInstance %>FormService.resetForm(this.editForm, <%= entityInstance %>);
+
+        <%_ for (const field of fields) {
+                const fieldName = field.fieldName;
+                if (field.fieldTypeSetSaathratri) {
+        _%>
+                    this.inputFields<%= this._.upperFirst(fieldName) %> = <%= entityInstance %>.<%= fieldName %> ? new Set(<%= entityInstance %>.<%= fieldName %>) : new Set<string>();       
+        <%_
+                } else if (field.fieldTypeMapSaathratri) {
+        _%>
+                    this.inputFields<%= this._.upperFirst(fieldName) %> = { ...(<%= entityInstance %>.<%= fieldName %> ?? {}) };
+        <%_ 
+                }
+            } 
+        _%>
+
+        <%_ if (anyFieldIsUUIDSaathratri || anyFieldIsTimeUUIDSaathratri) { _%>
+            Object.keys(this.editForm.controls).forEach((field) => {
+                this.lastSavedValues[field] = this.editForm.get(field)?.value;
+            });
+        <%_ } _%>
+    }
+
+    protected initializeResetButtonStates(): void {
+        Object.keys(this.editForm.controls).forEach(field => {
+            const control = this.editForm.get(field);
+
+            // Handle nested composite keys
+            if (control instanceof FormGroup) {
+                Object.keys(control.controls).forEach(nestedField => {
+                this.updateResetButtonState(`<%= primaryKeySaathratri.name %>.${nestedField}`);
+                });
+            } else {
+                this.updateResetButtonState(field);
+            }
+        }
+    );
+  }
+}

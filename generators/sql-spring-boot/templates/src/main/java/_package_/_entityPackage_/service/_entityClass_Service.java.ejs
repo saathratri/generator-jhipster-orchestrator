@@ -1,0 +1,398 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.service;
+
+<%_
+const instanceType = restClass;
+const instanceName = restInstance;
+const optionalOrMono = (reactive) ? 'Mono' : 'Optional';
+const listOrFlux = (reactive) ? 'Flux' : 'List';
+const pageOrFlux = (reactive) ? 'Flux' : 'Page';
+/* Saathratri modification - entity graph directive parsing */
+const normalizeDirectives = value =>
+  value === undefined || value === null
+    ? []
+    : (Array.isArray(value) ? value : [value]).flatMap(v =>
+        typeof v === 'string' ? v.split('|').map(s => s.trim()).filter(Boolean) : [v],
+      );
+const parseDirective = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const [rawMethod, rawAttributes] = directive.split(':');
+  const methodName = rawMethod?.trim();
+  const attributePaths = (rawAttributes
+    ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+    ?.split(',')
+    ?.map(attribute => attribute.trim())
+    ?.filter(Boolean)) ?? [];
+  if (methodName && attributePaths.length > 0) {
+    return { methodName, attributePaths };
+  }
+  return undefined;
+};
+const entityGraphAnnotationValue =
+  (typeof annotations !== 'undefined' && (annotations.entityGraphCustomAnnotation ?? annotations.entityGraph)) ??
+  (typeof entityGraph !== 'undefined' ? entityGraph : undefined);
+const includeDirectives =
+  typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphIncludeCustomAnnotation) : [];
+const excludeDirectives =
+  typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphExcludeCustomAnnotation) : [];
+const entityGraphEntries = [
+  ...normalizeDirectives(entityGraphAnnotationValue),
+  ...includeDirectives,
+];
+const entityGraphDirectives = [];
+for (const directive of entityGraphEntries) {
+  const parsedDirective = parseDirective(directive);
+  if (parsedDirective) {
+    entityGraphDirectives.push(parsedDirective);
+  }
+}
+const relationshipNames = relationships.map(relationship => relationship.propertyName);
+for (const directive of excludeDirectives) {
+  if (typeof directive !== 'string') continue;
+  const [rawMethod, rawAttributes] = directive.split(':');
+  const methodName = rawMethod?.trim();
+  const excludedPaths = (rawAttributes
+    ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+    ?.split(',')
+    ?.map(attribute => attribute.trim())
+    ?.filter(Boolean)) ?? [];
+  const attributePaths = relationshipNames.filter(propertyName => !excludedPaths.includes(propertyName));
+  if (methodName && attributePaths.length > 0) {
+    entityGraphDirectives.push({ methodName, attributePaths });
+  }
+}
+const hasEntityGraphQueries = entityGraphDirectives.length > 0 && !reactive;
+const hasEagerLoadableRelationships = implementsEagerLoadApis && relationships.some(relationship =>
+  relationship.relationshipEagerLoad || relationship.relationshipManyToMany
+);
+/* End Saathratri modification */
+/* Saathratri modification - parse @customQueryAnnotation */
+const customQueryRawSvc = typeof annotations !== 'undefined'
+  ? normalizeDirectives(annotations.customQueryAnnotation) : [];
+const customQueryDirectivesSvc = customQueryRawSvc.flatMap(d => typeof d === 'string' ? d.split('|').map(s => s.trim()).filter(Boolean) : [d]);
+const parseCustomQuerySvc = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const colonIdx = directive.indexOf(':');
+  if (colonIdx < 0) return undefined;
+  const methodName = directive.substring(0, colonIdx).trim();
+  const rest = directive.substring(colonIdx + 1).trim();
+  const paramsMatch = rest.match(/params\s*\[\s*([^\]]*)\s*\]/);
+  const params = paramsMatch ? paramsMatch[1].split(',').map(p => p.trim()).filter(Boolean) : [];
+  if (params.length === 0) return undefined;
+  const resolvedParams = params.map(paramName => {
+    if (paramName === primaryKey.name) return { fieldName: primaryKey.name, fieldType: primaryKey.type, isPrimaryKey: true };
+    const field = fields.find(f => f.fieldName === paramName);
+    return field ? { fieldName: field.fieldName, fieldType: field.fieldType, isPrimaryKey: false }
+                 : { fieldName: paramName, fieldType: 'String', isPrimaryKey: false };
+  });
+  const isSingleIdQuery = resolvedParams.length === 1 && resolvedParams[0].isPrimaryKey;
+  return { methodName, resolvedParams, isSingleIdQuery };
+};
+const parsedCustomQueriesSvc = customQueryDirectivesSvc.map(parseCustomQuerySvc).filter(Boolean);
+const hasCustomQueriesSvc = parsedCustomQueriesSvc.length > 0 && !reactive;
+/* End Saathratri modification */
+_%>
+<%_ if (dtoMapstruct) { _%>
+import <%= entityAbsolutePackage %>.service.dto.<%= dtoClass %>;
+<%_ } else { _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>;
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && reactive) { _%>
+import <%= entityAbsolutePackage %>.domain.criteria.<%= entityClass %>Criteria;
+<%_ } _%>
+<%_ /* Saathratri modification - use hasEagerLoadableRelationships instead of implementsEagerLoadApis */ _%>
+<%_ if (!paginationNo || hasEagerLoadableRelationships) { _%>
+
+  <%_ if (!reactive) { _%>
+import org.springframework.data.domain.Page;
+  <%_ } _%>
+import org.springframework.data.domain.Pageable;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (reactive) { _%>
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+<%_ } _%>
+
+<%_ /* Saathratri modification - broadened List import condition for Saathratri methods */ _%>
+<%_ if (!reactive || paginationNo || fieldsContainNoOwnerOneToOne || relationshipsContainEagerLoad) { _%>
+import java.util.List;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (!reactive) { _%>
+import java.util.Optional;
+<%_ } _%>
+<%_ if (primaryKey.typeUUID) { _%>
+import java.util.UUID;
+<%_ } _%>
+
+<%_ /* Saathratri modification - import List for ManyToMany relationship handling */ _%>
+<%_
+  if (relationships.some(relationship => relationship.relationshipManyToMany)) {
+_%>
+import java.util.List;
+<%_
+  }
+_%>
+<%_ /* End Saathratri modification */ _%>
+
+/**
+ * Service Interface for managing {@link <%= entityAbsoluteClass %>}.
+ */
+public interface <%= entityClass %>Service {
+
+    /**
+     * Save a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to save.
+     * @return the persisted entity.
+     */
+    <% if (reactive) { %>Mono<<% } %><%= instanceType %><% if (reactive) { %>><% } %> save(<%= instanceType %> <%= instanceName %>);
+
+    /**
+     * Updates a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to update.
+     * @return the persisted entity.
+     */
+     <% if (reactive) { %>Mono<<% } %><%= instanceType %><% if (reactive) { %>><% } %> update(<%= instanceType %> <%= instanceName %>);
+
+    /**
+     * Partially updates a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to update partially.
+     * @return the persisted entity.
+     */
+    <% if (reactive) { %>Mono<% } else { %>Optional<% } %><<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>);
+
+<%_ /* Saathratri modification - findAllForSaathratriOrchestrator endpoint */ _%>
+    /**
+     * Get all the <%= entityInstancePlural %> for saathratri orchestrator.
+     *
+     * @return the list of entities.
+     */
+    <%= listOrFlux %><<%= instanceType %>> findAllForSaathratriOrchestrator();
+
+    <%_ if (hasEagerLoadableRelationships) { _%>
+    /**
+     * Get the "<%= primaryKey.name %>" <%= entityInstance %>.
+     *
+     * @param <%= primaryKey.name %> the <%= primaryKey.name %> of the entity.
+     * @return the entity.
+     */
+    <%= optionalOrMono %><<%= instanceType %>> findOneWithEagerRelationships(<%= primaryKey.type %> <%= primaryKey.name %>);
+
+    /**
+     * Get all the <%= entityInstancePlural %>.
+     * @return the list of entities.
+     */
+    List<<%= instanceType %>> findAllWithEagerRelationships();
+    <%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+
+<%_ /* Saathratri modification - entity graph query method declarations */ _%>
+<%_ if (hasEntityGraphQueries) { _%>
+
+  <%_ for (const entityGraphQuery of entityGraphDirectives) { _%>
+    /**
+     * Get the "id" <%= entityInstance %> using entity graph.
+     *
+     * @param id the id of the entity.
+     * @return the entity.
+     */
+    <%= optionalOrMono %><<%= instanceType %>> <%= entityGraphQuery.methodName %>(<%= primaryKey.type %> <%= primaryKey.name %>);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - custom query method declarations from @customQueryAnnotation */ _%>
+<%_ if (hasCustomQueriesSvc) { _%>
+
+  <%_ for (const cq of parsedCustomQueriesSvc) { _%>
+    /**
+     * Custom query: <%= cq.methodName %>.
+     *
+    <%_ for (const p of cq.resolvedParams) { _%>
+     * @param <%= p.fieldName %> the <%= p.fieldName %> to search by.
+    <%_ } _%>
+     * @return the matching entit<%= cq.isSingleIdQuery ? 'y' : 'ies' %>.
+     */
+    <% if (cq.isSingleIdQuery) { %><%= optionalOrMono %><<%= instanceType %>><% } else { %>List<<%= instanceType %>><% } %> <%= cq.methodName %>(<%- cq.resolvedParams.map(p => `${p.fieldType} ${p.fieldName}`).join(', ') %>);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (!jpaMetamodelFiltering) { _%>
+
+    /**
+     * Get all the <%= entityInstancePlural %>.
+     *<% if (!paginationNo) { %>
+     * @param pageable the pagination information.<% } %>
+     * @return the list of entities.
+     */
+    <% if (paginationNo) { %><%= listOrFlux %><% } else { %><%= pageOrFlux %><% } %><<%= instanceType %>> findAll(<% if (!paginationNo) { %>Pageable pageable<% } %>);
+
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && reactive) { _%>
+      /**
+      * Find <%= entityInstancePlural %> by criteria.
+      *<% if (!paginationNo) { %>
+      * @param pageable the pagination information.<% } %>
+      * @return the list of entities.
+      */
+      <% if (paginationNo) { %><%= listOrFlux %><% } else { %><%= pageOrFlux %><% } %><<%= instanceType %>> findByCriteria(<%= entityClass %>Criteria criteria<% if (!paginationNo) { %>, Pageable pageable<% } %>);
+
+      /**
+      * Find the count of <%= entityInstancePlural %> by criteria.
+      * @param criteria filtering criteria
+      * @return the count of <%= entityInstancePlural %>
+      */
+      public Mono<Long> countByCriteria(<%= entityClass %>Criteria criteria);
+<%_ } _%>
+
+<%_ for (const relationship of relationships) { _%>
+  <%_ if (relationship.relationshipOneToOne && !relationship.ownerSide) { _%>
+    /**
+     * Get all the <%= restClass %> where <%= relationship.relationshipNameCapitalized %> is {@code null}.
+     *
+     * @return the {@link <%= listOrFlux %>} of entities.
+     */
+    <%= listOrFlux %><<%= instanceType %>> findAllWhere<%= relationship.relationshipNameCapitalized %>IsNull();
+  <%_ } _%>
+<%_ } _%>
+
+<%_ if (implementsEagerLoadApis) { _%>
+    /**
+     * Get all the <%= entityInstancePlural %> with eager load of many-to-many relationships.
+     *
+     * @param pageable the pagination information.
+     * @return the list of entities.
+     */
+    <%= pageOrFlux %><<%= instanceType %>> findAllWithEagerRelationships(Pageable pageable);
+
+<%_ } _%>
+<%_ if (reactive) { _%>
+    /**
+    * Returns the number of <%= entityInstancePlural %> available.
+    * @return the number of entities in the database.
+    *
+    */
+    Mono<Long> countAll();
+  <%_ if (searchEngineElasticsearch) { _%>
+
+    /**
+    * Returns the number of <%= entityInstancePlural %> available in search repository.
+    *
+    */
+    Mono<Long> searchCount();
+  <%_ } _%>
+
+<%_ } _%>
+
+    /**
+     * Get the "id" <%= entityInstance %>.
+     *
+     * @param id the id of the entity.
+     * @return the entity.
+     */
+    <%= optionalOrMono %><<%= instanceType %>> findOne(<%= primaryKey.type %> id);
+
+    /**
+     * Delete the "id" <%= entityInstance %>.
+     *
+     * @param id the id of the entity.
+<%_ if (reactive) { _%>
+     * @return a Mono to signal the deletion
+<%_ } _%>
+     */
+    <%- reactive ? 'Mono<Void>' : 'void' %> delete(<%= primaryKey.type %> id);
+<%_ if (searchEngineAny) { _%>
+
+    /**
+     * Search for the <%= entityInstance %> corresponding to the query.
+     *
+     * @param query the query of the search.
+  <%_ if (!paginationNo) { _%>
+     *
+     * @param pageable the pagination information.
+  <%_ } _%>
+     * @return the list of entities.
+     */
+    <% if (!paginationNo) { %><%= pageOrFlux %><<%= instanceType %><% } else { %><%= listOrFlux %><<%= instanceType %><% } %>> search(String query<% if (!paginationNo) { %>, Pageable pageable<% } %>);
+<%_ } _%>
+<%_ /* Saathratri modification - vector similarity search method declarations */ _%>
+<%_
+// Check if entity has vector fields for similarity search
+const vectorFields = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFields = vectorFields.length > 0;
+_%>
+<%_ if (hasVectorFields && !reactive) { _%>
+
+    // ==================== AI Text Search ====================
+
+    /**
+     * Search for <%= entityInstancePlural %> using AI-powered semantic similarity.
+     * Converts the text query to an embedding and searches across all vector fields,
+     * or only the specified fields if the 'fields' parameter is provided.
+     *
+     * @param query the text query to search for
+     * @param limit maximum number of results to return
+     * @param fields optional list of vector field names to search in (null or empty searches all)
+     * @return list of semantically similar <%= entityInstancePlural %>
+     */
+    List<<%= instanceType %>> aiSearch(String query, int limit, List<String> fields);
+
+    // ==================== Vector Similarity Search Methods ====================
+  <%_ for (const vectorField of vectorFields) { _%>
+
+    /**
+     * Find <%= entityInstancePlural %> similar to the given embedding vector using <%= vectorField.fieldName %>.
+     *
+     * @param embedding the query embedding vector as a formatted string "[0.1, 0.2, ...]"
+     * @param limit maximum number of results to return
+     * @return list of <%= entityInstancePlural %> ordered by similarity (most similar first)
+     */
+    List<<%= instanceType %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>(String embedding, int limit);
+
+    /**
+     * Find <%= entityInstancePlural %> similar to the given embedding vector using <%= vectorField.fieldName %> with threshold.
+     *
+     * @param embedding the query embedding vector as a formatted string "[0.1, 0.2, ...]"
+     * @param maxDistance maximum cosine distance (0 = identical, 2 = opposite)
+     * @param limit maximum number of results to return
+     * @return list of <%= entityInstancePlural %> ordered by similarity (most similar first)
+     */
+    List<<%= instanceType %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>WithThreshold(String embedding, double maxDistance, int limit);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - tree structure method declaration */ _%>
+<%_ if (typeof hasSelfReferentialTreeSaathratri !== 'undefined' && hasSelfReferentialTreeSaathratri && !reactive) { _%>
+
+    // ==================== Tree Structure Methods ====================
+
+    /**
+     * Get all <%= entityInstancePlural %> as a flat list with parent relationships loaded.
+     * Useful for client-side tree construction.
+     *
+     * @return flat list of entities with parent relationship eagerly loaded
+     */
+    List<<%= instanceType %>> findAllAsTreeNodes();
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+}

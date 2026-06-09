@@ -1,0 +1,58 @@
+<div class="container">
+  <!-- Loop through existing data rows -->
+  @for (entry of mapDetails | keyvalue; track entry.key) {
+  <div class="input-row">
+    
+    <!-- Read-Only Key (45%) -->
+    <mat-form-field appearance="outline">
+      <mat-label>Key</mat-label>
+      <input matInput [value]="entry.key" readonly />
+    </mat-form-field>
+
+    <!-- Read-Only Numeric Value (45%) -->
+    <mat-form-field appearance="outline">
+      <mat-label>Value</mat-label>
+      <input matInput [value]="entry.value" readonly type="number" />
+    </mat-form-field>
+
+    <!-- Action Buttons (10%) -->
+    <div class="action-buttons">
+      <!-- Edit Button -->
+      <button type="button" mat-icon-button (click)="openEditNumberDialog(entry.key, entry.value)" [attr.data-cy]="fieldName + '-row-' + entry.key + '-edit'">
+        <mat-icon>edit</mat-icon>
+      </button>
+
+      <!-- Delete Button -->
+      <button type="button" mat-icon-button (click)="deleteRow(entry.key)" [attr.data-cy]="fieldName + '-row-' + entry.key + '-delete'">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+  }
+
+  <!-- Always present blank row at the bottom -->
+  <form [formGroup]="form" class="input-row">
+    <!-- Key Field (45%) -->
+    <mat-form-field appearance="outline">
+      <mat-label>Key</mat-label>
+      <input matInput formControlName="newKey" (blur)="form.controls['newKey'].markAsTouched()" [attr.data-cy]="fieldName + '-add-key'" />
+      @if (form.controls['newKey'].invalid && form.controls['newKey'].touched) { <mat-error>
+        Key is required
+      </mat-error> }
+    </mat-form-field>
+
+    <!-- Numeric Value Field (45%) -->
+    <mat-form-field appearance="outline">
+      <mat-label>Value</mat-label>
+      <input matInput formControlName="newValue" type="number" [attr.data-cy]="fieldName + '-add-value'" />
+      @if (form.controls['newValue'].invalid && form.controls['newValue'].touched) { <mat-error>
+        Please enter a valid number
+      </mat-error> }
+    </mat-form-field>
+
+    <!-- Add Button (10%) -->
+    <button type="button" mat-raised-button color="primary" [disabled]="form.invalid" (click)="addNewRow()" class="add-button" [attr.data-cy]="fieldName + '-add-button'">
+      Add
+    </button>
+  </form>
+</div>

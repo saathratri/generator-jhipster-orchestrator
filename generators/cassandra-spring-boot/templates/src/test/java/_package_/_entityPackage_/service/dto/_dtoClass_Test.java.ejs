@@ -1,0 +1,96 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.service.dto;
+
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import <%= packageName %>.web.rest.TestUtil;
+<%_ if (primaryKeySaathratri.composite) { _%>
+    <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeString) || fields.some(field => field.fieldTypeUUID)) { _%>
+import java.util.UUID;
+    <%_ } _%>
+    <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeLong || field.fieldTypeInteger)) { _%>
+import java.util.Random;
+    <%_ } _%>
+    <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeLong)) { _%>
+import java.util.concurrent.atomic.AtomicLong;
+    <%_ } _%>
+    <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeInteger)) { _%>
+import java.util.concurrent.atomic.AtomicInteger;
+    <%_ } _%>
+<%_ } else { _%>
+    <%_ if ((primaryKey && primaryKey.hasUUID) || primaryKeySaathratri.ids.some(field => field.fieldTypeUUID || field.fieldTypeString || field.fieldTypeTimeUuidSaathratri)) { _%>
+import java.util.UUID;
+    <%_ } _%>
+<%_ } _%>
+<%_
+let id1;
+let id2;
+if (!embedded) {
+        id1 = getPrimaryKeyValue(primaryKey.type, databaseType, '1');
+        id2 = getPrimaryKeyValue(primaryKey.type, databaseType, '2');
+    } 
+%>
+
+class <%= dtoClass %>Test {
+
+    <%_ if (primaryKeySaathratri.composite) { _%>
+        <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeLong || field.fieldTypeInteger)) { _%>
+            private static final Random random = new Random();
+        <%_ } _%>
+        <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeLong)) { _%>
+            private static final AtomicLong longCount = new AtomicLong(random.nextInt() + ( 2 * Integer.MAX_VALUE ));
+        <%_ } _%>
+        <%_ if (primaryKeySaathratri.ids.some(field => field.fieldTypeInteger)) { _%>
+            private static final AtomicInteger intCount = new AtomicInteger(random.nextInt() + ( 2 * Short.MAX_VALUE ));
+        <%_ } _%>
+    <%_ } _%>
+    @Test
+    void dtoEqualsVerifier() throws Exception {
+        TestUtil.equalsVerifier(<%= dtoClass %>.class);
+<%_if (!embedded) { _%>
+        <%= dtoClass %> <%= dtoInstance %>1 = new <%= dtoClass %>();
+        <%_ if(primaryKeySaathratri.composite) { _%>
+        <%= dtoInstance %>1.set<%= primaryKeySaathratri.nameCapitalized %>(new <%= entityClass %>DTOId( <%- getCompositePrimaryKeyInstanceVariableInitializationsFromDTOTest(primaryKeySaathratri) %>));    
+        <%_ } else { _%>
+        <%= dtoInstance %>1.set<%= primaryKey.nameCapitalized %>(<%- id1 %>);
+        <%_ } _%>
+        <%= dtoClass %> <%= dtoInstance %>2 = new <%= dtoClass %>();
+        assertThat(<%= dtoInstance %>1).isNotEqualTo(<%= dtoInstance %>2);
+        <%_ if(primaryKeySaathratri.composite) { _%>
+        <%= dtoInstance %>2.set<%= primaryKeySaathratri.nameCapitalized %>(<%= dtoInstance %>1.get<%= primaryKeySaathratri.nameCapitalized %>());
+        <%_ } else { _%>
+        <%= dtoInstance %>2.set<%= primaryKey.nameCapitalized %>(<%= dtoInstance %>1.get<%= primaryKey.nameCapitalized %>());
+        <%_ } _%>
+        assertThat(<%= dtoInstance %>1).isEqualTo(<%= dtoInstance %>2);
+        <%_ if(primaryKeySaathratri.composite) { _%>
+        <%= dtoInstance %>2.set<%= primaryKeySaathratri.nameCapitalized %>(new <%= entityClass %>DTOId( <%- getCompositePrimaryKeyInstanceVariableInitializationsFromDTOTest(primaryKeySaathratri) %>));
+        <%_ } else { _%>
+        <%= dtoInstance %>2.set<%= primaryKey.nameCapitalized %>(<%- id2 %>);
+        <%_ } _%>
+        assertThat(<%= dtoInstance %>1).isNotEqualTo(<%= dtoInstance %>2);
+        <%_ if(primaryKeySaathratri.composite) { _%>
+        <%= dtoInstance %>1.set<%= primaryKeySaathratri.nameCapitalized %>(null);
+        <%_ } else { _%>
+        <%= dtoInstance %>1.set<%= primaryKey.nameCapitalized %>(null);
+        <%_ } _%>
+        assertThat(<%= dtoInstance %>1).isNotEqualTo(<%= dtoInstance %>2);
+<%_ } _%>
+    }
+}

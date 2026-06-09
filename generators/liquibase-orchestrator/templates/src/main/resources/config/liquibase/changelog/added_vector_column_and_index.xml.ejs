@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:ext="http://www.liquibase.org/xml/ns/dbchangelog-ext"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd
+                        http://www.liquibase.org/xml/ns/dbchangelog-ext http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-ext.xsd">
+
+    <!--
+        Added vector column and index for <%= entityClass %>.
+        This changeset adds pgvector support for semantic search.
+    -->
+<%_ for (const field of vectorFields) { _%>
+    <changeSet id="<%= changelogDate %>-add-vector-column-<%= field.fieldName %>" author="jhipster">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="<%= entityTableName %>" columnName="<%= field.columnName %>"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="<%= entityTableName %>">
+            <column name="<%= field.columnName %>" type="vector(<%= field.vectorDimensionSaathratri %>)">
+                <constraints nullable="true" />
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="<%= changelogDate %>-add-vector-index-<%= field.fieldName %>" author="jhipster">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_<%= entityTableName %>_<%= field.columnName %>"/>
+            </not>
+        </preConditions>
+        <sql dbms="postgresql">
+            CREATE INDEX idx_<%= entityTableName %>_<%= field.columnName %>
+            ON <%= entityTableName %> USING ivfflat (<%= field.columnName %> vector_cosine_ops)
+            WITH (lists = 100);
+        </sql>
+        <rollback>
+            <dropIndex indexName="idx_<%= entityTableName %>_<%= field.columnName %>" tableName="<%= entityTableName %>"/>
+        </rollback>
+    </changeSet>
+
+<%_ } _%>
+</databaseChangeLog>

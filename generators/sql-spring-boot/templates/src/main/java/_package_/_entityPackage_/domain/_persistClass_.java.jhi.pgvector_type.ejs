@@ -1,0 +1,19 @@
+<%#
+ Adds @Type(PgVectorType.class) to vector (float[]) fields so Hibernate uses
+ Types.OTHER instead of the built-in FloatPrimitiveArrayJavaType + ArrayJdbcType
+ which fails for pgvector columns.
+
+ This is a JHipster fragment template — it merges into the entity domain class.
+-%>
+<&_ if (fragment.importSection) { -&>
+<%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
+import org.hibernate.annotations.Type;
+import <%= packageName %>.domain.converter.PgVectorType;
+<%_ } _%>
+<&_ } -&>
+
+<%_ for (const field of fields.filter(f => f.fieldTypeVectorSaathratri)) { -%>
+<&_ if (fragment.field<%- field.fieldNameCapitalized %>AnnotationSection) { -&>
+    @Type(PgVectorType.class)
+<&_ } -&>
+<%_ } -%>

@@ -1,0 +1,160 @@
+<%#
+ Copyright 2013-2025 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= packageName %>.service.embedding;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+<%_ for (const vectorEntity of vectorEntitiesSaathratri) { _%>
+import <%= packageName %>.domain.<%= vectorEntity.entityClass %>;
+import <%= packageName %>.repository.<%= vectorEntity.entityClass %>Repository;
+<%_ } _%>
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Service for migrating existing entities to populate their vector embeddings.
+ * This is a one-time migration service that can be triggered via REST endpoint or CLI.
+ */
+@Service
+@Transactional
+public class EmbeddingMigrationService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EmbeddingMigrationService.class);
+
+    private static final int BATCH_SIZE = 100;
+    private static final long RATE_LIMIT_DELAY_MS = 100; // Delay between API calls to respect rate limits
+
+    private final EmbeddingService embeddingService;
+<%_ for (const vectorEntity of vectorEntitiesSaathratri) { _%>
+    private final <%= vectorEntity.entityClass %>Repository <%= vectorEntity.entityInstance %>Repository;
+<%_ } _%>
+
+    public EmbeddingMigrationService(
+        EmbeddingService embeddingService<% for (const vectorEntity of vectorEntitiesSaathratri) { %>,
+        <%= vectorEntity.entityClass %>Repository <%= vectorEntity.entityInstance %>Repository<% } %>
+    ) {
+        this.embeddingService = embeddingService;
+<%_ for (const vectorEntity of vectorEntitiesSaathratri) { _%>
+        this.<%= vectorEntity.entityInstance %>Repository = <%= vectorEntity.entityInstance %>Repository;
+<%_ } _%>
+    }
+
+    /**
+     * Migrate all entities with missing embeddings.
+     * This method processes all entity types sequentially.
+     *
+     * @return summary of migration results
+     */
+    public String migrateAllEmbeddings() {
+        if (!embeddingService.isAvailable()) {
+            return "Embedding service is not available. Configure OpenAI API key first.";
+        }
+
+        StringBuilder summary = new StringBuilder();
+        summary.append("=== Embedding Migration Summary ===\n");
+
+<%_ for (const vectorEntity of vectorEntitiesSaathratri) { _%>
+        summary.append(migrate<%= vectorEntity.entityClass %>Embeddings()).append("\n");
+<%_ } _%>
+
+        summary.append("=== Migration Complete ===");
+        LOG.info(summary.toString());
+        return summary.toString();
+    }
+
+    /**
+     * Migrate all entities asynchronously.
+     * Useful for large datasets to avoid blocking.
+     */
+    @Async
+    public void migrateAllEmbeddingsAsync() {
+        LOG.info("Starting async embedding migration...");
+        String result = migrateAllEmbeddings();
+        LOG.info("Async embedding migration completed: {}", result);
+    }
+
+<%_ for (const vectorEntity of vectorEntitiesSaathratri) { _%>
+    /**
+     * Migrate embeddings for <%= vectorEntity.entityClass %> entities.
+     *
+     * @return migration result summary
+     */
+    public String migrate<%= vectorEntity.entityClass %>Embeddings() {
+        LOG.info("Starting <%= vectorEntity.entityClass %> embedding migration...");
+        AtomicInteger processed = new AtomicInteger(0);
+        AtomicInteger updated = new AtomicInteger(0);
+        AtomicInteger errors = new AtomicInteger(0);
+
+        List<<%= vectorEntity.entityClass %>> entities = <%= vectorEntity.entityInstance %>Repository.findAll();
+        LOG.info(": Found {} total records", entities.size());
+
+        for (<%= vectorEntity.entityClass %> entity : entities) {
+            try {
+                boolean wasUpdated = false;
+<%_ for (const field of vectorEntity.vectorFields) { _%>
+
+                // Generate embedding for <%= field.sourceFieldName %> -> <%= field.fieldName %>
+                if (entity.get<%= field.fieldNameCapitalized %>() == null && entity.get<%= field.sourceFieldNameCapitalized %>() != null) {
+                    // Use vector string format for pgvector compatibility: "[0.1, 0.2, ...]"
+                    float[] embedding = embeddingService.generateEmbedding(entity.get<%= field.sourceFieldNameCapitalized %>());
+                    if (embedding != null) {
+                        entity.set<%= field.fieldNameCapitalized %>(embedding);
+                        wasUpdated = true;
+                    }
+                    rateLimitDelay();
+                }
+<%_ } _%>
+
+                if (wasUpdated) {
+                    <%= vectorEntity.entityInstance %>Repository.save(entity);
+                    updated.incrementAndGet();
+                }
+                processed.incrementAndGet();
+
+                if (processed.get() % BATCH_SIZE == 0) {
+                    LOG.info("<%= vectorEntity.entityClass %>: Processed {} entities, updated {}",
+                        processed.get(), updated.get());
+                }
+            } catch (Exception e) {
+                errors.incrementAndGet();
+                LOG.error("Error processing <%= vectorEntity.entityClass %> id={}: {}",
+                    entity.getId(), e.getMessage());
+            }
+        }
+
+        String result = String.format("<%= vectorEntity.entityClass %>: processed=%d, updated=%d, errors=%d",
+            processed.get(), updated.get(), errors.get());
+        LOG.info(result);
+        return result;
+    }
+
+<%_ } _%>
+    private void rateLimitDelay() {
+        try {
+            Thread.sleep(RATE_LIMIT_DELAY_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+}

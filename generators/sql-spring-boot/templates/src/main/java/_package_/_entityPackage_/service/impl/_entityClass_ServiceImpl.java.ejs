@@ -1,0 +1,701 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.service<% if (serviceImpl) { %>.impl<% } %>;
+
+<%_
+const serviceClassName = serviceImpl ? entityClass + 'ServiceImpl' : entityClass + 'Service';
+const instanceType = restClass;
+const instanceName = restInstance;
+const optionalOrMono = (reactive) ? 'Mono' : 'Optional';
+const listOrFlux = (reactive) ? 'Flux' : 'List';
+const pageOrFlux = (reactive) ? 'Flux' : 'Page';
+const mapper = entityInstance  + 'Mapper';
+const entityToDtoReference = mapper + '::'+ 'toDto';
+const repository = entityInstance  + 'Repository';
+
+/* Saathratri modification - entity graph directive parsing */
+const normalizeDirectives = value =>
+  value === undefined || value === null
+    ? []
+    : (Array.isArray(value) ? value : [value]).flatMap(v =>
+        typeof v === 'string' ? v.split('|').map(s => s.trim()).filter(Boolean) : [v],
+      );
+const parseDirective = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const [rawMethod, rawAttributes] = directive.split(':');
+  const methodName = rawMethod?.trim();
+  const attributePaths = (rawAttributes
+    ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+    ?.split(',')
+    ?.map(attribute => attribute.trim())
+    ?.filter(Boolean)) ?? [];
+  if (methodName && attributePaths.length > 0) {
+    return { methodName, attributePaths };
+  }
+  return undefined;
+};
+const entityGraphAnnotationValue =
+  (typeof annotations !== 'undefined' && (annotations.entityGraphCustomAnnotation ?? annotations.entityGraph)) ??
+  (typeof entityGraph !== 'undefined' ? entityGraph : undefined);
+const includeDirectives =
+  typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphIncludeCustomAnnotation) : [];
+const excludeDirectives =
+  typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphExcludeCustomAnnotation) : [];
+const entityGraphEntries = [
+  ...normalizeDirectives(entityGraphAnnotationValue),
+  ...includeDirectives,
+];
+const entityGraphDirectives = [];
+for (const directive of entityGraphEntries) {
+  const parsedDirective = parseDirective(directive);
+  if (parsedDirective) {
+    entityGraphDirectives.push(parsedDirective);
+  }
+}
+const relationshipNames = relationships.map(relationship => relationship.propertyName);
+for (const directive of excludeDirectives) {
+  if (typeof directive !== 'string') continue;
+  const [rawMethod, rawAttributes] = directive.split(':');
+  const methodName = rawMethod?.trim();
+  const excludedPaths = (rawAttributes
+    ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+    ?.split(',')
+    ?.map(attribute => attribute.trim())
+    ?.filter(Boolean)) ?? [];
+  const attributePaths = relationshipNames.filter(propertyName => !excludedPaths.includes(propertyName));
+  if (methodName && attributePaths.length > 0) {
+    entityGraphDirectives.push({ methodName, attributePaths });
+  }
+}
+const hasEntityGraphQueries = entityGraphDirectives.length > 0 && !reactive;
+const hasEagerLoadableRelationships = implementsEagerLoadApis && relationships.some(relationship =>
+  relationship.relationshipEagerLoad || relationship.relationshipManyToMany
+);
+/* Saathratri modification - parse @customQueryAnnotation */
+const customQueryRawImpl = typeof annotations !== 'undefined'
+  ? normalizeDirectives(annotations.customQueryAnnotation) : [];
+const customQueryDirectivesImpl = customQueryRawImpl.flatMap(d => typeof d === 'string' ? d.split('|').map(s => s.trim()).filter(Boolean) : [d]);
+const parseCustomQueryImpl = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const colonIdx = directive.indexOf(':');
+  if (colonIdx < 0) return undefined;
+  const methodName = directive.substring(0, colonIdx).trim();
+  const rest = directive.substring(colonIdx + 1).trim();
+  const paramsMatch = rest.match(/params\s*\[\s*([^\]]*)\s*\]/);
+  const params = paramsMatch ? paramsMatch[1].split(',').map(p => p.trim()).filter(Boolean) : [];
+  if (params.length === 0) return undefined;
+  const resolvedParams = params.map(paramName => {
+    if (paramName === primaryKey.name) return { fieldName: primaryKey.name, fieldType: primaryKey.type, isPrimaryKey: true };
+    const field = fields.find(f => f.fieldName === paramName);
+    return field ? { fieldName: field.fieldName, fieldType: field.fieldType, isPrimaryKey: false }
+                 : { fieldName: paramName, fieldType: 'String', isPrimaryKey: false };
+  });
+  const isSingleIdQuery = resolvedParams.length === 1 && resolvedParams[0].isPrimaryKey;
+  return { methodName, resolvedParams, isSingleIdQuery };
+};
+const parsedCustomQueriesImpl = customQueryDirectivesImpl.map(parseCustomQueryImpl).filter(Boolean);
+const hasCustomQueriesImpl = parsedCustomQueriesImpl.length > 0 && !reactive;
+/* End Saathratri modification */
+
+_%>
+<%_ if (serviceImpl) { _%>
+import <%= entityAbsolutePackage %>.service.<%= entityClass %>Service;
+<%_ } _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>;
+<%_ if (jpaMetamodelFiltering && reactive) { _%>
+import <%= entityAbsolutePackage %>.domain.criteria.<%= entityClass %>Criteria;
+<%_ } _%>
+import <%= entityAbsolutePackage %>.repository.<%= entityClass %>Repository;
+<%_ if (isUsingMapsId === true) { _%>
+import <%= entityAbsolutePackage %>.repository.<%= mapsIdAssoc.otherEntity.entityNameCapitalized %>Repository;
+<%_ } _%>
+<%_ if (searchEngineElasticsearch) { _%>
+import <%= entityAbsolutePackage %>.repository.search.<%= entityClass %>SearchRepository;
+<%_ } _%>
+<%_ if (dtoMapstruct) { _%>
+import <%= entityAbsolutePackage %>.service.dto.<%= dtoClass %>;
+import <%= entityAbsolutePackage %>.service.mapper.<%= entityClass %>Mapper;
+<%_ } _%>
+<%_ /* Saathratri modification - import EmbeddingService for AI search */ _%>
+<%_
+const vectorFieldsForImport = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFieldsForImport = vectorFieldsForImport.length > 0;
+_%>
+<%_ if (hasVectorFieldsForImport && !reactive) { _%>
+import <%= packageName %>.service.embedding.EmbeddingService;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<%_ /* Saathratri modification - use hasEagerLoadableRelationships instead of implementsEagerLoadApis */ _%>
+<%_ if (!paginationNo || hasEagerLoadableRelationships) { _%>
+  <%_ if (!reactive) { _%>
+import org.springframework.data.domain.Page;
+  <%_ } _%>
+import org.springframework.data.domain.Pageable;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+import org.springframework.stereotype.Service;
+<%_ if (databaseTypeSql) { _%>
+import org.springframework.transaction.annotation.Transactional;
+<%_ } _%>
+<%_ if (reactive) { _%>
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+<%_ } _%>
+
+<%_ /* Saathratri modification - always import LinkedList when dtoMapstruct and non-reactive (for findAllForSaathratriOrchestrator) */ _%>
+<%_ if (dtoMapstruct && !reactive) { _%>
+import java.util.LinkedList;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - broadened List import condition for Saathratri methods */ _%>
+<%_ if (!reactive || paginationNo || fieldsContainNoOwnerOneToOne || relationshipsContainEagerLoad) { _%>
+import java.util.List;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (!reactive) { _%>
+import java.util.Optional;
+<%_ } _%>
+<%_ if (updatableEntity && !dtoMapstruct && fields.some(field => !field.id && !field.transient)) { _%>
+import java.util.function.Consumer;
+<%_ } _%>
+<%_ if (primaryKey.typeUUID) { _%>
+import java.util.UUID;
+<%_ } _%>
+<%_ /* Saathratri modification - always import Collectors when dtoMapstruct and non-reactive (for findAllForSaathratriOrchestrator) */ _%>
+<%_ if (!reactive && (fieldsContainNoOwnerOneToOne || (paginationNo && ((searchEngine) || dtoMapstruct)) || dtoMapstruct)) { _%>
+import java.util.stream.Collectors;
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (fieldsContainNoOwnerOneToOne || (paginationNo && searchEngineElasticsearch)) { _%>
+import java.util.stream.StreamSupport;
+<%_ } _%>
+
+<%_ /* Saathratri modification - import List for ManyToMany relationship handling */ _%>
+<%_
+  if (relationships.some(relationship => relationship.relationshipManyToMany)) {
+_%>
+import java.util.List;
+<%_
+  }
+_%>
+<%_ /* End Saathratri modification */ _%>
+
+/**
+ * Service Implementation for managing {@link <%= entityAbsoluteClass %>}.
+ */
+@Service<% if (databaseTypeSql) { %>
+@Transactional<% } %>
+public class <%= serviceClassName %><% if (serviceImpl) { %> implements <%= entityClass %>Service<% } %> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(<%= serviceClassName %>.class);
+<%- include('../../_partials_entity_/inject_template', {viaService: false, constructorName: serviceClassName, queryService: false, isUsingMapsId: isUsingMapsId, mapsIdAssoc: mapsIdAssoc, isController: false}); -%>
+
+<%_ if (!serviceImpl) { _%>
+    /**
+     * Save a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to save.
+     * @return the persisted entity.
+     */
+<%_ } _%>
+<%_ if (serviceImpl) { _%>
+    @Override
+<%_ } _%>
+<%_ if (hasVectorFieldsForImport && !reactive) { _%>
+    public <%= instanceType %> save(<%= instanceType %> <%= instanceName %>) {
+        LOG.debug("Request to save <%= entityClass %> : {}", <%= instanceName %>);
+  <%_ if (dtoMapstruct) { _%>
+        <%= persistClass %> <%= entityInstance %> = <%= mapper %>.toEntity(<%= instanceName %>);
+        generateEmbeddings(<%= entityInstance %>);
+        <%= entityInstance %> = <%= repository %>.save(<%= entityInstance %>);
+        return <%= mapper %>.toDto(<%= entityInstance %>);
+  <%_ } else { _%>
+        generateEmbeddings(<%= instanceName %>);
+        return <%= repository %>.save(<%= instanceName %>);
+  <%_ } _%>
+    }
+<%_ } else { _%>
+    public <% if (reactive) { %>Mono<<% } %><%= instanceType %><% if (reactive) { %>><% } %> save(<%= instanceType %> <%= instanceName %>) {
+        LOG.debug("Request to save <%= entityClass %> : {}", <%= instanceName %>);
+<%- include(`/_global_partials_entity_/save_template_${reactive ? 'reactive' : 'imperative'}`, {saveNewEntityOperation: true, returnDirectly: true}); -%>
+    }
+<%_ } _%>
+<%_ if (updatableEntity) { _%>
+
+  <%_ if (!serviceImpl) { _%>
+    /**
+     * Update a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to save.
+     * @return the persisted entity.
+    */
+  <%_ } _%>
+  <%_ if (serviceImpl) { _%>
+    @Override
+  <%_ } _%>
+  <%_ if (hasVectorFieldsForImport && !reactive) { _%>
+    public <%= instanceType %> update(<%= instanceType %> <%= instanceName %>) {
+        LOG.debug("Request to update <%= entityClass %> : {}", <%= instanceName %>);
+    <%_ if (dtoMapstruct) { _%>
+        <%= persistClass %> <%= entityInstance %> = <%= mapper %>.toEntity(<%= instanceName %>);
+        generateEmbeddings(<%= entityInstance %>);
+        <%= entityInstance %> = <%= repository %>.save(<%= entityInstance %>);
+        return <%= mapper %>.toDto(<%= entityInstance %>);
+    <%_ } else { _%>
+        generateEmbeddings(<%= instanceName %>);
+        return <%= repository %>.save(<%= instanceName %>);
+    <%_ } _%>
+    }
+  <%_ } else { _%>
+    public <% if (reactive) { %>Mono<<% } %><%= instanceType %><% if (reactive) { %>><% } %> update(<%= instanceType %> <%= instanceName %>) {
+        LOG.debug("Request to update <%= entityClass %> : {}", <%= instanceName %>);
+<%- include(`/_global_partials_entity_/save_template_${reactive ? 'reactive' : 'imperative'}`, {saveNewEntityOperation: false, returnDirectly: true}); -%>
+    }
+  <%_ } _%>
+
+  <%_ if (!serviceImpl) { _%>
+    /**
+     * Partially update a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to update partially.
+     * @return the persisted entity.
+     */
+  <%_ } _%>
+  <%_ if (serviceImpl) { _%>
+    @Override
+  <%_ } _%>
+    public <% if (reactive) { %>Mono<% } else { %>Optional<% } %><<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
+        LOG.debug("Request to partially update <%= entityClass %> : {}", <%= instanceName %>);
+<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false}); -%>
+    }
+<%_ } _%>
+<%_ /* Saathratri modification - findAllForSaathratriOrchestrator endpoint */ _%>
+<%_ if (serviceImpl) { _%>
+    @Override
+<%_ } _%>
+<%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+<%_ } _%>
+    public <%= listOrFlux %><<%= instanceType %>> findAllForSaathratriOrchestrator() {
+        LOG.debug("Request to get all <%= entityClassPlural %> for saathratri orchestrator");
+  <%_ if (reactive) { _%>
+        return <%= entityInstance %>Repository.findAll()<% if (dtoMapstruct) { %>.map(<%= entityToDtoReference %>)<% } %>;
+  <%_ } else { _%>
+    <%_ if (dtoMapstruct) { _%>
+        return <%= entityInstance %>Repository
+            .findAll()
+            .stream()
+            .map(<%= entityToDtoReference %>)
+            .collect(Collectors.toCollection(LinkedList::new));
+    <%_ } else { _%>
+        return <%= entityInstance %>Repository.findAll();
+    <%_ } _%>
+  <%_ } _%>
+    }
+<%_ /* End Saathratri modification */ _%>
+<%_ if (!jpaMetamodelFiltering) { _%>
+
+  <%_ if (!serviceImpl) { _%>
+    /**
+     * Get all the <%= entityInstancePlural %>.
+     *
+    <%_ if (!paginationNo) { _%>
+     * @param pageable the pagination information.
+    <%_ } _%>
+     * @return the list of entities.
+     */
+  <%_ } _%>
+  <%_ if (serviceImpl) { _%>
+    @Override
+  <%_ } _%>
+  <%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+  <%_ } _%>
+    public <% if (paginationNo) { %><%= listOrFlux %><% } else { %><%= pageOrFlux %><% } %><<%= instanceType %>> findAll(<% if (!paginationNo) { %>Pageable pageable<% } %>) {
+        LOG.debug("Request to get all <%= entityClassPlural %>");
+  <%_ if (paginationNo) { _%>
+        return <%= entityInstance %>Repository.findAll()<% if (dtoMapstruct) { %><% if (!reactive) { %>.stream()<% } %>
+            .map(<%= entityToDtoReference %>)<% if (!reactive) { %>
+            .collect(Collectors.toCollection(LinkedList::new))<% } } %>;
+  <%_ } else { _%>
+        return <%= entityInstance %>Repository.findAll<% if (reactive) { %>By<% } %>(pageable)<% if (!dtoMapstruct) { %>;<% } else { %>
+            .map(<%= entityToDtoReference %>);<% } %>
+  <%_ } _%>
+    }
+<%_ } _%>
+
+<%_ /* Saathratri modification - findOneWithEagerRelationships and findAllWithEagerRelationships */ _%>
+<%_ if (serviceImpl && hasEagerLoadableRelationships) { _%>
+      @Override
+      @Transactional(readOnly = true)
+      public <%= optionalOrMono %><<%= instanceType %>> findOneWithEagerRelationships(<%= primaryKey.type %> id) {
+        LOG.debug("Request to get <%= entityClass %> : {}", id);
+
+        return <%= entityInstance %>Repository.findOneWithEagerRelationships(<%= primaryKey.name %>)<% if (!dtoMapstruct) { %>;<% } else { %>
+            .map(<%= entityToDtoReference %>);<% } %>
+      }
+
+      @Override
+      @Transactional(readOnly = true)
+      public List<<%= instanceType %>> findAllWithEagerRelationships() {
+        LOG.debug("Request to get all <%= entityClassPlural %>");
+
+        <%_ if (dtoMapstruct) { _%>
+            List<<%= entityClass %>> <%= entityInstancePlural %> = <%= entityInstance %>Repository.findAllWithEagerRelationships();
+            List<<%= instanceType %>> <%= instanceName %>List = new java.util.ArrayList<<%= instanceType %>>( <%= entityInstancePlural %>.size() );
+
+            for( <%= entityClass %> <%= instanceName %> : <%= entityInstancePlural %>) {
+                <%= instanceName %>List.add(<%= entityInstance %>Mapper.toDto(<%= instanceName %>));
+            }
+        <%_ } _%>
+
+        return <%= instanceName %>List;
+      }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+
+<%_ if (jpaMetamodelFiltering && reactive) { _%>
+
+    <%_ if (!serviceImpl) { _%>
+    /**
+    * Find <%= entityInstancePlural %> by Criteria.
+    *
+    <%_ if (!paginationNo) { _%>
+    * @param pageable the pagination information.
+    <%_ } _%>
+    * @return the list of entities.
+    */
+    <%_ } _%>
+    <%_ if (serviceImpl) { _%>
+    @Override
+    <%_ } _%>
+    <%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+    <%_ } _%>
+    public <% if (paginationNo) { %><%= listOrFlux %><% } else { %><%= pageOrFlux %><% } %><<%= instanceType %>> findByCriteria(<%= entityClass %>Criteria criteria<% if (!paginationNo) { %>, Pageable pageable<% } %>) {
+        LOG.debug("Request to get all <%= entityClassPlural %> by Criteria");
+    <%_ if (paginationNo) { _%>
+        return <%= entityInstance %>Repository.findByCriteria(criteria, null)<% if (dtoMapstruct) { %>.map(<%= entityToDtoReference %>)<% } %>;
+    <%_ } else { _%>
+        return <%= entityInstance %>Repository.findByCriteria(criteria, pageable)<% if (dtoMapstruct) { %>.map(<%= entityToDtoReference %>)<% } %>;
+    <%_ } _%>
+    }
+
+    /**
+    * Find the count of <%= entityInstancePlural %> by criteria.
+    * @param criteria filtering criteria
+    * @return the count of <%= entityInstancePlural %>
+    */
+    public Mono<Long> countByCriteria(<%= entityClass %>Criteria criteria) {
+        LOG.debug("Request to get the count of all <%= entityClassPlural %> by Criteria");
+        return <%= entityInstance %>Repository.countByCriteria(criteria);
+    }
+<%_ } _%>
+
+<%_ /* Saathratri modification - use hasEagerLoadableRelationships instead of implementsEagerLoadApis */ _%>
+<%_ if (hasEagerLoadableRelationships) { _%>
+
+  <%_ if (!serviceImpl) { _%>
+    /**
+     * Get all the <%= entityInstancePlural %> with eager load of many-to-many relationships.
+     *
+     * @return the list of entities.
+     */
+  <%_ } _%>
+    public <%= pageOrFlux %><<%= instanceType %>> findAllWithEagerRelationships(Pageable pageable) {
+        return <%= entityInstance %>Repository.findAllWithEagerRelationships(pageable)<% if (!dtoMapstruct) { %>;<% } else { %>.map(<%= entityToDtoReference %>);<% } %>
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%- include('../../_partials_entity_/get_filtered_template'); -%>
+<%_ if (reactive) { _%>
+  <%_ if (!serviceImpl) { _%>
+    /**
+     * Returns the number of <%= entityInstancePlural %> available.
+     * @return the number of entities in the database.
+     *
+     */
+  <%_ } _%>
+    public Mono<Long> countAll() {
+        return <%= entityInstance %>Repository.count();
+    }
+  <%_ if (searchEngineElasticsearch) { _%>
+
+    <%_ if (!serviceImpl) { _%>
+    /**
+     * Returns the number of <%= entityInstancePlural %> available in search repository.
+     *
+     */
+    <%_ } _%>
+    public Mono<Long> searchCount() {
+        return <%= entityInstance %>SearchRepository.count();
+    }
+  <%_ } _%>
+
+<%_ } _%>
+<%_ if (!serviceImpl) { _%>
+    /**
+     * Get one <%= entityInstance %> by id.
+     *
+     * @param id the id of the entity.
+     * @return the entity.
+     */
+<%_ } _%>
+<%_ if (serviceImpl) { _%>
+    @Override
+<%_ } _%>
+<%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+    <%_ } _%>
+<%_ /* Saathratri modification - use hasEagerLoadableRelationships in get_template */ _%>
+    public <%= optionalOrMono %><<%= instanceType %>> findOne(<%= primaryKey.type %> id) {
+        LOG.debug("Request to get <%= entityClass %> : {}", id);<%- include('../../_partials_entity_/get_template', {viaService: false, returnDirectly:true, implementsEagerLoadApis: hasEagerLoadableRelationships}); -%>
+    }
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - entity graph query methods */ _%>
+<%_ if (hasEntityGraphQueries) { _%>
+
+  <%_ for (const entityGraphQuery of entityGraphDirectives) { _%>
+    @Override
+    <%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+    <%_ } _%>
+    public <%= optionalOrMono %><<%= instanceType %>> <%= entityGraphQuery.methodName %>(<%= primaryKey.type %> <%= primaryKey.name %>) {
+        LOG.debug("Request to get <%= entityClass %> with entity graph via <%= entityGraphQuery.methodName %> : {}", <%= primaryKey.name %>);
+        return <%= entityInstance %>Repository.<%= entityGraphQuery.methodName %>(<%= primaryKey.name %>)<% if (!dtoMapstruct) { %>;<% } else { %>
+            .map(<%= entityInstance %>Mapper::to<%= this._.upperFirst(entityGraphQuery.methodName) %>);
+        <% } %>
+    }
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - custom query method implementations from @customQueryAnnotation */ _%>
+<%_ if (hasCustomQueriesImpl) { _%>
+
+  <%_ for (const cq of parsedCustomQueriesImpl) { _%>
+    @Override
+    <%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+    <%_ } _%>
+    public <% if (cq.isSingleIdQuery) { %><%= optionalOrMono %><<%= instanceType %>><% } else { %>List<<%= instanceType %>><% } %> <%= cq.methodName %>(<%- cq.resolvedParams.map(p => `${p.fieldType} ${p.fieldName}`).join(', ') %>) {
+        LOG.debug("Request custom query <%= cq.methodName %> on <%= entityClass %> : {}"<%- cq.resolvedParams.map(p => `, ${p.fieldName}`).join('') %>);
+    <%_ if (cq.isSingleIdQuery) { _%>
+        return <%= entityInstance %>Repository.<%= cq.methodName %>(<%- cq.resolvedParams.map(p => p.fieldName).join(', ') %>)<% if (dtoMapstruct) { %>
+            .map(<%= entityInstance %>Mapper::toDto)<% } %>;
+    <%_ } else { _%>
+        return <%= entityInstance %>Repository.<%= cq.methodName %>(<%- cq.resolvedParams.map(p => p.fieldName).join(', ') %>)<% if (dtoMapstruct) { %>
+            .stream()
+            .map(<%= entityInstance %>Mapper::toDto)
+            .collect(java.util.stream.Collectors.toList())<% } %>;
+    <%_ } _%>
+    }
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+
+<%_ if (!serviceImpl) { _%>
+    /**
+     * Delete the <%= entityInstance %> by id.
+     *
+     * @param id the id of the entity.
+  <%_ if (reactive) { _%>
+     * @return a Mono to signal the deletion
+  <%_ } _%>
+     */
+<%_ } _%>
+<%_ if (serviceImpl) { _%>
+    @Override
+<%_ } _%>
+    public <%- reactive ? 'Mono<Void>' : 'void' %> delete(<%= primaryKey.type %> id) {
+        LOG.debug("Request to delete <%= entityClass %> : {}", id);
+<%- include('../../_partials_entity_/delete_template', {viaService: false, fromResource: false}); -%>
+    }
+<%_ if (searchEngineAny) { _%>
+
+  <%_ if (!serviceImpl) { _%>
+    /**
+     * Search for the <%= entityInstance %> corresponding to the query.
+     *
+     * @param query the query of the search.
+    <%_ if (!paginationNo) { _%>
+     * @param pageable the pagination information.
+    <%_ } _%>
+     * @return the list of entities.
+     */
+  <%_ } _%>
+  <%_ if (serviceImpl) { _%>
+    @Override
+  <%_ } _%>
+  <%_ if (databaseTypeSql) { _%>
+    @Transactional(readOnly = true)
+  <%_ } _%>
+    public <% if (!paginationNo) { %><%= pageOrFlux %><<%= instanceType %><% } else { %><%= listOrFlux %><<%= instanceType %><% } %>> search(String query<% if (!paginationNo) { %>, Pageable pageable<% } %>) {
+  <%_ if (paginationNo) { _%>
+        LOG.debug("Request to search <%= entityClassPlural %> for query {}", query);<%- include('../../_partials_entity_/search_stream_template', {viaService: false, fromResource: false}); -%>
+  <%_ } else { _%>
+        LOG.debug("Request to search for a page of <%= entityClassPlural %> for query {}", query);
+        return <%= entityInstance %><% if (searchEngineElasticsearch) { %>Search<% } %>Repository.search(query, pageable)<%_ if (!dtoMapstruct) { _%>;<% } else { %>
+            .map(<%= entityToDtoReference %>);
+  <%_ } } _%>
+    }
+<%_ } _%>
+<%_ /* Saathratri modification - AI text search and vector similarity search methods */ _%>
+<%_
+// Check if entity has vector fields for similarity search
+const vectorFields = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFields = vectorFields.length > 0;
+_%>
+<%_ if (hasVectorFields && !reactive) { _%>
+
+    // ==================== AI Text Search ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<<%= instanceType %>> aiSearch(String query, int limit, List<String> fields) {
+        LOG.debug("Request to AI search <%= entityClassPlural %> for query: {}, limit: {}, fields: {}", query, limit, fields);
+
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+
+        if (!embeddingService.isAvailable()) {
+            LOG.warn("Embedding service not available for AI search, returning empty results");
+            return List.of();
+        }
+
+        String embeddingStr = embeddingService.generateEmbeddingAsVectorString(query);
+        if (embeddingStr == null) {
+            LOG.warn("Failed to generate embedding for AI search query, returning empty results");
+            return List.of();
+        }
+
+        // Search across selected vector fields (or all if none specified) and merge results (deduplicated by ID)
+        // Use cosine distance threshold of 0.8 to filter out unrelated results
+        // Cosine distance: 0 = identical, 1 = orthogonal, 2 = opposite
+        double maxDistance = 0.8;
+        boolean searchAll = (fields == null || fields.isEmpty());
+        java.util.Map<<%= primaryKey.type %>, <%= instanceType %>> resultMap = new java.util.LinkedHashMap<>();
+
+  <%_ for (const vectorField of vectorFields) { _%>
+        // Search by <%= vectorField.fieldName %>
+        if (searchAll || fields.contains("<%= vectorField.fieldName %>")) {
+            <%= entityInstance %>Repository.findSimilarBy<%= vectorField.fieldNameCapitalized %>WithThreshold(embeddingStr, maxDistance, limit)
+                .stream()
+    <%_ if (dtoMapstruct) { _%>
+                .map(<%= entityToDtoReference %>)
+    <%_ } _%>
+                .forEach(item -> resultMap.putIfAbsent(item.<%- primaryKey.propertySupplierName %>(), item));
+        }
+
+  <%_ } _%>
+        return new java.util.ArrayList<>(resultMap.values());
+    }
+
+    // ==================== Vector Similarity Search Methods ====================
+  <%_ for (const vectorField of vectorFields) { _%>
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<<%= instanceType %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>(String embedding, int limit) {
+        LOG.debug("Request to find <%= entityClassPlural %> similar by <%= vectorField.fieldName %>, limit: {}", limit);
+    <%_ if (dtoMapstruct) { _%>
+        return <%= entityInstance %>Repository.findSimilarBy<%= vectorField.fieldNameCapitalized %>(embedding, limit)
+            .stream()
+            .map(<%= entityToDtoReference %>)
+            .collect(Collectors.toList());
+    <%_ } else { _%>
+        return <%= entityInstance %>Repository.findSimilarBy<%= vectorField.fieldNameCapitalized %>(embedding, limit);
+    <%_ } _%>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<<%= instanceType %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>WithThreshold(String embedding, double maxDistance, int limit) {
+        LOG.debug("Request to find <%= entityClassPlural %> similar by <%= vectorField.fieldName %> with threshold, maxDistance: {}, limit: {}", maxDistance, limit);
+    <%_ if (dtoMapstruct) { _%>
+        return <%= entityInstance %>Repository.findSimilarBy<%= vectorField.fieldNameCapitalized %>WithThreshold(embedding, maxDistance, limit)
+            .stream()
+            .map(<%= entityToDtoReference %>)
+            .collect(Collectors.toList());
+    <%_ } else { _%>
+        return <%= entityInstance %>Repository.findSimilarBy<%= vectorField.fieldNameCapitalized %>WithThreshold(embedding, maxDistance, limit);
+    <%_ } _%>
+    }
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - tree structure methods */ _%>
+<%_ if (typeof hasSelfReferentialTreeSaathratri !== 'undefined' && hasSelfReferentialTreeSaathratri && !reactive) { _%>
+
+    // ==================== Tree Structure Methods ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<<%= instanceType %>> findAllAsTreeNodes() {
+        LOG.debug("Request to get all <%= entityClassPlural %> as tree nodes");
+  <%_ if (dtoMapstruct) { _%>
+        return <%= entityInstance %>Repository.findAllWithParent()
+            .stream()
+            .map(<%= entityToDtoReference %>)
+            .collect(Collectors.toList());
+  <%_ } else { _%>
+        return <%= entityInstance %>Repository.findAllWithParent();
+  <%_ } _%>
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (updatableEntity && !dtoMapstruct && fields.some(field => !field.id && !field.transient)) { _%>
+
+    private <T> void updateIfPresent(Consumer<T> setter, T value) {
+        if (value != null) {
+            setter.accept(value);
+        }
+    }
+<%_ } _%>
+<%_ /* Saathratri modification - generate embeddings on save/update */ _%>
+<%_ if (hasVectorFieldsForImport && !reactive) { _%>
+
+    // ==================== Embedding Generation ====================
+
+    /**
+     * Generate embeddings for all vector fields from their source text fields.
+     * Called automatically on save and update operations.
+     */
+    private void generateEmbeddings(<%= persistClass %> <%= entityInstance %>) {
+        if (!embeddingService.isAvailable()) {
+            LOG.debug("Embedding service not available, skipping embedding generation for <%= entityClass %>");
+            return;
+        }
+  <%_ for (const vectorField of vectorFields) { _%>
+        {
+            String sourceText = <%= entityInstance %>.get<%= vectorField.sourceFieldNameCapitalizedSaathratri %>();
+            float[] embedding = embeddingService.generateEmbedding(sourceText);
+            if (embedding != null) {
+                <%= entityInstance %>.set<%= vectorField.fieldNameCapitalized %>(embedding);
+                LOG.debug("Generated embedding for <%= vectorField.sourceFieldNameSaathratri %> ({} dimensions)", embedding.length);
+            }
+        }
+  <%_ } _%>
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+}

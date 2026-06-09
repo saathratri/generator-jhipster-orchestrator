@@ -1,0 +1,55 @@
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MaterialModule } from '../../shared/material.module';
+import { DateTimeComponent } from '../date-time/date-time.component';
+import dayjs from 'dayjs/esm';
+
+@Component({
+  // eslint-disable-next-line @angular-eslint/component-selector
+  selector: 'app-map-dayjs-edit-dialog-component',
+  standalone: true,
+  imports: [
+    MaterialModule,
+    CommonModule,
+    ReactiveFormsModule,
+    MatDialogModule,
+    DateTimeComponent,
+  ],
+  templateUrl: './map-dayjs-edit-dialog-component.component.html',
+  styleUrls: ['./map-dayjs-edit-dialog-component.component.css'],
+})
+export class MapDayjsEditDialogComponent {
+  data = inject<{ key: string; value: dayjs.Dayjs }>(MAT_DIALOG_DATA);
+  isDateTimeValid: Record<string, boolean> = {};
+  isDateTimeDirty: Record<string, boolean> = {};
+  form!: FormGroup;
+  private fb = inject(FormBuilder);
+  private dialogRef = inject<MatDialogRef<MapDayjsEditDialogComponent>>(MatDialogRef);
+
+  constructor() {
+    this.form = this.fb.group({
+      key: [{ value: this.data.key, disabled: true }, Validators.required],
+      value: [this.data.value, Validators.required],
+    });
+  }
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onSave(): void {
+    if (this.form.valid) {
+      this.dialogRef.close(this.form.get('value')?.value);
+    }
+  }
+
+  onDateTimeValid(controlName: string, isValid: boolean): void {
+    this.isDateTimeValid[controlName] = isValid;
+  }
+
+  updateDirtyState(event: { field: string; isDirty: boolean }): void {
+    this.isDateTimeDirty[event.field] = event.isDirty;
+  }
+}

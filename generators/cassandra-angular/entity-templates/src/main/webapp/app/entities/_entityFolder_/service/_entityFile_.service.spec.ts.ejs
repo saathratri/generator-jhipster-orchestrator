@@ -1,0 +1,260 @@
+<%_
+  // Service spec matching the blueprint service API. Composite: find(<each key field>),
+  // delete(entity), compare(Pick<I,'compositeId'>). Single-key: find(id), delete(id),
+  // compare(Pick<I,'id'>). find() args use type-appropriate literals (the find params follow
+  // the raw key type — number for Long keys even when the model exposes them as dayjs).
+  const composite = primaryKeySaathratri.composite;
+  const findLiteral = name => {
+    const f = fields.find(ff => ff.fieldName === name);
+    return f && f.tsType === 'number' ? '1' : `'${name}'`;
+  };
+  const findArgs = composite ? primaryKeySaathratri.ids.map(id => findLiteral(id.fieldName)).join(', ') : findLiteral(primaryKey.name);
+  const deleteArg = composite ? 'sampleWithRequiredData' : `sampleWithRequiredData.${primaryKey.name}`;
+  const cmp = sample => (composite ? `{ compositeId: ${sample}.compositeId }` : `{ ${primaryKey.name}: ${sample}.${primaryKey.name} }`);
+
+  // Mirror service.ts.ejs's composite-key search-method generation so each generated method gets a
+  // spec: progressive partition/clustering-key prefixes (findAllBy...Pageable), clustering comparison
+  // operators, and the full-key findBy. Kept in lockstep with the same iteration the service uses.
+  const searchMethods = [];
+  if (composite) {
+    const pkFields = primaryKeySaathratri.ids;
+    const keyName = primaryKeySaathratri.nameCapitalized;
+    for (let i = 0; i < pkFields.length; i++) {
+      const parts = [], args = [];
+      for (let j = 0; j <= i; j++) { parts.push(`${keyName}${pkFields[j].fieldNameCapitalized}`); args.push(findLiteral(pkFields[j].fieldName)); }
+      searchMethods.push({ name: 'findAllBy' + parts.join('And') + 'Pageable', args: args.join(', '), single: false });
+    }
+    for (let i = 0; i < pkFields.length; i++) {
+      const cf = pkFields[i];
+      if (!cf.isClusteredKeySaathratri || (cf.fieldType !== 'Long' && !cf.fieldTypeTimeUuidSaathratri)) continue;
+      const parts = [], args = [];
+      for (let j = 0; j <= i; j++) { parts.push(`${keyName}${pkFields[j].fieldNameCapitalized}`); args.push(findLiteral(pkFields[j].fieldName)); }
+      const base = parts.join('And');
+      for (const op of ['LessThan', 'LessThanEqual', 'GreaterThan', 'GreaterThanEqual']) {
+        searchMethods.push({ name: `findAllBy${base}${op}Pageable`, args: args.join(', '), single: false });
+      }
+    }
+    const allParts = [], allArgs = [];
+    for (const f of pkFields) { allParts.push(`${keyName}${f.fieldNameCapitalized}`); allArgs.push(findLiteral(f.fieldName)); }
+    searchMethods.push({ name: 'findBy' + allParts.join('And'), args: allArgs.join(', '), single: true });
+  }
+_%>
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+
+import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+import {
+  sampleWithFullData,
+  sampleWithNewData,
+  sampleWithPartialData,
+  sampleWithRequiredData,
+} from '../<%= entityFileName %>.test-samples';
+
+import { <%= entityAngularName %>Service } from './<%= entityFileName %>.service';
+
+const requireRestSample: I<%= entityAngularName %> = {
+  ...sampleWithRequiredData,
+};
+
+describe('<%= entityAngularName %> Service', () => {
+  let service: <%= entityAngularName %>Service;
+  let httpMock: HttpTestingController;
+  let expectedResult: I<%= entityAngularName %> | I<%= entityAngularName %>[] | boolean | null;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClientTesting()],
+    });
+    expectedResult = null;
+    service = TestBed.inject(<%= entityAngularName %>Service);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  describe('Service methods', () => {
+    it('should find an element', () => {
+      const returnedFromService = { ...requireRestSample };
+      const expected = { ...sampleWithRequiredData };
+
+      service.find(<%- findArgs %>).subscribe(resp => (expectedResult = resp.body));
+
+      const req = httpMock.expectOne({ method: 'GET' });
+      req.flush(returnedFromService);
+      expect(expectedResult).toMatchObject(expected);
+    });
+
+    it('should create a <%= entityAngularName %>', () => {
+      const <%= entityInstance %> = { ...sampleWithNewData };
+      const returnedFromService = { ...requireRestSample };
+      const expected = { ...sampleWithRequiredData };
+
+      service.create(<%= entityInstance %>).subscribe(resp => (expectedResult = resp.body));
+
+      const req = httpMock.expectOne({ method: 'POST' });
+      req.flush(returnedFromService);
+      expect(expectedResult).toMatchObject(expected);
+    });
+
+    it('should update a <%= entityAngularName %>', () => {
+      const <%= entityInstance %> = { ...sampleWithRequiredData };
+      const returnedFromService = { ...requireRestSample };
+      const expected = { ...sampleWithRequiredData };
+
+      service.update(<%= entityInstance %>).subscribe(resp => (expectedResult = resp.body));
+
+      const req = httpMock.expectOne({ method: 'PUT' });
+      req.flush(returnedFromService);
+      expect(expectedResult).toMatchObject(expected);
+    });
+
+    it('should partial update a <%= entityAngularName %>', () => {
+      const patchObject = { ...sampleWithPartialData };
+      const returnedFromService = { ...requireRestSample };
+      const expected = { ...sampleWithRequiredData };
+
+      service.partialUpdate(patchObject).subscribe(resp => (expectedResult = resp.body));
+
+      const req = httpMock.expectOne({ method: 'PATCH' });
+      req.flush(returnedFromService);
+      expect(expectedResult).toMatchObject(expected);
+    });
+
+    it('should return a list of <%= entityAngularName %>', () => {
+      const returnedFromService = { ...requireRestSample };
+
+      const expected = { ...sampleWithRequiredData };
+
+      service.query().subscribe(resp => (expectedResult = resp.body));
+
+      const req = httpMock.expectOne({ method: 'GET' });
+      req.flush([returnedFromService]);
+      httpMock.verify();
+      expect(expectedResult).toMatchObject([expected]);
+    });
+
+    it('should delete a <%= entityAngularName %>', () => {
+      service.delete(<%- deleteArg %>).subscribe();
+
+      const requests = httpMock.match({ method: 'DELETE' });
+      expect(requests.length).toBe(1);
+    });
+<%_ if (searchMethods.length) { _%>
+
+    describe('composite-key search methods', () => {
+<%_ for (const m of searchMethods) { _%>
+      it('should call <%= m.name %>', () => {
+        const returnedFromService = { ...requireRestSample };
+
+        service.<%= m.name %>(<%- m.args %>).subscribe(resp => (expectedResult = resp.body));
+
+        const req = httpMock.expectOne({ method: 'GET' });
+        req.flush(<%- m.single ? 'returnedFromService' : '[returnedFromService]' %>);
+        expect(expectedResult).toMatchObject(<%- m.single ? '{ ...sampleWithRequiredData }' : '[{ ...sampleWithRequiredData }]' %>);
+      });
+<%_ } _%>
+    });
+<%_ } _%>
+
+    describe('add<%= entityAngularName %>ToCollectionIfMissing', () => {
+      it('should add a <%= entityAngularName %> to an empty array', () => {
+        const <%= entityInstance %>: I<%= entityAngularName %> = sampleWithRequiredData;
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing([], <%= entityInstance %>);
+        expect(expectedResult).toEqual([<%= entityInstance %>]);
+      });
+
+      it('should not add a <%= entityAngularName %> to an array that contains it', () => {
+        const <%= entityInstance %>: I<%= entityAngularName %> = sampleWithRequiredData;
+        const <%= entityInstance %>Collection: I<%= entityAngularName %>[] = [
+          {
+            ...<%= entityInstance %>,
+          },
+          sampleWithPartialData,
+        ];
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing(<%= entityInstance %>Collection, <%= entityInstance %>);
+        expect(expectedResult).toHaveLength(2);
+      });
+
+      it("should add a <%= entityAngularName %> to an array that doesn't contain it", () => {
+        const <%= entityInstance %>: I<%= entityAngularName %> = sampleWithRequiredData;
+        const <%= entityInstance %>Collection: I<%= entityAngularName %>[] = [sampleWithPartialData];
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing(<%= entityInstance %>Collection, <%= entityInstance %>);
+        expect(expectedResult).toHaveLength(2);
+        expect(expectedResult).toContain(<%= entityInstance %>);
+      });
+
+      it('should add only unique <%= entityAngularName %> to an array', () => {
+        const <%= entityInstance %>Array: I<%= entityAngularName %>[] = [sampleWithRequiredData, sampleWithPartialData, sampleWithFullData];
+        const <%= entityInstance %>Collection: I<%= entityAngularName %>[] = [sampleWithRequiredData];
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing(<%= entityInstance %>Collection, ...<%= entityInstance %>Array);
+        expect(expectedResult).toHaveLength(3);
+      });
+
+      it('should accept varargs', () => {
+        const <%= entityInstance %>: I<%= entityAngularName %> = sampleWithRequiredData;
+        const <%= entityInstance %>2: I<%= entityAngularName %> = sampleWithPartialData;
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing([], <%= entityInstance %>, <%= entityInstance %>2);
+        expect(expectedResult).toEqual([<%= entityInstance %>, <%= entityInstance %>2]);
+      });
+
+      it('should accept null and undefined values', () => {
+        const <%= entityInstance %>: I<%= entityAngularName %> = sampleWithRequiredData;
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing([], null, <%= entityInstance %>, undefined);
+        expect(expectedResult).toEqual([<%= entityInstance %>]);
+      });
+
+      it('should return initial array if no <%= entityAngularName %> is added', () => {
+        const <%= entityInstance %>Collection: I<%= entityAngularName %>[] = [sampleWithRequiredData];
+        expectedResult = service.add<%= entityAngularName %>ToCollectionIfMissing(<%= entityInstance %>Collection, undefined, null);
+        expect(expectedResult).toEqual(<%= entityInstance %>Collection);
+      });
+    });
+
+    describe('compare<%= entityAngularName %>', () => {
+      it('should return true if both entities are null', () => {
+        const entity1 = null;
+        const entity2 = null;
+
+        const compareResult = service.compare<%= entityAngularName %>(entity1, entity2);
+
+        expect(compareResult).toEqual(true);
+      });
+
+      it('should return false if one entity is null', () => {
+        const entity1 = <%- cmp('sampleWithRequiredData') %>;
+        const entity2 = null;
+
+        const compareResult1 = service.compare<%= entityAngularName %>(entity1, entity2);
+        const compareResult2 = service.compare<%= entityAngularName %>(entity2, entity1);
+
+        expect(compareResult1).toEqual(false);
+        expect(compareResult2).toEqual(false);
+      });
+
+      it('should return false if primaryKey differs', () => {
+        const entity1 = <%- cmp('sampleWithRequiredData') %>;
+        const entity2 = <%- cmp('sampleWithPartialData') %>;
+
+        const compareResult1 = service.compare<%= entityAngularName %>(entity1, entity2);
+        const compareResult2 = service.compare<%= entityAngularName %>(entity2, entity1);
+
+        expect(compareResult1).toEqual(false);
+        expect(compareResult2).toEqual(false);
+      });
+
+      it('should return true if primaryKey matches', () => {
+        const entity1 = <%- cmp('sampleWithRequiredData') %>;
+        const entity2 = <%- cmp('sampleWithRequiredData') %>;
+
+        const compareResult1 = service.compare<%= entityAngularName %>(entity1, entity2);
+        const compareResult2 = service.compare<%= entityAngularName %>(entity2, entity1);
+
+        expect(compareResult1).toEqual(true);
+        expect(compareResult2).toEqual(true);
+      });
+    });
+  });
+
+  afterEach(() => {
+    httpMock.verify();
+  });
+});

@@ -1,0 +1,90 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+
+CREATE TABLE IF NOT EXISTS <%= entityInstanceSnakeCase %> (
+<%_ for (const field of fields) {
+  const fieldNameUnderscored = field.fieldNameUnderscored; _%>
+  <%_ if (field.fieldTypeVectorSaathratri) { _%>
+    <%= fieldNameUnderscored %> VECTOR<FLOAT, <%= field.vectorDimensionSaathratri %>>,
+  <%_ } else if (field.fieldTypeSetSaathratri) { _%>
+    <%= fieldNameUnderscored %> set<text>,
+  <%_ } else if (field.fieldTypeMapSaathratri) { _%>
+    <%_ if (field.fieldTypeMapBooleanSaathratri) { _%>
+      <%= fieldNameUnderscored %> map<text, boolean>,
+    <%_ } else if(field.fieldTypeMapNumberSaathratri) { _%>
+      <%= fieldNameUnderscored %> map<text, decimal>,
+    <%_ } else if (field.fieldTypeMapStringSaathratri) { _%>
+      <%= fieldNameUnderscored %> map<text, text>,
+    <%_ } else if (field.fieldTypeMapDayjsSaathratri) { _%>
+          <%= fieldNameUnderscored %> map<text, bigint>,  
+    <%_ } _%>   
+  <%_ } else if (field.fieldTypeUUID) { _%>
+    <%= fieldNameUnderscored %> uuid,
+  <%_ } else if (field.fieldTypeString || field.fieldIsEnum) { _%>
+    <%= fieldNameUnderscored %> text,
+  <%_ } else if (field.fieldTypeInteger) { _%>
+    <%= fieldNameUnderscored %> int,
+  <%_ } else if (field.fieldTypeLong) { _%>
+    <%= fieldNameUnderscored %> bigint,
+  <%_ } else if (field.fieldTypeFloat) { _%>
+    <%= fieldNameUnderscored %> float,
+  <%_ } else if (field.fieldTypeDouble) { _%>
+    <%= fieldNameUnderscored %> double,
+  <%_ } else if (field.fieldTypeBigDecimal) { _%>
+    <%= fieldNameUnderscored %> decimal,
+  <%_ } else if (field.fieldTypeLocalDate) { _%>
+    <%= fieldNameUnderscored %> date,
+  <%_ } else if (field.fieldTypeInstant) { _%>
+    <%= fieldNameUnderscored %> timestamp,
+  <%_ } else if (field.fieldTypeDuration) { _%>
+    <%= fieldNameUnderscored %> text,
+  <%_ } else if (field.fieldTypeZonedDateTime) { _%>
+    <%= fieldNameUnderscored %> tuple<timestamp,varchar>,
+  <%_ } else if (field.fieldTypeBoolean) { _%>
+    <%= fieldNameUnderscored %> boolean,
+  <%_ } else if (field.fieldTypeByteBuffer) { _%>
+    <%_ if (!field.blobContentTypeText) { _%>
+      <%= fieldNameUnderscored %> blob,
+      <%= fieldNameUnderscored %>_content_type text,
+    <%_ } else { _%>
+      <%= fieldNameUnderscored %> text,
+    <%_ } _%>
+  <%_ } _%>
+<%_ } _%>
+<%_ if (primaryKeySaathratri.composite) { _%>
+  primary key (
+    (<%_ primaryKeySaathratri.ids.filter(field => field.isPartitionedKeySaathratri)
+      .forEach((field, index) => { _%><%= index === 0 ? `${field.fieldNameUnderscored}` : `, ${field.fieldNameUnderscored}` %><%_ }) _%>),
+    <%_ primaryKeySaathratri.ids.filter(field => field.isClusteredKeySaathratri)
+      .forEach((field, index) => { _%><%= index === 0 ? ` ${field.fieldNameUnderscored}` : `, ${field.fieldNameUnderscored}` %><%_ }) _%>
+  ))
+  WITH CLUSTERING ORDER BY (
+    <%_ primaryKeySaathratri.ids.filter(field => field.isClusteredKeySaathratri)
+      .forEach((field, index) => { _%><%= index === 0 ? `${field.fieldNameUnderscored} desc` : `, ${field.fieldNameUnderscored} desc` %><%_ }) _%>);
+<%_ } else { _%>
+  primary key (<%= primaryKeyNameSnakeCase %>)
+);
+<%_ } _%>
+<%_ /* Create SAI vector indexes for vector fields (requires Cassandra 5.0+) */ _%>
+<%_ for (const field of fields) {
+  if (field.fieldTypeVectorSaathratri) { _%>
+
+CREATE CUSTOM INDEX IF NOT EXISTS <%= entityInstanceSnakeCase %>_<%= field.fieldNameUnderscored %>_idx ON <%= entityInstanceSnakeCase %> (<%= field.fieldNameUnderscored %>) USING 'StorageAttachedIndex';
+<%_ }
+} _%>

@@ -1,0 +1,888 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.web.rest;
+
+<%_
+const viaService = !serviceNo;
+_%>
+<%_ if (primaryKeySaathratri.composite) { _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>Id;
+<%_ } _%>
+<%_ if (!dtoMapstruct || serviceNo) { _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>;
+<%_ } _%>
+import <%= entityAbsolutePackage %>.repository.<%= entityClass %>Repository;
+<%_ if (!serviceNo) { _%>
+import <%= entityAbsolutePackage %>.service.<%= entityClass %>Service;
+<%_ } else { _%>
+  <%_ if (isUsingMapsId === true) { _%>
+import <%= entityAbsolutePackage %>.repository.<%= mapsIdAssoc.otherEntityNameCapitalized %>Repository;
+  <%_ } _%>
+  <%_ if (searchEngineElasticsearch) { _%>
+import <%= entityAbsolutePackage %>.repository.search.<%= entityClass %>SearchRepository;
+  <%_ } _%>
+<%_ } _%>
+<%_ if (saveUserSnapshot) { _%>
+import <%= entityAbsolutePackage %>.repository.UserRepository;
+<%_ } _%>
+import <%= packageName %>.web.rest.errors.BadRequestAlertException;
+<%_ if (searchEngineElasticsearch) { _%>
+import <%= packageName %>.web.rest.errors.ElasticsearchExceptionMapper;
+<%_ } _%>
+<%_ if (dtoMapstruct) { _%>
+import <%= entityAbsolutePackage %>.service.dto.<%= dtoClass %>;
+  <%_ if (serviceNo) { _%>
+import <%= entityAbsolutePackage %>.service.mapper.<%= entityClass %>Mapper;
+  <%_ } _%>
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && !reactive) {  _%>
+import <%= entityAbsolutePackage %>.service.criteria.<%= entityClass %>Criteria;
+import <%= entityAbsolutePackage %>.service.<%= entityClass %>QueryService;
+<%_ } else if (jpaMetamodelFiltering && reactive) { _%>
+import <%= entityAbsolutePackage %>.domain.criteria.<%= entityClass %>Criteria;
+<%_ } _%>
+
+import tech.jhipster.web.util.HeaderUtil;
+<%_ if (!paginationNo) { _%>
+import tech.jhipster.web.util.PaginationUtil;
+<%_ } _%>
+import tech.jhipster.web.util.<% if (reactive) { %>reactive.<% } %>ResponseUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+<%_ if (entitySpringPreAuthorize) { _%>
+import org.springframework.security.access.prepost.PreAuthorize;
+<%_ } _%>
+<%_ if (!paginationNo) { _%>
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+  <%_ if (reactive) { _%>
+import org.springframework.data.domain.PageImpl;
+  <%_ } _%>
+<%_ } _%>
+<%_ if (databaseTypeCassandra) { _%>
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.cassandra.core.query.CassandraPageRequest;
+import org.springframework.http.HttpHeaders;
+import java.nio.ByteBuffer;
+import java.util.Base64;
+<%_ } _%>
+<%_ if (!paginationNo) { _%>
+import org.springframework.http.HttpHeaders;
+  <%_ if (reactive) { _%>
+import org.springframework.http.server.reactive.ServerHttpRequest;
+  <%_ } _%>
+  <%_ if (reactive) { _%>
+import org.springframework.web.util.ForwardedHeaderUtils;
+  <%_ } else { _%>
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+  <%_ } _%>
+<%_ } _%>
+<%_ if (reactive || (!jpaMetamodelFiltering && !paginationNo)) { _%>
+import org.springframework.http.HttpStatus;
+<%_ } _%>
+<%_ if (reactive) { _%>
+import org.springframework.http.MediaType;
+<%_ } _%>
+import org.springframework.http.ResponseEntity;
+<%_ if (databaseTypeSql && !viaService && (!saveUserSnapshot || isUsingMapsId)) { _%>
+import org.springframework.transaction.annotation.Transactional;
+<%_ } _%>
+import org.springframework.web.bind.annotation.*;
+<%_ if (reactive) { _%>
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+<%_ } _%>
+
+<%_ if (anyPropertyHasValidation) { _%>
+import jakarta.validation.Valid;
+<%_ } _%>
+
+<%_ if (anyPropertyHasValidation && !readOnly) { _%>
+import jakarta.validation.constraints.NotNull;
+<%_ } _%>
+import java.net.URI;
+import java.net.URISyntaxException;
+<%_ if (paginationNo && dtoMapstruct && !viaService && fieldsContainNoOwnerOneToOne) { _%>
+import java.util.LinkedList;
+<%_ } _%>
+<%_ if (!paginationNo && reactive) { _%>
+import java.util.ArrayList;
+<%_ } _%>
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+<%_ if (primaryKey.hasUUID || primaryKeySaathratri.hasUUID || primaryKeySaathratri.hasTimeUUID) { _%>
+import java.util.UUID;
+<%_ } _%>
+<%_ if (primaryKeySaathratri.hasTimeUUID) { _%>
+import com.datastax.oss.driver.api.core.uuid.Uuids;
+<%_ } _%>
+<%_ if ((searchEngineAny || fieldsContainNoOwnerOneToOne) && !reactive) { _%>
+  <%_ if (!viaService) { _%>
+import java.util.stream.Collectors;
+  <%_ } _%>
+  <%_ if (!databaseTypeSql || !reactive) { _%>
+import java.util.stream.StreamSupport;
+  <%_ } _%>
+<%_ } _%>
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+/**
+ * REST controller for managing {@link <%= entityAbsoluteClass %>}.
+ */
+@RestController
+@RequestMapping("/api/<%= entityApiUrl %>")
+<%_ if (databaseTypeSql && !viaService && !saveUserSnapshot) { _%>
+@Transactional
+<%_ } _%>
+public class <%= entityClass %>Resource {
+
+    private static final Logger LOG = LoggerFactory.getLogger(<%= entityClass %>Resource.class);
+<%_ if (!readOnly) { _%>
+
+  <%_ let entityName = entityInstance;
+  if (clientRootFolder && !skipUiGrouping) {
+    entityName = this._.camelCase(`${clientRootFolder}${entityClass}`);
+  } _%>
+    private static final String ENTITY_NAME = "<%= entityName %>";
+
+    @Value("${jhipster.clientApp.name}")
+    private String applicationName;
+<%_ } _%>
+    <%_
+    const instanceType = restClass;
+    const instanceName = restInstance;
+    const mapper = entityInstance  + 'Mapper';
+    const entityToDtoReference = mapper + '::' + 'toDto';
+    _%><%- include('../../_partials_entity_/inject_template', {readOnly: readOnly, viaService: viaService, constructorName: entityClass + 'Resource', queryService: jpaMetamodelFiltering, isUsingMapsId: isUsingMapsId, mapsIdAssoc: mapsIdAssoc, isController: true, reactive: reactive}); -%>
+<%_ if (!readOnly) { _%>
+
+    /**
+     * {@code POST  /<%= entityApiUrl %>} : Create a new <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the <%= instanceName %> to create.
+     * @return the {@link ResponseEntity} with status {@code 201 (Created)} and with body the new <%= instanceName %>, or with status {@code 400 (Bad Request)} if the <%= entityInstance %> has already an ID.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    @PostMapping("")
+  <%_ if (entitySpringPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringPreAuthorize %>")
+  <%_ } _%>
+    public <% if (reactive) { %>Mono<<% } %>ResponseEntity<<%= instanceType %>><% if (reactive) { %>><% } %> create<%= entityClass %>(<% if (anyPropertyHasValidation) { %>@Valid <% } %>@RequestBody <%= instanceType %> <%= instanceName %>) throws URISyntaxException {
+        LOG.debug("REST request to save <%= entityClass %> : {}", <%= instanceName %>);
+  <%_ if (primaryKey.autoGenerate) { _%>
+
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          <%_ if (primaryKeySaathratri.hasTimeUUID) { _%>
+            
+            // Generate a TimeUUID for the Primary Key composite fields.
+            <%= getCompositePrimaryKeyTimeUuidInitializations(entityInstance, primaryKeySaathratri) %>
+
+          <%_ } _%>
+          if (<%= getCompositePrimaryKeyNullCheck(entityInstance, primaryKeySaathratri, dtoMapstruct) %>) {
+            throw new BadRequestAlertException("A new <%= entityInstance %> cannot have an invalid ID", ENTITY_NAME, "idinvalid");
+          }
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+          <%_ if (primaryKeySaathratri.hasTimeUUID) { _%>
+            // Generate a TimeUUID for the Primary Key.
+            <%= instanceName %>.set<%= primaryKey.nameCapitalized %>(Uuids.timeBased());
+          <%_ } _%>
+        if (<%= instanceName %>.get<%= primaryKey.nameCapitalized %>() == null) {
+            throw new BadRequestAlertException("A new <%= entityInstance %> must have an ID", ENTITY_NAME, "idinvalid");
+        }
+    	<%_ } _%>
+  <%_ } else if (!reactive) { _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          <%_ if (primaryKeySaathratri.hasTimeUUID) { _%>
+
+            // Generate a TimeUUID for the Primary Key composite fields.
+            <%= getCompositePrimaryKeyTimeUuidInitializations(entityInstance, primaryKeySaathratri) %>
+            
+          <%_ } _%>
+          
+          // Composite Primary Key Code
+          if (<%= getCompositePrimaryKeyNullCheck(entityInstance, primaryKeySaathratri, dtoMapstruct) %>) {
+            throw new BadRequestAlertException("A new <%= entityInstance %> cannot have an invalid ID", ENTITY_NAME, "idinvalid");
+          }
+        <%_ } else { _%>  
+        if (<%= entityInstance %>Repository.existsById(<%- instanceName %>.get<%= primaryKey.nameCapitalized %>())) {
+            throw new BadRequestAlertException("<%- entityInstance %> already exists", ENTITY_NAME, "idexists");
+        }
+  <%_ } _%>
+  <%_ } _%>
+  <%_ if (saveUserSnapshot) { _%>
+    <% for (const userRelationship of relationships.filter(rel => rel.otherEntity.builtInUser)) { %>
+      <%_ if (userRelationship.collection) { _%>
+        if (<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalizedPlural %>() != null) {
+            // Save users in case they are new and only exist in gateway
+            userRepository.saveAll(<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalizedPlural %>());
+        }
+      <%_ } else { _%>
+        if (<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalized %>() != null) {
+            // Save user in case it's new and only exists in gateway
+            userRepository.save(<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalized %>());
+        }
+      <%_ } _%>
+    <% } %>
+  <%_ } _%>
+
+  <%_ if (!primaryKey.autoGenerate && reactive) { _%>
+        return <%= entityInstance %>Repository
+            .existsById(<%- instanceName %>.get<%= primaryKey.nameCapitalized %>())
+            .flatMap(exists -> {
+                if (exists) {
+                    return Mono.error(new BadRequestAlertException("<%- entityInstance %> already exists", ENTITY_NAME, "idexists"));
+                }
+  <%_ } _%>
+  <%_ if (serviceNo) { _%>
+<%- include('/_global_partials_entity_/save_template', {saveNewEntityOperation: true, returnDirectly: false}); -%>
+  <%_ } _%>
+  <%_ if (reactive) { _%>
+    <%_ if (!serviceNo) { _%>
+        return <%= entityInstance %>Service
+            .save(<%= instanceName %>)
+    <%_ } _%>
+            .map(result -> {
+                try {
+                    return ResponseEntity.created(new URI("/api/<%= entityApiUrl %>/" + result.get<%= primaryKey.nameCapitalized %>()))
+                        .headers(HeaderUtil.createEntityCreationAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, result.get<%= primaryKey.nameCapitalized %>()<% if (!primaryKey.typeString) { %>.toString()<% } %>))
+                        .body(result);
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+    <%_ if (!primaryKey.autoGenerate) { _%>
+        });
+    <%_ } _%>
+  <%_ } else { _%>
+    <%_ if (!serviceNo) { _%>
+        <%- restInstance %> = <%= entityInstance %>Service.save(<%= instanceName %>);
+    <%_ } _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          return ResponseEntity.created(new URI("/api/<%= entityApiUrl %>/" + <%- getCompositePrimaryKeyResponseEntityUri(restInstance, primaryKeySaathratri, dtoMapstruct) %>))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%- restInstance %>.get<%= primaryKeySaathratri.nameCapitalized %>().toString()))
+            .body(<%- restInstance %>);
+        <%_ } else { _%>
+        // Single-value Primary Key Code
+        return ResponseEntity.created(new URI("/api/<%= entityApiUrl %>/" + <%- restInstance %>.get<%= primaryKey.nameCapitalized %>()))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%- restInstance %>.get<%= primaryKey.nameCapitalized %>()<% if (!primaryKey.typeString) { %>.toString()<% } %>))
+            .body(<%- restInstance %>);
+	      <%_ } _%>
+  <%_ } _%>
+    }
+<%_ } _%>
+<%_ if (!readOnly && updatableEntity) { _%>
+
+    /**
+    <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     * {@code PUT  /<%= entityApiUrl %>/<%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocUrl(primaryKeySaathratri) %>} : Updates an existing <%= entityInstance %>.
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * {@code PUT  /<%= entityApiUrl %>/:<%= primaryKey.name %>} : Updates an existing <%= entityInstance %>.
+    <%_ } _%>
+     *
+     <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     <%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocMethodParameters(entityInstance, primaryKeySaathratri, "update") %>
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * @param <%= primaryKey.name %> the <%= primaryKey.name %> of the <%= instanceName %> to save.
+    <%_ } _%>
+     * @param <%= instanceName %> the <%= instanceName %> to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated <%= instanceName %>,
+     * or with status {@code 400 (Bad Request)} if the <%= instanceName %> is not valid,
+     * or with status {@code 500 (Internal Server Error)} if the <%= instanceName %> couldn't be updated.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+     <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      @PutMapping("/<%= getCompositePrimaryKeyPutPatchGetDeleteMappingUrl(primaryKeySaathratri) %>")
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+    @PutMapping("/{<%= primaryKey.name %>}")
+    <%_ } _%>
+  <%_ if (entitySpringPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringPreAuthorize %>")
+  <%_ } _%>
+    public <% if (reactive) { %>Mono<<% } %>ResponseEntity<<%= instanceType %>><% if (reactive) { %>><% } %> update<%= entityClass %>(
+      <%_ if (primaryKeySaathratri.composite) { _%>
+        // Composite Primary Key Code
+        <%- getCompositePrimaryKeyPutPatchMappingMethodPathVariableParameters(primaryKeySaathratri) %>,
+      <%_ } else { _%>
+        // Single-value Primary Key Code
+        @PathVariable(value = "<%= primaryKey.name %>", required = false) final <%= primaryKey.type %> <%= primaryKey.name %>,
+      <%_ } _%>       
+        <% if (anyPropertyHasValidation) { %>@Valid <% } %>@RequestBody <%= restClass %> <%= restInstance %>
+    ) throws URISyntaxException {
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          LOG.debug("REST request to update <%= entityClass%> with parameters <%= getCompositePrimaryKeyLogStatement(primaryKeySaathratri) %>, <%= instanceName %>: {}", <%= getCompositePrimaryKeyInstanceVariables(primaryKeySaathratri) %>, <%= instanceName %>);
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        LOG.debug("REST request to update <%= entityClass %> : {}, {}", <%= primaryKey.name %>, <%= instanceName %>);
+        <%_ } _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          if (<%= getCompositePrimaryKeyNullCheck(entityInstance, primaryKeySaathratri, dtoMapstruct) %>) {
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        if (<%= instanceName %>.get<%= primaryKey.nameCapitalized %>() == null) {
+        <%_ } _%>
+            throw new BadRequestAlertException("Invalid <%= primaryKey.name %>", ENTITY_NAME, "idnull");
+        }
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          if (<%= getCompositePrimaryKeyEquivalenceCheck(entityInstance, primaryKeySaathratri, dtoMapstruct) %>) {
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        if (!Objects.equals(<%= primaryKey.name %>, <%= instanceName %>.get<%= primaryKey.nameCapitalized %>())) {
+        <%_ } _%>
+            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
+        }
+
+  <%_ if (reactive) { _%>
+        return <%= entityInstance %>Repository
+            .existsById(<%= primaryKey.name %>)
+            .flatMap(exists -> {
+                if (!exists) {
+                    return Mono.error(new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound"));
+                }
+  <%_ } else { _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          <%_ if (dtoMapstruct) { _%>
+            if (!<%= entityInstance %>Repository.existsById(new <%= entityClass %>Id(<%= getCompositePrimaryKeyInstanceVariablesFromDTOId(entityInstance, primaryKeySaathratri) %>))) {
+          <%_ } else { _%>
+          if (!<%= entityInstance %>Repository.existsById(<%= instanceName %>.get<%= primaryKey.nameCapitalized %>())) {
+          <%_ } _%>
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        if (!<%= entityInstance %>Repository.existsById(<%= primaryKey.name %>)) {
+        <%_ } _%>
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+  <%_ } _%>
+
+  <%_ if (saveUserSnapshot) { _%>
+    <% for (const userRelationship of relationships.filter(rel => rel.otherEntity.builtInUser)) { %>
+      <%_ if (userRelationship.collection) { _%>
+        if (<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalizedPlural %>() != null) {
+            // Save users in case they are new and only exist in gateway
+            userRepository.saveAll(<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalizedPlural %>());
+        }
+      <%_ } else { _%>
+        if (<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalized %>() != null) {
+            // Save user in case it's new and only exists in gateway
+            userRepository.save(<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalized %>());
+        }
+      <%_ } _%>
+    <% } %>
+  <%_ } _%>
+  <%_ if (serviceNo) { _%>
+<%- include('/_global_partials_entity_/save_template', {saveNewEntityOperation: false, returnDirectly: false}); -%>
+  <%_ } _%>
+  <%_ if (reactive) { _%>
+    <%_ if (!serviceNo) { _%>
+            return <%= entityInstance %>Service
+                .update(<%= restInstance %>)
+    <%_ } _%>
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND)))
+                .map(result -> ResponseEntity.ok()
+                    .headers(HeaderUtil.createEntityUpdateAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, result.get<%= primaryKey.nameCapitalized %>()<% if (!primaryKey.typeString) { %>.toString()<% } %>))
+                    .body(result)
+                );
+        });
+  <%_ } else { _%>
+    <%_ if (!serviceNo) { _%>
+        <%- restInstance %> = <%= entityInstance %>Service.update(<%= restInstance %>);
+    <%_ } _%>
+    <%_ if (primaryKeySaathratri.composite) { _%>
+        // Composite Primary Key Code
+        return ResponseEntity.ok()
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%- restInstance %>.get<%= primaryKeySaathratri.nameCapitalized %>()<% if (!primaryKey.typeString || !primaryKeySaathratri.typeString) { %>.toString()<% } %>))
+            .body(<%- restInstance %>);
+    <%_ } else { _%> 
+        // Single-value Primary Key Code
+        return ResponseEntity.ok()
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%- restInstance %>.get<%= primaryKey.nameCapitalized %>()<% if (!primaryKey.typeString) { %>.toString()<% } %>))
+            .body(<%- restInstance %>);
+    <% } %>
+  <%_ } _%>
+    }
+
+
+    /**
+    <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     * {@code PATCH  /<%= entityApiUrl %>/<%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocUrl(primaryKeySaathratri) %>} : Partial updates given fields of an existing <%= entityInstance %>, field will ignore if it is null
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * {@code PATCH  /<%= entityApiUrl %>/:<%= primaryKey.name %>} : Partial updates given fields of an existing <%= entityInstance %>, field will ignore if it is null
+    <%_ } _%>
+     *
+     <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     <%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocMethodParameters(entityInstance, primaryKeySaathratri, "partially update") %>
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * @param <%= primaryKey.name %> the <%= primaryKey.name %> of the <%= instanceName %> to save.
+    <%_ } _%>
+     * @param <%= instanceName %> the <%= instanceName %> to update.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the updated <%= instanceName %>,
+     * or with status {@code 400 (Bad Request)} if the <%= instanceName %> is not valid,
+     * or with status {@code 404 (Not Found)} if the <%= instanceName %> is not found,
+     * or with status {@code 500 (Internal Server Error)} if the <%= instanceName %> couldn't be updated.
+     * @throws URISyntaxException if the Location URI syntax is incorrect.
+     */
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      @PatchMapping(value = "/<%= getCompositePrimaryKeyPutPatchGetDeleteMappingUrl(primaryKeySaathratri) %>", consumes = {"application/json", "application/merge-patch+json"})
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+    @PatchMapping(value = "/{<%= primaryKey.name %>}", consumes = {"application/json", "application/merge-patch+json"})
+    <%_ } _%>
+  <%_ if (entitySpringPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringPreAuthorize %>")
+  <%_ } _%>
+    public <% if (reactive) { %>Mono<<% } %>ResponseEntity<<%= instanceType %>><% if (reactive) { %>><% } %> partialUpdate<%= entityClass %>(
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      <%- getCompositePrimaryKeyPutPatchMappingMethodPathVariableParameters(primaryKeySaathratri) %>,
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+        @PathVariable(value = "<%= primaryKey.name %>", required = false) final <%= primaryKey.type %> <%= primaryKey.name %>,
+    <%_ } _%>
+        <% if (anyPropertyHasValidation) { %>@NotNull <% } %>@RequestBody <%= instanceType %> <%= instanceName %>
+    ) throws URISyntaxException {
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          LOG.debug("REST request to partially update <%= entityClass%> with the parameters <%= getCompositePrimaryKeyLogStatement(primaryKeySaathratri) %>, <%= instanceName %>: {}", <%= getCompositePrimaryKeyInstanceVariables(primaryKeySaathratri) %>, <%= instanceName %>);
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        LOG.debug("REST request to partial update <%= entityClass %> partially : {}, {}", <%= primaryKey.name %>, <%= instanceName %>);
+        <%_ } _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          if (<%= getCompositePrimaryKeyNullCheck(entityInstance, primaryKeySaathratri, dtoMapstruct) %>) {
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        if (<%= instanceName %>.get<%= primaryKey.nameCapitalized %>() == null) {
+        <%_ } _%>
+            throw new BadRequestAlertException("Invalid <%= primaryKey.name %>", ENTITY_NAME, "idnull");
+        }
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          if (<%= getCompositePrimaryKeyEquivalenceCheck(entityInstance, primaryKeySaathratri, dtoMapstruct) %>) {
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        if (!Objects.equals(<%= primaryKey.name %>, <%= instanceName %>.get<%= primaryKey.nameCapitalized %>())) {
+        <%_ } _%>
+            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
+        }
+
+  <%_ if (reactive) { _%>
+        return <%= entityInstance %>Repository.existsById(<%= primaryKey.name %>).flatMap(exists -> {
+            if (!exists) {
+                return Mono.error(new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound"));
+            }
+  <%_ } else { _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          <%_ if (dtoMapstruct) { _%>
+            if (!<%= entityInstance %>Repository.existsById(new <%= entityClass %>Id(<%= getCompositePrimaryKeyInstanceVariablesFromDTOId(entityInstance, primaryKeySaathratri) %>))) {
+          <%_ } else { _%>
+          if (!<%= entityInstance %>Repository.existsById(<%= instanceName %>.get<%= primaryKey.nameCapitalized %>())) {
+          <%_ } _%>
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        if (!<%= entityInstance %>Repository.existsById(<%= primaryKey.name %>)) {
+        <%_ } _%>
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+  <%_ } _%>
+
+  <%_ if (saveUserSnapshot) { _%>
+    <% for (const userRelationship of relationships.filter(rel => rel.otherEntity.builtInUser)) { %>
+      <%_ if (userRelationship.collection) { _%>
+        if (<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalizedPlural %>() != null) {
+            // Save users in case they are new and only exist in gateway
+            userRepository.saveAll(<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalizedPlural %>());
+        }
+      <%_ } else { _%>
+        if (<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalized %>() != null) {
+            // Save user in case it's new and only exists in gateway
+            userRepository.save(<%= instanceName %>.get<%= userRelationship.relationshipNameCapitalized %>());
+        }
+      <%_ } _%>
+    <% } %>
+  <%_ } _%>
+
+            <%- include('../../_partials_entity_/patch_template', {isService: false, viaService: viaService}); -%>
+  <%_ if (reactive) { _%>
+            return result
+                .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND)))
+                .map(res -> ResponseEntity.ok()
+                .headers(HeaderUtil.createEntityUpdateAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, res.get<%= primaryKey.nameCapitalized %>()<% if (primaryKey.type !== 'String') { %>.toString()<% } %>))
+                .body(res)
+            );
+        });
+  <%_ } else { _%>
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      return ResponseUtil.wrapOrNotFound(
+          result,
+          HeaderUtil.createEntityUpdateAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%= instanceName %>.get<%= primaryKeySaathratri.nameCapitalized %>().toString())
+      );
+  <%_ } else { _%> 
+            // Single-value Primary Key Code
+            return ResponseUtil.wrapOrNotFound(
+                result,
+                HeaderUtil.createEntityUpdateAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%= instanceName %>.get<%= primaryKey.nameCapitalized %>()<% if (primaryKey.type !== 'String') { %>.toString()<% } %>)
+            );
+  <%_ } %>
+  <%_ } _%>
+    }
+<%_ } _%>
+
+    /**
+     * {@code GET  /<%= entityApiUrl %>} : get all the <%= entityInstancePlural %>.
+     *
+<%_ if (!paginationNo) { _%>
+     * @param pageable the pagination information.
+  <%_ if (reactive) { _%>
+     * @param request a {@link ServerHttpRequest} request.
+  <%_ } _%>
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering) { _%>
+     * @param criteria the criteria which the requested entities should match.
+<%_ } else if (fieldsContainNoOwnerOneToOne) { _%>
+     * @param filter the filter of the request.
+<%_ } _%>
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of <%= entityInstancePlural %> in body.
+     */
+<%_ if (reactive) { _%>
+    @GetMapping(value = "", produces = MediaType.APPLICATION_JSON_VALUE)
+<%_ } else { _%>
+    @GetMapping("")
+<%_ } _%>
+<%_ if (databaseTypeSql && isUsingMapsId && !viaService) { _%>
+    @Transactional(readOnly = true)
+<%_ } _%>
+<%_ if (entitySpringReadPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringReadPreAuthorize %>")
+<%_ } _%>
+<%- include('../../_partials_entity_/get_all_template', {viaService}); -%>
+
+<%_ /* Saathratri: Cassandra slice-based pagination endpoint */ _%>
+<%_ if (databaseTypeCassandra && !reactive) { _%>
+    /**
+     * {@code GET  /<%= entityApiUrl %>/slice} : get <%= entityInstancePlural %> with Cassandra cursor-based pagination.
+     *
+     * @param pagingState the Cassandra paging state for cursor-based pagination.
+     * @param size the page size.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of <%= entityInstancePlural %> in body.
+     */
+    @GetMapping("/slice")
+  <%_ if (entitySpringReadPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringReadPreAuthorize %>")
+  <%_ } _%>
+    public ResponseEntity<List<<%= restClass %>>> getAll<%= entityClassPlural %>Slice(
+            @RequestParam(name = "pagingState", required = false) String pagingState,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        LOG.debug("REST request to get a slice of <%= entityClassPlural %>, pagingState: {}, size: {}", pagingState, size);
+
+        // Build CassandraPageRequest from pagingState parameter
+        org.springframework.data.domain.Pageable cassandraPageRequest;
+        if (pagingState == null || pagingState.isEmpty()) {
+            cassandraPageRequest = CassandraPageRequest.first(size);
+        } else {
+            try {
+                java.nio.ByteBuffer pagingStateBuffer;
+                try {
+                    pagingStateBuffer = java.nio.ByteBuffer.wrap(java.util.Base64.getUrlDecoder().decode(pagingState));
+                } catch (IllegalArgumentException e) {
+                    pagingStateBuffer = java.nio.ByteBuffer.wrap(java.util.Base64.getDecoder().decode(pagingState));
+                }
+                cassandraPageRequest = CassandraPageRequest.of(org.springframework.data.domain.PageRequest.of(0, size), pagingStateBuffer);
+            } catch (Exception e) {
+                LOG.warn("Invalid paging state, starting from beginning", e);
+                cassandraPageRequest = CassandraPageRequest.first(size);
+            }
+        }
+
+        Slice<<%= restClass %>> slice = <%= entityInstance %><%= viaService ? 'Service' : 'Repository' %>.findAllSlice(cassandraPageRequest);
+        List<<%= restClass %>> result = slice.getContent();
+
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        boolean hasNext = slice.hasNext();
+        if (hasNext && slice.getPageable() instanceof CassandraPageRequest) {
+            java.nio.ByteBuffer nextPagingState = null;
+            CassandraPageRequest currentCassandraPageRequest = (CassandraPageRequest) slice.getPageable();
+            if (currentCassandraPageRequest.getPagingState() != null) {
+                org.springframework.data.domain.Pageable nextPageable = slice.nextPageable();
+                if (nextPageable instanceof CassandraPageRequest) {
+                    nextPagingState = ((CassandraPageRequest) nextPageable).getPagingState();
+                }
+            }
+            if (nextPagingState != null) {
+                byte[] pagingStateBytes = new byte[nextPagingState.remaining()];
+                nextPagingState.duplicate().get(pagingStateBytes);
+                headers.add("X-Paging-State", java.util.Base64.getUrlEncoder().encodeToString(pagingStateBytes));
+            }
+        }
+        headers.add("X-Has-Next-Page", String.valueOf(hasNext));
+        headers.add("Access-Control-Expose-Headers", "X-Has-Next-Page, X-Paging-State, X-Total-Count");
+
+        return ResponseEntity.ok().headers(headers).body(result);
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+
+<%_ if (!jpaMetamodelFiltering && reactive && paginationNo) { _%>
+    /**
+     * {@code GET  /<%= entityApiUrl %>} : get all the <%= entityInstancePlural %> as a stream.
+     * @return the {@link Flux} of <%= entityInstancePlural %>.
+     */
+    @GetMapping(value = "", produces = MediaType.APPLICATION_NDJSON_VALUE)
+  <%_ if (databaseTypeSql && isUsingMapsId && !viaService) { _%>
+    @Transactional(readOnly = true)
+  <%_ } _%>
+<%_ if (entitySpringReadPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringReadPreAuthorize %>")
+<%_ } _%>
+    public Flux<<%= instanceType %>> getAll<%= entityClassPlural %>AsStream() {
+        LOG.debug("REST request to get all <%= entityClassPlural %> as a stream");
+  <%_ if (viaService) { _%>
+        return <%= entityInstance %>Service.findAll();
+  <%_ } else { _%>
+        return <%= entityInstance %>Repository.findAll()<%_ if (dtoMapstruct) { _%>.map(<%= entityToDtoReference %>)<%_ } _%>;
+  <%_ } _%>
+    }
+
+<%_ } _%>
+    /**
+    <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code   
+     * {@code GET  /<%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocUrl(primaryKeySaathratri) %>} : get the "<%= primaryKey.name %>" <%= entityInstance %>.
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * {@code GET  /:<%= primaryKey.name %>} : get the "<%= primaryKey.name %>" <%= entityInstance %>.
+    <%_ } _%>
+     *
+     <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     <%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocMethodParameters(entityInstance, primaryKeySaathratri, "retrieve") %>
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * @param <%= primaryKey.name %> the <%= primaryKey.name %> of the <%= instanceName %> to retrieve.
+    <%_ } _%>
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and with body the <%= instanceName %>, or with status {@code 404 (Not Found)}.
+     */
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      @GetMapping("/get")
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+    @GetMapping("/{<%= primaryKey.name %>}")
+    <%_ } _%>
+<%_ if (databaseTypeSql && isUsingMapsId && !viaService) { _%>
+    @Transactional(readOnly = true)
+<%_ } _%>
+<%_ if (entitySpringReadPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringReadPreAuthorize %>")
+<%_ } _%>
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      public <% if (reactive) { %>Mono<<% } %>ResponseEntity<<%= instanceType %>><% if (reactive) { %>><% } %> get<%= entityClass %>(<%- getCompositePrimaryKeyResourceClassMethodQueryParameters(primaryKeySaathratri) %>) {
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+    public <% if (reactive) { %>Mono<<% } %>ResponseEntity<<%= instanceType %>><% if (reactive) { %>><% } %> get<%= entityClass %>(@PathVariable("<%= primaryKey.name %>") <%= primaryKey.type %> <%= primaryKey.name %>) {
+    <%_ } _%>
+	<%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          LOG.debug("REST request to get <%= entityClass %> with parameters <%= getCompositePrimaryKeyLogStatement(primaryKeySaathratri)%>", <%= getCompositePrimaryKeyInstanceVariables(primaryKeySaathratri) %>);
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        LOG.debug("REST request to get <%= entityClass %> : {}", <%= primaryKey.name %>);
+        <%_ } _%>    
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          <%= entityClass %>Id <%= primaryKeySaathratri.name %> = new <%= entityClass %>Id();
+          <%= getCompositePrimaryKeyGetDeleteMappingSetStatements(primaryKeySaathratri) %>
+        <%_ } _%>
+        <%- include('../../_partials_entity_/get_template', {viaService, returnDirectly:false, implementsEagerLoadApis}); -%>
+        return ResponseUtil.wrapOrNotFound(<%= instanceName %>);
+    }
+<%_ if (!readOnly) { _%>
+
+    /**
+    <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     * {@code DELETE  /<%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocUrl(primaryKeySaathratri) %>} : delete the "<%= primaryKeySaathratri.name %>" <%= entityInstance %>.
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * {@code DELETE  /:<%= primaryKey.name %>} : delete the "<%= primaryKey.name %>" <%= entityInstance %>.
+    <%_ } _%>
+     *
+     <%_ if (primaryKeySaathratri.composite) { _%>
+     * // Composite Primary Key Code
+     <%= getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocMethodParameters(entityInstance, primaryKeySaathratri, "delete") %>
+    <%_ } else { _%>
+     * // Single-value Primary Key Code
+     * @param <%= primaryKey.name %> the <%= primaryKey.name %> of the <%= instanceName %> to delete.
+    <%_ } _%>
+     * @return the {@link ResponseEntity} with status {@code 204 (NO_CONTENT)}.
+     */
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      @DeleteMapping("/<%= getCompositePrimaryKeyPutPatchGetDeleteMappingUrl(primaryKeySaathratri) %>")
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+    @DeleteMapping("/{<%= primaryKey.name %>}")
+    <%_ } _%>
+  <%_ if (entitySpringPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringPreAuthorize %>")
+  <%_ } _%>
+    <%_ if (primaryKeySaathratri.composite) { _%>
+      // Composite Primary Key Code
+      public <% if (reactive) { %>Mono<<% } %>ResponseEntity<Void><% if (reactive) { %>><% } %> delete<%= entityClass %>(<%- getCompositePrimaryKeyPutPatchMappingMethodPathVariableParameters(primaryKeySaathratri) %>) {
+    <%_ } else { _%>
+      // Single-value Primary Key Code
+    public <% if (reactive) { %>Mono<<% } %>ResponseEntity<Void><% if (reactive) { %>><% } %> delete<%= entityClass %>(@PathVariable("<%= primaryKey.name %>") <%= primaryKey.type %> <%= primaryKey.name %>) {
+    <%_ } _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          LOG.debug("REST request to delete <%= entityClass %> with parameters <%= getCompositePrimaryKeyLogStatement(primaryKeySaathratri)%>", <%= getCompositePrimaryKeyInstanceVariables(primaryKeySaathratri) %>);
+        <%_ } else { _%>
+          // Single-value Primary Key Code
+        LOG.debug("REST request to delete <%= entityClass %> : {}", <%= primaryKey.name %>);
+        <%_ } _%>
+        <%_ if (primaryKeySaathratri.composite) { _%>
+          // Composite Primary Key Code
+          <%= entityClass %>Id <%= primaryKeySaathratri.name %> = new <%= entityClass %>Id();
+          <%= getCompositePrimaryKeyGetDeleteMappingSetStatements(primaryKeySaathratri) %>
+        <%_ } _%>
+<%- include('../../_partials_entity_/delete_template', {viaService: viaService, fromResource: true}); -%>
+  <%_ if (reactive) { _%>
+    <%_ if (databaseTypeCouchbase) { _%>
+            .then(Mono.just(ResponseEntity.noContent()
+                .headers(HeaderUtil.createEntityDeletionAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%= primaryKey.name %><% if (primaryKey.type !== 'String') { %>.toString()<% } %>)).build())
+            );
+    <%_ } else { %>
+            .then(Mono.just(ResponseEntity.noContent()
+                .headers(HeaderUtil.createEntityDeletionAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%= primaryKey.name %><% if (primaryKey.type !== 'String') { %>.toString()<% } %>)).build())
+        );
+    <%_ } _%>
+  <%_ } else { _%>
+        return ResponseEntity.noContent().headers(HeaderUtil.createEntityDeletionAlert(applicationName, <%= enableTranslation %>, ENTITY_NAME, <%= primaryKey.name %><% if (!primaryKey.fields[0].fieldTypeString) { %>.toString()<% } %>)).build();
+  <%_ } _%>
+    }
+<%_ } _%>
+<%_ if (searchEngineAny) { _%>
+
+    /**
+     * {@code SEARCH  /<%= entityApiUrl %>/_search?query=:query} : search for the <%= entityInstance %> corresponding
+     * to the query.
+     *
+     * @param query the query of the <%= entityInstance %> search.
+  <%_ if (!paginationNo) { _%>
+     * @param pageable the pagination information.
+    <%_ if (reactive) { _%>
+     * @param request a {@link ServerHttpRequest} request.
+    <%_ } _%>
+  <%_ } _%>
+     * @return the result of the search.
+     */
+    @GetMapping("/_search")
+  <%_ if (entitySpringReadPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringReadPreAuthorize %>")
+  <%_ } _%>
+<%- include('../../_partials_entity_/search_template', {viaService}); -%>
+<%_ } _%>
+<% if (primaryKeySaathratri.composite) { 
+  let methodsArray = generatePrimaryKeyMethods(entityClass, entityInstance, entityInstanceSnakeCase, primaryKeySaathratri, "Resource");
+  // Output all method names at once, joined by newlines for readability
+  let methodsOutput = methodsArray.join('\n');
+%>
+<%- methodsOutput %>
+<% } %>
+<%_ /* Saathratri modification - AI text search endpoint */ _%>
+<%_
+const vectorFieldsForResource = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFieldsForResource = vectorFieldsForResource.length > 0;
+_%>
+<%_ if (hasVectorFieldsForResource && !reactive) { _%>
+
+    // ==================== AI Text Search Endpoint ====================
+
+    /**
+     * {@code GET  /<%= entityApiUrl %>/ai-search} : search for <%= entityInstancePlural %> using AI-powered semantic similarity.
+     *
+     * @param query the text query to search for.
+     * @param limit maximum number of results to return (default: 10).
+     * @param fields optional comma-separated list of vector field names to search in.
+     * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of matching entities in body.
+     */
+    @GetMapping("/ai-search")
+  <%_ if (entitySpringReadPreAuthorize) { _%>
+    @PreAuthorize("<%- entitySpringReadPreAuthorize %>")
+  <%_ } _%>
+    public ResponseEntity<List<<%= instanceType %>>> aiSearch(
+            @RequestParam("query") String query,
+            @RequestParam(value = "limit", defaultValue = "10") int limit,
+            @RequestParam(value = "fields", required = false) String fields) {
+        LOG.debug("REST request to AI search <%= entityClassPlural %> for query: {}, limit: {}, fields: {}", query, limit, fields);
+        List<String> fieldList = null;
+        if (fields != null && !fields.isBlank()) {
+            fieldList = java.util.Arrays.stream(fields.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toList());
+        }
+    <%_ if (viaService) { _%>
+        List<<%= instanceType %>> result = <%= entityInstance %>Service.aiSearch(query, limit, fieldList);
+    <%_ } else { _%>
+        LOG.warn("AI search requires service layer, returning empty results");
+        List<<%= instanceType %>> result = List.of();
+    <%_ } _%>
+        return ResponseEntity.ok().body(result);
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+
+  private String getUrlEncodedParameterValue(String parameterValue) {
+    String encodedValue = null;
+    try {
+        encodedValue = URLEncoder.encode(parameterValue, StandardCharsets.UTF_8);
+        LOG.info("Encoded String '{}' is '{}'.", parameterValue, encodedValue);
+    } catch (Exception e) {
+        LOG.error(e.getMessage(), e);
+    }
+    return encodedValue;
+  }
+}

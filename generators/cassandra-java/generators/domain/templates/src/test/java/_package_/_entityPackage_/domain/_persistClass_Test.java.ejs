@@ -1,0 +1,82 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.domain;
+
+import static <%= entityAbsolutePackage %>.domain.<%= persistClass %>TestSamples.*;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import <%= packageName %>.web.rest.TestUtil;
+<%_ if ((primaryKey && primaryKey.hasUUID) || primaryKeySaathratri.hasUUID || primaryKeySaathratri.hasTimeUUID ) { _%>
+import java.util.UUID;
+<%_ } _%>
+<%_ 
+    // Composite Primary Key Code
+    if (primaryKeySaathratri.composite) { 
+_%>
+import java.time.Instant;
+<%_ 
+    }
+_%>
+
+class <%= persistClass %>Test {
+
+    @Test
+    void equalsVerifier() throws Exception {
+        TestUtil.equalsVerifier(<%= persistClass %>.class);
+<%_if (!embedded) { _%>
+        <%= persistClass %> <%= persistInstance %>1 = get<%= persistClass %>Sample1();
+	<%_ if(primaryKeySaathratri.composite) { _%>
+        <%= persistInstance %>1.set<%= primaryKeySaathratri.nameCapitalized %>(<%- getCompositePrimaryKeyComputeValue(entityClass, primaryKeySaathratri, databaseType, 1) %>);
+	<%_ } _%>
+        <%= persistClass %> <%= persistInstance %>2 = new <%= persistClass %>();
+        assertThat(<%= persistInstance %>1).isNotEqualTo(<%= persistInstance %>2);
+
+        <%_ if(primaryKeySaathratri.composite) { _%>
+        <%= persistInstance %>2.set<%= primaryKeySaathratri.nameCapitalized %>(<%= persistInstance %>1.get<%= primaryKeySaathratri.nameCapitalized %>());
+        <%_ } else { _%>
+        <%= persistInstance %>2.set<%= primaryKey.nameCapitalized %>(<%= persistInstance %>1.get<%= primaryKey.nameCapitalized %>());
+        <%_ } _%>
+        assertThat(<%= persistInstance %>1).isEqualTo(<%= persistInstance %>2);
+        <%_ if(primaryKeySaathratri.composite) { _%>
+	<%= persistInstance %>2.set<%= primaryKeySaathratri.nameCapitalized %>(<%- getCompositePrimaryKeyComputeValue(entityClass, primaryKeySaathratri, databaseType, 2) %>);
+        <%_ } _%>
+        <%= persistInstance %>2 = get<%= persistClass %>Sample2();
+        assertThat(<%= persistInstance %>1).isNotEqualTo(<%= persistInstance %>2);
+<%_ } _%>
+    }
+<%_if (!updatableEntity) { _%>
+
+    @Test
+    void hashCodeVerifier() {
+        <%= persistClass %> <%= persistInstance %> = new <%= persistClass %>();
+        assertThat(<%= persistInstance %>.hashCode()).isZero();
+
+        <%= persistClass %> <%= persistInstance %>1 = get<%= persistClass %>Sample1();
+        <%= persistInstance %>.set<%= primaryKey.nameCapitalized %>(<%= persistInstance %>1.get<%= primaryKey.nameCapitalized %>());
+        assertThat(<%= persistInstance %>).hasSameHashCodeAs(<%= persistInstance %>1);
+    }
+<%_ } _%>
+
+
+
+
+
+
+
+}

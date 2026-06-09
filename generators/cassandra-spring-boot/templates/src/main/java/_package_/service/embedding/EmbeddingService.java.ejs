@@ -1,0 +1,55 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+-%>
+package <%= packageName %>.service.embedding;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Service;
+
+/**
+ * Service for generating text embeddings using Spring AI.
+ * Used for AI-powered semantic search across vector fields.
+ */
+@Service
+public class EmbeddingService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EmbeddingService.class);
+
+    private final EmbeddingModel embeddingModel;
+
+    public EmbeddingService(@Nullable EmbeddingModel embeddingModel) {
+        this.embeddingModel = embeddingModel;
+    }
+
+    /**
+     * Check if the embedding service is available.
+     */
+    public boolean isAvailable() {
+        return embeddingModel != null;
+    }
+
+    /**
+     * Generate an embedding vector for the given text.
+     *
+     * @param text the text to embed
+     * @return the embedding as a float array, or null if generation fails
+     */
+    public float[] generateEmbedding(String text) {
+        if (text == null || text.isBlank()) {
+            LOG.debug("Skipping embedding generation for null/blank text");
+            return null;
+        }
+
+        try {
+            float[] embedding = embeddingModel.embed(text);
+            LOG.debug("Generated embedding with {} dimensions", embedding.length);
+            return embedding;
+        } catch (Exception e) {
+            LOG.error("Failed to generate embedding: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+}

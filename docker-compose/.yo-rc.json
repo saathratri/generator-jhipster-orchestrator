@@ -1,0 +1,18 @@
+{
+  "generator-jhipster": {
+    "deploymentType": "docker-compose",
+    "appsFolders": [
+      "orchestratorgateway",
+      "psqlblog",
+      "psqlstore",
+      "cassandrablog",
+      "cassandrastore"
+    ],
+    "directoryPath": "../",
+    "gatewayType": "SpringCloudGateway",
+    "monitoring": "no",
+    "clusteredDbApps": [],
+    "serviceDiscoveryType": "eureka",
+    "dockerRepositoryName": "amarppatel"
+  }
+}

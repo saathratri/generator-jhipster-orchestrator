@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SubGenerator sql-angular of ai-postgresql JHipster blueprint > run > should succeed 1`] = `
+{
+  ".yo-rc.json": {
+    "stateCleared": "modified",
+  },
+  "src/main/webapp/app/entities/entity-navbar-items.ts": {
+    "stateCleared": "modified",
+  },
+  "template-file-sql-angular": {
+    "stateCleared": "modified",
+  },
+}
+`;

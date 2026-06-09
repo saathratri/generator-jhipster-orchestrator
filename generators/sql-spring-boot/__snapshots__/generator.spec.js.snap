@@ -1,0 +1,18 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SubGenerator sql-spring-boot of ai-postgresql JHipster blueprint > run > should succeed 1`] = `
+{
+  ".yo-rc.json": {
+    "stateCleared": "modified",
+  },
+  "src/main/resources/config/application-dev.yml": {
+    "stateCleared": "modified",
+  },
+  "template-file-sql-spring-boot": {
+    "stateCleared": "modified",
+  },
+  "template-file-sql-spring-data-relational": {
+    "stateCleared": "modified",
+  },
+}
+`;

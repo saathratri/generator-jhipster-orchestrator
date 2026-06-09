@@ -1,0 +1,140 @@
+import dayjs from 'dayjs/esm';
+import utc from 'dayjs/esm/plugin/utc';
+import { Pipe, PipeTransform } from '@angular/core';
+
+dayjs.extend(utc);
+
+export const DATE_FORMAT_2 = "YYYY-MM-DD";
+export const DATE_FORMAT_3 = "MM/DD/YYYY";
+
+// This is the format compatible with the date time widget in angular.
+// export const DATE_TIME_FORMAT_2 = "YYYY-MM-DDTHH:mm:ss"; // Example: 2022-04-16T02:31:30
+export const DATE_TIME_FORMAT_2 = "D MMM YYYY HH:mm:ss"; 
+
+export const DATE_TIME_FORMAT_3 = "MM-DD-YYYY, hh:mm A"; // Format 04-15-2022, 10:31 PM
+
+// Unix Timestamp is equivalent to Millis from Epoch in the code below.
+export function dateLongToFormattedString(dateLong: number | null): string {
+  return dateLongToDayjs(dateLong).format(DATE_FORMAT_2);
+}
+
+export function dateLongToDayjs(dateLong: number | null): dayjs.Dayjs {
+  let dayjsDate = dayjs();
+
+  if( dateLong == null) {
+    return dayjsDate;
+  }
+
+  dayjsDate = dayjs.utc(dateLong);
+
+  return dayjsDate;
+}
+
+// This is the format compatible with the date time widget in angular.
+export function datetimeLongToFormattedString(datetimeLong: number | null): string {
+  let stringDate = dayjs().format(DATE_TIME_FORMAT_2);
+
+  if(datetimeLong == null) {
+    return stringDate;
+  }
+
+  stringDate = dayjs.utc(datetimeLong).local().format(DATE_TIME_FORMAT_2);
+
+  return stringDate;
+}
+
+// The below function is used in entity.service.ts.ejs.
+export function dayjsToDateLong(dayjsDate: any): number {
+  let unixDate = dayjs().utc().valueOf();
+
+  if (dayjsDate == null) { return unixDate; }
+  
+  if (dayjsDate instanceof dayjs) {
+    unixDate = (dayjsDate as dayjs.Dayjs).utc().valueOf();
+  }
+
+  return unixDate;
+}
+
+// The below function is used in entity.service.ts.ejs.
+export function formattedStringDateToDateLong(dateString: any): number {
+  let unixDate = dayjs().utc().valueOf();
+
+  if (dateString == null) {
+    return unixDate;
+  } else if ( typeof dateString === 'string' ) {
+    unixDate = dayjs(dateString).unix() * 1000;
+  }
+
+  return unixDate;
+}
+
+// The below function is used in entity.service.ts.ejs.
+export function formattedStringToDateTimeLong(dateString: any, formatDatetime: string): number {
+  let unixDate = dayjs().utc().valueOf();
+
+  if( typeof dateString === 'string' ) {
+    unixDate = dayjs(dateString, formatDatetime).utc().valueOf();
+  }
+
+  return unixDate;
+}
+
+export function datetimeStringToFormattedString(datetimeString: string): string {
+  const stringDate = dayjs(datetimeString, DATE_TIME_FORMAT_3).format(DATE_TIME_FORMAT_2);
+
+  return stringDate;
+}
+
+/**
+ * Convert UTC_DATE dayjs object to JavaScript Date for Material Datepicker.
+ * The dayjs represents UTC midnight, and we need to create a Date that
+ * will display correctly in the datepicker without timezone shift.
+ */
+export function utcDayjsToDate(dayjsDate: dayjs.Dayjs | null | undefined): Date | null {
+  if (dayjsDate === null || dayjsDate === undefined) {
+    return null;
+  }
+  // Get the UTC date parts and create a local Date to prevent timezone shift
+  const utcDate = dayjsDate.utc();
+  return new Date(utcDate.year(), utcDate.month(), utcDate.date());
+}
+
+/**
+ * Convert JavaScript Date (from Material Datepicker) to UTC_DATE dayjs object.
+ * The selected date should be stored as UTC midnight dayjs.
+ */
+export function dateToUtcDayjs(date: Date | null | undefined): dayjs.Dayjs | null {
+  if (date === null || date === undefined) {
+    return null;
+  }
+  // Create a dayjs from the date parts at UTC midnight
+  return dayjs.utc().year(date.getFullYear()).month(date.getMonth()).date(date.getDate()).startOf('day');
+}
+
+/**
+ * Convert local dayjs (from Material Datepicker with DayjsDateAdapter) to UTC_DATE dayjs object.
+ * Takes the year, month, date from the local dayjs and creates a UTC midnight dayjs.
+ * Use this when saving UTC_DATE fields - the user's selected date becomes UTC midnight.
+ */
+export function localDayjsToUtcDayjs(localDate: dayjs.Dayjs | null | undefined): dayjs.Dayjs | null {
+  if (localDate === null || localDate === undefined) {
+    return null;
+  }
+  // Take the date parts from local dayjs and create UTC midnight
+  return dayjs.utc().year(localDate.year()).month(localDate.month()).date(localDate.date()).startOf('day');
+}
+
+/**
+ * Convert UTC_DATE dayjs object to local dayjs for Material Datepicker display.
+ * Takes the year, month, date from the UTC dayjs and creates a local dayjs.
+ * Use this when loading UTC_DATE fields into forms - prevents timezone shift in display.
+ */
+export function utcDayjsToLocalDayjs(utcDate: dayjs.Dayjs | null | undefined): dayjs.Dayjs | null {
+  if (utcDate === null || utcDate === undefined) {
+    return null;
+  }
+  // Get the UTC date parts and create a local dayjs with the same year/month/date
+  const utcParts = utcDate.utc();
+  return dayjs().year(utcParts.year()).month(utcParts.month()).date(utcParts.date()).startOf('day');
+}

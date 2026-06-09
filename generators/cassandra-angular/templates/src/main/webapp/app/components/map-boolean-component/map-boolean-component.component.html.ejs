@@ -1,0 +1,64 @@
+<div class="container">
+  <form [formGroup]="form">
+    <!-- Existing Entries -->
+    @for (control of formArray.controls; track control; let i = $index) {
+    <div class="input-row">
+
+      <!-- Read-Only Key -->
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Key</mat-label>
+        <input matInput [formControl]="getFormControl(i, 'key')" readonly />
+      </mat-form-field>
+
+      <!-- Disabled Boolean Toggle -->
+      <mat-slide-toggle
+        [formControl]="getFormControl(i, 'value')"
+        [disabled]="true"
+        class="large-toggle">
+        {{ getFormControl(i, 'value').value === null ? 'Please select' : getFormControl(i, 'value').value ? 'True' : 'False' }}
+      </mat-slide-toggle>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button type="button" mat-icon-button (click)="openEditBooleanDialog(i)" [attr.data-cy]="fieldName + '-row-' + i + '-edit'">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button type="button" mat-icon-button (click)="deleteRow(i)" [attr.data-cy]="fieldName + '-row-' + i + '-delete'">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+    }
+
+    <!-- Add New Entry Row -->
+    <div class="input-row">
+      <!-- New Key Input -->
+      <mat-form-field appearance="outline" class="form-field">
+        <mat-label>Key</mat-label>
+        <input
+          matInput
+          formControlName="newKey"
+          (blur)="form.controls['newKey'].markAsTouched()" [attr.data-cy]="fieldName + '-add-key'" />
+        @if (form.controls['newKey'].invalid && form.controls['newKey'].touched) { <mat-error>
+          Key is required
+        </mat-error> }
+      </mat-form-field>
+
+      <!-- New Boolean Toggle -->
+      <mat-slide-toggle formControlName="newValue" class="large-toggle" [attr.data-cy]="fieldName + '-add-toggle'">
+        {{ form.controls['newValue'].value === null ? 'Please select' : form.controls['newValue'].value ? 'True' : 'False' }}
+      </mat-slide-toggle>
+
+      <!-- Add Button -->
+      <button
+        type="button"
+        mat-raised-button
+        color="primary"
+        [disabled]="form.invalid"
+        (click)="addNewRow()"
+        class="add-button" [attr.data-cy]="fieldName + '-add-button'">
+        Add
+      </button>
+    </div>
+  </form>
+</div>

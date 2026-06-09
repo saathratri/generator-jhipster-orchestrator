@@ -1,0 +1,146 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= packageName %>.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+// --- SAATHRATRI CHANGE: Logger import for Cassandra Astra DB property logging ---
+<%_ if (applicationType === 'microservice' && databaseType === 'cassandra') { _%>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+<%_ } _%>
+// --- END SAATHRATRI CHANGE ---
+/**
+ * Properties specific to <%= humanizedBaseName %>.
+ * <p>
+ * Properties are configured in the {@code application.yml} file.
+ * See {@link tech.jhipster.config.JHipsterProperties} for a good example.
+ */
+@ConfigurationProperties(prefix = "application", ignoreUnknownFields = false)
+public class ApplicationProperties {
+<%_ if (databaseType === 'sql' && !reactive) { _%>
+    // --- SAATHRATRI CHANGE: Pre-seed Liquibase property/getter/inner-class that upstream
+    // jhipster:spring-boot:liquibase#customizeApplicationProperties would otherwise try to
+    // inject via needle markers in POST_WRITING. When this blueprint writes the file during
+    // workspaces regen the needles are occasionally not visible to the customizer's editFile
+    // pass and it throws "Missing required jhipster-needle application-properties-property".
+    // Seeding here makes the upstream customizer's content check (checkContentIn) match and
+    // returns early, so the file is correct regardless of ordering. ---
+
+    private final Liquibase liquibase = new Liquibase();
+<%_ } _%>
+
+    // jhipster-needle-application-properties-property
+
+<%_ if (databaseType === 'sql' && !reactive) { _%>
+    public Liquibase getLiquibase() {
+        return liquibase;
+    }
+
+<%_ } _%>
+    // jhipster-needle-application-properties-property-getter
+
+<%_ if (databaseType === 'sql' && !reactive) { _%>
+    public static class Liquibase {
+
+        private Boolean asyncStart = true;
+
+        public Boolean getAsyncStart() {
+            return asyncStart;
+        }
+
+        public void setAsyncStart(Boolean asyncStart) {
+            this.asyncStart = asyncStart;
+        }
+    }
+    // --- END SAATHRATRI CHANGE ---
+
+<%_ } _%>
+    // jhipster-needle-application-properties-property-class
+// --- SAATHRATRI CHANGE: AWS S3 and DataStax Astra DB properties for Cassandra microservices ---
+<%_ if (applicationType === 'microservice' && databaseType === 'cassandra') { _%>
+
+    private static final Logger logger = LoggerFactory.getLogger(ApplicationProperties.class);
+
+    private String s3fsBucketName;
+    private String s3fsKeyName;
+    private String awsRegion;
+
+    private String clientId;
+    private String clientSecret;
+    private String keyspace;
+
+    public String getS3fsBucketName() {
+        return this.s3fsBucketName;
+    }
+
+    public void setS3fsBucketName(String s3fsBucketName) {
+        this.s3fsBucketName = s3fsBucketName;
+    }
+
+    public String getS3fsKeyName() {
+        return this.s3fsKeyName;
+    }
+
+    public void setS3fsKeyName(String s3fsKeyName) {
+        this.s3fsKeyName = s3fsKeyName;
+    }
+
+    public String getAwsRegion() {
+        return this.awsRegion;
+    }
+
+    public void setAwsRegion(String awsRegion) {
+        this.awsRegion = awsRegion;
+    }
+
+    public String getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(String clientId) {
+        this.clientId = clientId;
+    }
+
+    public String getClientSecret() {
+        return clientSecret;
+    }
+
+    public void setClientSecret(String clientSecret) {
+        this.clientSecret = clientSecret;
+    }
+
+    public String getKeyspace() {
+        return keyspace;
+    }
+
+    public void setKeyspace(String keyspace) {
+        this.keyspace = keyspace;
+    }
+
+    public void printProperties() {
+        logger.info("\nEnvironment Variables Passed Via source ±/.datastax.env:");
+        logger.info("ASTRA_DB_CLIENT_ID = {}", clientId);
+        logger.info("ASTRA_DB_CLIENT_SECRET = {}\n\n", clientSecret);
+        logger.info("ASTRA_DB_REGION = {}", awsRegion);
+        logger.info("ASTRA_DB_KEYSPACE = {}", keyspace);
+    }
+<%_ } _%>
+// --- END SAATHRATRI CHANGE ---
+}

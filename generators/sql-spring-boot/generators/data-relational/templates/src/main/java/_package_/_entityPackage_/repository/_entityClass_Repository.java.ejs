@@ -1,0 +1,319 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.repository;
+
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>;
+
+<%_ /* Saathratri modification - entity graph directive parsing for custom repository methods */ _%>
+<%_
+const normalizeDirectives = value =>
+  value === undefined || value === null
+    ? []
+    : (Array.isArray(value) ? value : [value]).flatMap(v =>
+        typeof v === 'string' ? v.split('|').map(s => s.trim()).filter(Boolean) : [v],
+      );
+const parseDirective = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const [rawMethod, rawAttributes] = directive.split(':');
+  const methodName = rawMethod?.trim();
+  const attributePaths = (rawAttributes
+    ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+    ?.split(',')
+    ?.map(attribute => attribute.trim())
+    ?.filter(Boolean)) ?? [];
+  if (methodName && attributePaths.length > 0) {
+    return { methodName, attributePaths };
+  }
+  return undefined;
+};
+const entityGraphAnnotationValue = typeof entityGraph !== 'undefined' ? entityGraph : undefined;
+const entityGraphIncludeDirectives =
+  typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphIncludeCustomAnnotation) : [];
+const entityGraphExcludeDirectives =
+  typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphExcludeCustomAnnotation) : [];
+const hasEntityGraphIncludeDirectives = entityGraphIncludeDirectives.length > 0;
+const entityGraphRequestedDirectives = [
+  ...normalizeDirectives(entityGraphAnnotationValue),
+  ...entityGraphIncludeDirectives,
+];
+const entityGraphParsedDirectives = [];
+for (const directive of entityGraphRequestedDirectives) {
+  const parsedDirective = parseDirective(directive);
+  if (parsedDirective) {
+    entityGraphParsedDirectives.push(parsedDirective);
+  }
+}
+const relationshipNames = relationships.map(relationship => relationship.propertyName ?? relationship.relationshipName);
+for (const directive of entityGraphExcludeDirectives) {
+  if (typeof directive !== 'string') continue;
+  const [rawMethod, rawAttributes] = directive.split(':');
+  const methodName = rawMethod?.trim();
+  const excludedPaths = (rawAttributes
+    ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+    ?.split(',')
+    ?.map(attribute => attribute.trim())
+    ?.filter(Boolean)) ?? [];
+  const attributePaths = relationshipNames.filter(propertyName => !excludedPaths.includes(propertyName));
+  if (methodName && attributePaths.length > 0) {
+    entityGraphParsedDirectives.push({ methodName, attributePaths });
+  }
+}
+const hasEntityGraphQueries = entityGraphParsedDirectives.length > 0;
+
+/* Saathratri modification - broaden eager load check to include ManyToMany relationships */
+const hasEagerLoadableRelationships = implementsEagerLoadApis && relationships.some(relationship =>
+  relationship.relationshipEagerLoad || relationship.relationshipManyToMany
+);
+/* Saathratri modification - check for vector fields for pgvector similarity search (needs @Param import) */
+const vectorFields = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFields = vectorFields.length > 0;
+/* Saathratri modification - parse @customQueryAnnotation for custom query methods */
+const customQueryRawForImports = typeof annotations !== 'undefined'
+  ? normalizeDirectives(annotations.customQueryAnnotation) : [];
+const customQueryDirectivesForImports = customQueryRawForImports.flatMap(d => typeof d === 'string' ? d.split('|').map(s => s.trim()).filter(Boolean) : [d]);
+const parseCustomQueryForImports = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const colonIdx = directive.indexOf(':');
+  if (colonIdx < 0) return undefined;
+  const methodName = directive.substring(0, colonIdx).trim();
+  const rest = directive.substring(colonIdx + 1).trim();
+  const paramsMatch = rest.match(/params\s*\[\s*([^\]]*)\s*\]/);
+  const params = paramsMatch ? paramsMatch[1].split(',').map(p => p.trim()).filter(Boolean) : [];
+  if (params.length === 0) return undefined;
+  const isSingleIdQuery = params.length === 1 && params[0] === primaryKey.name;
+  return { methodName, params, isSingleIdQuery };
+};
+const parsedCustomQueriesForImports = customQueryDirectivesForImports.map(parseCustomQueryForImports).filter(Boolean);
+const hasCustomQueriesForImports = parsedCustomQueriesForImports.length > 0;
+/* End Saathratri modification */
+const needsOptionalImport = hasEagerLoadableRelationships || hasEntityGraphQueries || parsedCustomQueriesForImports.some(cq => cq.isSingleIdQuery);
+const needsPageAndPageableImport = hasEagerLoadableRelationships;
+const needsParamImport = hasEagerLoadableRelationships || hasEntityGraphQueries || hasVectorFields || hasCustomQueriesForImports;
+_%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - conditional imports based on entity graph, vector, and eager load needs */ _%>
+<%_ if (needsPageAndPageableImport) { _%>
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+<%_ } _%>
+<%_ if (needsParamImport) { _%>
+import org.springframework.data.repository.query.Param;
+<%_ } _%>
+<%_ if (needsOptionalImport) { _%>
+import java.util.Optional;
+<%_ } _%>
+import org.springframework.data.jpa.repository.*;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+<%_ /* End Saathratri modification */ _%>
+<%_ if (primaryKey.typeUUID) { _%>
+
+import java.util.UUID;
+<%_ } _%>
+
+/**
+ * <%= springDataDescription %> repository for the <%= persistClass %> entity.
+<%_ if (containsBagRelationships) { _%>
+ *
+ * When extending this class, extend <%= entityClass %>RepositoryWithBagRelationships too.
+ * For more information refer to https://github.com/jhipster/generator-jhipster/issues/17990.
+<%_ } _%>
+ */
+<%_ if (!implementsEagerLoadApis) { _%>
+@SuppressWarnings("unused")
+<%_ } _%>
+@Repository
+public interface <%= entityClass %>Repository extends <% if (containsBagRelationships) { %><%= entityClass %>RepositoryWithBagRelationships, <% } %>JpaRepository<<%= persistClass %>, <%= primaryKey.type %>><% if (jpaMetamodelFiltering) { %>, JpaSpecificationExecutor<<%= persistClass %>><% } %> {
+<%_ for (const relationship of relationships) { _%>
+  <%_ if (relationship.relationshipManyToOne && relationship.otherEntityUser) { _%>
+
+    @Query("select <%= entityJpqlInstance %> from <%= persistClass %> <%= entityJpqlInstance %> where <%= entityJpqlInstance %>.<%= relationship.relationshipFieldName %>.login = ?#{authentication.name}")
+    List<<%= persistClass %>> findBy<%= relationship.relationshipNameCapitalized %>IsCurrentUser();
+  <%_ } _%>
+<%_ } _%>
+<%_ /* Saathratri modification - use hasEagerLoadableRelationships (includes ManyToMany) instead of implementsEagerLoadApis */ _%>
+<%_ if (hasEagerLoadableRelationships) { _%>
+
+  <%_ /* Saathratri modification - broaden containsToOneEagerRelationship to include ManyToMany */ _%>
+  <%_ const containsToOneEagerRelationship = relationships.some(relationship => (relationship.relationshipEagerLoad && !relationship.bagRelationship) || relationship.relationshipManyToMany); _%>
+    default Optional<<%= persistClass %>> findOneWithEagerRelationships(<%= primaryKey.type %> <%= primaryKey.name %>) {
+        return <% if (containsBagRelationships) { %>this.fetchBagRelationships(<% } %>
+            this.<% if (containsToOneEagerRelationship) { %>findOneWithToOneRelationships<% } else { %>findById<% } %>(<%= primaryKey.name %>)
+        <%  if (containsBagRelationships) { %>)<% } %>;
+    }
+
+    default List<<%= persistClass %>> findAllWithEagerRelationships() {
+        return <% if (containsBagRelationships) { %>this.fetchBagRelationships(<% } %>
+            this.<% if (containsToOneEagerRelationship) { %>findAllWithToOneRelationships<% } else { %>findAll<% } %>()
+        <%  if (containsBagRelationships) { %>)<% } %>;
+    }
+
+    default Page<<%= persistClass %>> findAllWithEagerRelationships(Pageable pageable) {
+        return <% if (containsBagRelationships) { %>this.fetchBagRelationships(<% } %>
+            this.<% if (containsToOneEagerRelationship) { %>findAllWithToOneRelationships<% } else { %>findAll<% } %>(pageable)
+        <%  if (containsBagRelationships) { %>)<% } %>;
+    }
+  <%_ if (containsToOneEagerRelationship) { _%>
+
+    @Query(value = "select <%= entityJpqlInstance %> from <%= persistClass %> <%= entityJpqlInstance %><%
+      for (const relationship of relationships) {
+        if (relationship.relationshipEagerLoad && !relationship.bagRelationship) { %> left join fetch <%= entityJpqlInstance %>.<%= relationship.propertyName %><% }
+      } %>",
+        countQuery = "select count(<%= entityJpqlInstance %>) from <%= persistClass %> <%= entityJpqlInstance %>")
+    Page<<%= persistClass %>> findAllWithToOneRelationships(Pageable pageable);
+
+    @Query("select <%= entityJpqlInstance %> from <%= persistClass %> <%= entityJpqlInstance %><%
+      for (const relationship of relationships) {
+        if (relationship.relationshipEagerLoad && !relationship.bagRelationship) { %> left join fetch <%= entityJpqlInstance %>.<%= relationship.propertyName %><% }
+      } %>")
+    List<<%= persistClass %>> findAllWithToOneRelationships();
+
+    @Query("select <%= entityJpqlInstance %> from <%= persistClass %> <%= entityJpqlInstance %><%
+      for (const relationship of relationships) {
+        if (relationship.relationshipEagerLoad && !relationship.bagRelationship) { %> left join fetch <%= entityJpqlInstance %>.<%= relationship.propertyName %><% }
+      } %> where <%= entityJpqlInstance %>.id =:id")
+    Optional<<%= persistClass %>> findOneWithToOneRelationships(@Param("id") <%= primaryKey.type %> id);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - entity graph query methods for selective relationship loading */ _%>
+<%_ if (hasEntityGraphQueries) { _%>
+
+  <%_ for (const entityGraphQuery of entityGraphParsedDirectives) { _%>
+    @Query("select <%= entityJpqlInstance %> from <%= persistClass %> <%= entityJpqlInstance %> where <%= entityJpqlInstance %>.<%= primaryKey.name %> = :<%= primaryKey.name %>")
+    @EntityGraph(attributePaths = {
+<%_ entityGraphQuery.attributePaths.forEach((attributePath, index) => { _%>
+      "<%= attributePath %>"<% if (index !== entityGraphQuery.attributePaths.length - 1) { %>,<% } %>
+<%_ }); _%>
+    })
+    Optional<<%= persistClass %>> <%= entityGraphQuery.methodName %>(@Param("<%= primaryKey.name %>") <%= primaryKey.type %> <%= primaryKey.name %>);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - custom query methods from @customQueryAnnotation */ _%>
+<%_
+const customQueryRaw = typeof annotations !== 'undefined'
+  ? normalizeDirectives(annotations.customQueryAnnotation) : [];
+// Support pipe-delimited multiple queries within a single annotation value
+const customQueryDirectives = customQueryRaw.flatMap(d => typeof d === 'string' ? d.split('|').map(s => s.trim()).filter(Boolean) : [d]);
+
+const parseCustomQuery = directive => {
+  if (typeof directive !== 'string') return undefined;
+  const colonIdx = directive.indexOf(':');
+  if (colonIdx < 0) return undefined;
+  const methodName = directive.substring(0, colonIdx).trim();
+  const rest = directive.substring(colonIdx + 1).trim();
+
+  const paramsMatch = rest.match(/params\s*\[\s*([^\]]*)\s*\]/);
+  const params = paramsMatch
+    ? paramsMatch[1].split(',').map(p => p.trim()).filter(Boolean)
+    : [];
+  if (params.length === 0) return undefined;
+
+  const eagerMatch = rest.match(/eager\s*\[\s*([^\]]*)\s*\]/);
+  const eagerRelationships = eagerMatch
+    ? eagerMatch[1].split(',').map(e => e.trim()).filter(Boolean)
+    : [];
+
+  const hasIndex = /\bindex\b/.test(rest);
+
+  // Resolve field metadata for each param
+  const resolvedParams = params.map(paramName => {
+    if (paramName === primaryKey.name) {
+      return { fieldName: primaryKey.name, fieldType: primaryKey.type, isPrimaryKey: true };
+    }
+    const field = fields.find(f => f.fieldName === paramName);
+    if (field) {
+      return { fieldName: field.fieldName, fieldType: field.fieldType, fieldNameCapitalized: field.fieldNameCapitalized, isPrimaryKey: false };
+    }
+    return { fieldName: paramName, fieldType: 'String', isPrimaryKey: false };
+  });
+
+  const isSingleIdQuery = resolvedParams.length === 1 && resolvedParams[0].isPrimaryKey;
+
+  return { methodName, resolvedParams, eagerRelationships, hasIndex, isSingleIdQuery };
+};
+
+const parsedCustomQueries = customQueryDirectives.map(parseCustomQuery).filter(Boolean);
+const hasCustomQueries = parsedCustomQueries.length > 0;
+_%>
+<%_ if (hasCustomQueries) { _%>
+
+    // ==================== Custom Query Methods ====================
+    // Generated from @customQueryAnnotation in JDL
+  <%_ for (const cq of parsedCustomQueries) { _%>
+
+    @Query("select <%= entityJpqlInstance %> from <%= persistClass %> <%= entityJpqlInstance %> where <%- cq.resolvedParams.map(p => `${entityJpqlInstance}.${p.fieldName} = :${p.fieldName}`).join(' and ') %>")
+    <%_ if (cq.eagerRelationships.length > 0) { _%>
+    @EntityGraph(attributePaths = {
+    <%_ cq.eagerRelationships.forEach((rel, index) => { _%>
+        "<%= rel %>"<% if (index !== cq.eagerRelationships.length - 1) { %>,<% } %>
+    <%_ }); _%>
+    })
+    <%_ } _%>
+    <% if (cq.isSingleIdQuery) { %>Optional<<%= persistClass %>><% } else { %>List<<%= persistClass %>><% } %> <%= cq.methodName %>(<%- cq.resolvedParams.map(p => `@Param("${p.fieldName}") ${p.fieldType} ${p.fieldName}`).join(', ') %>);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification - custom query methods */ _%>
+<%_ /* Saathratri modification - pgvector similarity search methods */ _%>
+<%_ if (hasVectorFields) { _%>
+
+    // ==================== Vector Similarity Search Methods ====================
+    // These methods use pgvector for semantic similarity search using cosine distance
+  <%_ for (const vectorField of vectorFields) { _%>
+
+    /**
+     * Find <%= entityInstancePlural %> similar to the given embedding vector using <%= vectorField.fieldName %>.
+     * Uses pgvector cosine distance operator (<=>) for similarity search.
+     *
+     * @param embedding the query embedding vector (must match dimension <%= vectorField.vectorDimensionSaathratri %>)
+     * @param limit maximum number of results to return
+     * @return list of <%= entityInstancePlural %> ordered by similarity (most similar first)
+     */
+    @Query(value = "SELECT * FROM <%= entityTableName %> ORDER BY <%= vectorField.columnName %> <=> cast(:embedding as vector) LIMIT :limit", nativeQuery = true)
+    List<<%= persistClass %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>(@Param("embedding") String embedding, @Param("limit") int limit);
+
+    /**
+     * Find <%= entityInstancePlural %> similar to the given embedding vector using <%= vectorField.fieldName %> with minimum similarity threshold.
+     * Uses pgvector cosine distance operator (<=>) for similarity search.
+     *
+     * @param embedding the query embedding vector (must match dimension <%= vectorField.vectorDimensionSaathratri %>)
+     * @param maxDistance maximum cosine distance (0 = identical, 2 = opposite)
+     * @param limit maximum number of results to return
+     * @return list of <%= entityInstancePlural %> ordered by similarity (most similar first)
+     */
+    @Query(value = "SELECT * FROM <%= entityTableName %> WHERE <%= vectorField.columnName %> <=> cast(:embedding as vector) < :maxDistance ORDER BY <%= vectorField.columnName %> <=> cast(:embedding as vector) LIMIT :limit", nativeQuery = true)
+    List<<%= persistClass %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>WithThreshold(@Param("embedding") String embedding, @Param("maxDistance") double maxDistance, @Param("limit") int limit);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ /* Saathratri modification - tree structure query for self-referential entities */ _%>
+<%_ if (typeof hasSelfReferentialTreeSaathratri !== 'undefined' && hasSelfReferentialTreeSaathratri && !reactive) { _%>
+
+    // ==================== Tree Structure Query ====================
+
+    /**
+     * Find all tree nodes as a flat list with parent relationship eagerly loaded.
+     * Root nodes have a null parent (<%= treeParentFieldNameSaathratri %>).
+     */
+    @Query("SELECT e FROM <%= persistClass %> e LEFT JOIN FETCH e.<%= treeParentFieldNameSaathratri %>")
+    List<<%= persistClass %>> findAllWithParent();
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+}

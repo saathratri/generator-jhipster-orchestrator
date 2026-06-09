@@ -1,0 +1,216 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.service;
+
+<%_
+const instanceType = restClass;
+const instanceName = restInstance;
+const optionalOrMono = (reactive) ? 'Mono' : 'Optional';
+const listOrFlux = (reactive) ? 'Flux' : 'List';
+const pageOrFlux = (reactive) ? 'Flux' : 'Page';
+_%>
+<%_ if (dtoMapstruct) { _%>
+import <%= entityAbsolutePackage %>.service.dto.<%= dtoClass %>;
+<%_ if (primaryKeySaathratri.composite) { _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>Id;
+<%_ } _%>
+<%_ } else { _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>;
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && reactive) {  _%>
+import <%= entityAbsolutePackage %>.domain.criteria.<%= entityClass %>Criteria;
+<%_ }  _%>
+import java.util.UUID;
+<%_ if (!paginationNo || implementsEagerLoadApis) { _%>
+
+  <%_ if (!reactive) { _%>
+import org.springframework.data.domain.Page;
+  <%_ } _%>
+import org.springframework.data.domain.Pageable;
+<%_ } _%>
+<%_ if (databaseTypeCassandra) { _%>
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+<%_ } _%>
+<%_ if (reactive) { _%>
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+<%_ } _%>
+
+<%_ if (paginationNo || fieldsContainNoOwnerOneToOne) { _%>
+import java.util.List;
+<%_ } _%>
+<%_ if (!reactive) { _%>
+import java.util.Optional;
+<%_ } _%>
+
+/**
+ * Service Interface for managing {@link <%= entityAbsoluteClass %>}.
+ */
+public interface <%= entityClass %>Service {
+
+    /**
+     * Save a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to save.
+     * @return the persisted entity.
+     */
+    <% if (reactive) { %>Mono<<% } %><%= instanceType %><% if (reactive) { %>><% } %> save(<%= instanceType %> <%= instanceName %>);
+
+    /**
+     * Updates a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to update.
+     * @return the persisted entity.
+     */
+     <% if (reactive) { %>Mono<<% } %><%= instanceType %><% if (reactive) { %>><% } %> update(<%= instanceType %> <%= instanceName %>);
+
+    /**
+     * Partially updates a <%= entityInstance %>.
+     *
+     * @param <%= instanceName %> the entity to update partially.
+     * @return the persisted entity.
+     */
+    <% if (reactive) { %>Mono<% } else { %>Optional<% } %><<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>);
+<%_ if (!jpaMetamodelFiltering) {  _%>
+
+    /**
+     * Get all the <%= entityInstancePlural %>.
+     *<% if (!paginationNo) { %>
+     * @param pageable the pagination information.<% } %>
+     * @return the list of entities.
+     */
+    <% if (paginationNo) { %><%= listOrFlux %><% } else { %><%= pageOrFlux %><% } %><<%= instanceType %>> findAll(<% if (!paginationNo) { %>Pageable pageable<% } %>);
+
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && reactive) {  _%>
+      /**
+      * Find <%= entityInstancePlural %> by criteria.
+      *<% if (!paginationNo) { %>
+      * @param pageable the pagination information.<% } %>
+      * @return the list of entities.
+      */
+      <% if (paginationNo) { %><%= listOrFlux %><% } else { %><%= pageOrFlux %><% } %><<%= instanceType %>> findByCriteria(<%= entityClass %>Criteria criteria<% if (!paginationNo) { %>, Pageable pageable<% } %>);
+
+      /**
+      * Find the count of <%= entityInstancePlural %> by criteria.
+      * @param criteria filtering criteria
+      * @return the count of <%= entityInstancePlural %>
+      */
+      public Mono<Long> countByCriteria(<%= entityClass %>Criteria criteria);
+<%_ } _%>
+
+
+
+<%_ if (reactive) { _%>
+    /**
+    * Returns the number of <%= entityInstancePlural %> available.
+    * @return the number of entities in the database.
+    *
+    */
+    Mono<Long> countAll();
+  <%_ if (searchEngineElasticsearch) { _%>
+
+    /**
+    * Returns the number of <%= entityInstancePlural %> available in search repository.
+    *
+    */
+    Mono<Long> searchCount();
+  <%_  } _%>
+
+<%_  } _%>
+
+    /**
+     * Get the "id" <%= entityInstance %>.
+     *
+     * @param id the id of the entity.
+     * @return the entity.
+     */
+    <%= optionalOrMono %><<%= instanceType %>> findOne(<%- primaryKeySaathratri.composite ? `${persistClass}Id id` : `${primaryKey.type} ${primaryKey.name}` %>);
+
+    /**
+     * Delete the "id" <%= entityInstance %>.
+     *
+     * @param id the id of the entity.
+<%_ if (reactive) { _%>
+     * @return a Mono to signal the deletion
+<%_ } _%>
+     */
+    <%- reactive ? 'Mono<Void>' : 'void' %> delete(<%- primaryKeySaathratri.composite ? `${persistClass}Id id` : `${primaryKey.type} ${primaryKey.name}` %>);
+<%_ if (databaseTypeCassandra && !reactive) { _%>
+
+    /**
+     * Get all the <%= entityInstancePlural %> with Cassandra cursor-based pagination.
+     *
+     * @param pageable the pagination information.
+     * @return the slice of entities.
+     */
+    Slice<<%= instanceType %>> findAllSlice(org.springframework.data.domain.Pageable pageable);
+<%_ } _%>
+<%_ if (searchEngineAny) { _%>
+
+    /**
+     * Search for the <%= entityInstance %> corresponding to the query.
+     *
+     * @param query the query of the search.
+  <%_ if (!paginationNo) { _%>
+     *
+     * @param pageable the pagination information.
+  <%_ } _%>
+     * @return the list of entities.
+     */
+    <% if (!paginationNo) { %><%= pageOrFlux %><<%= instanceType %><% } else { %><%= listOrFlux %><<%= instanceType %><% } %>> search(String query<% if (!paginationNo) { %>, Pageable pageable<% } %>);
+<%_ } _%>
+
+<%_ /* Saathratri modification - AI search method declaration */ _%>
+<%_
+const vectorFieldsForServiceIntf = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFieldsForServiceIntf = vectorFieldsForServiceIntf.length > 0;
+_%>
+<%_ if (hasVectorFieldsForServiceIntf && !reactive) { _%>
+
+    // ==================== AI Text Search ====================
+
+    /**
+     * Search for <%= entityInstancePlural %> using AI-powered semantic similarity.
+     *
+     * @param query the text query to search for
+     * @param limit maximum number of results to return
+     * @param fields optional list of vector field names to search in (null or empty searches all)
+     * @return list of semantically similar <%= entityInstancePlural %>
+     */
+    List<<%= instanceType %>> aiSearch(String query, int limit, List<String> fields);
+
+  <%_ for (const vectorField of vectorFieldsForServiceIntf) { _%>
+    /**
+     * Find <%= entityInstancePlural %> similar to the given embedding vector using <%= vectorField.fieldName %>.
+     */
+    List<<%= instanceType %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>(com.datastax.oss.driver.api.core.data.CqlVector<Float> embedding, int limit);
+  <%_ } _%>
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+
+<% if (primaryKeySaathratri.composite) {
+  let methodsArray = generatePrimaryKeyMethods(entityClass, entityInstance, entityInstanceSnakeCase, primaryKeySaathratri, "Service");
+  // Output all method names at once, joined by newlines for readability
+  let methodsOutput = methodsArray.join('\n');
+%>
+<%- methodsOutput %>
+<% } %>
+}

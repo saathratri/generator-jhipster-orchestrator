@@ -1,0 +1,92 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%#
+ This is a fragment file, it will be merged into the root template if available.
+ EJS fragments will process % delimiter tags in the template and & delimiter tags during the merge process.
+-%>
+<&_ if (fragment.importSection) { -&>
+import org.springframework.data.annotation.Id;
+    <%_ if (anyFieldIsBlobDerived) { _%>
+import java.nio.ByteBuffer;
+import org.springframework.data.cassandra.core.mapping.Column;
+    <%_ } _%>
+import org.springframework.data.cassandra.core.mapping.CassandraType;
+import org.springframework.data.cassandra.core.mapping.Column;
+import org.springframework.data.cassandra.core.mapping.PrimaryKey;
+import org.springframework.data.cassandra.core.mapping.Table;
+<%_
+  if(!primaryKey.composite) {
+_%>
+import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
+<%_
+  }
+_%>
+<&_ } -&>
+
+<&_ if (fragment.annotationSection) { -&>
+// Since spring-data-cassandra 3.4.2, table names needs to be in lowercase
+// See https://github.com/spring-projects/spring-data-cassandra/issues/1293#issuecomment-1192555467
+@Table("<%= entityTableName %>")
+<&_ } -&>
+
+<%_ for (const field of fields) { _%>
+<&_ if (fragment.field<%- field.fieldNameCapitalized %>AnnotationSection) { -&>
+  <%_ if (!field.isCompositePrimaryKeyField) { _%>
+
+      <%_
+        if(field.fieldTypeVectorSaathratri) {
+      _%>
+          @Column("<%- field.fieldNameAsDatabaseColumn %>")
+      <%_
+        } else if(field.fieldTypeSetSaathratri) {
+      _%>
+          @Column("<%- field.fieldNameAsDatabaseColumn %>")
+          @CassandraType(type = <%= field.options.customAnnotation[0] %>, typeArguments = <%= field.options.customAnnotation[1] %>)
+      <%_
+        } else if(field.fieldTypeMapSaathratri) {
+      _%>
+          @Column("<%- field.fieldNameAsDatabaseColumn %>")
+          @CassandraType(type = <%= field.options.customAnnotation[0] %>, typeArguments = { CassandraType.Name.TEXT, <%= field.options.customAnnotation[1] %> })
+      <%_ 
+        } else if(field.fieldTypeBlobContent === 'image' || field.fieldTypeBlobContent === 'any') {
+      _%>
+          @Column("<%- field.fieldNameAsDatabaseColumn %>_content_type")
+          @CassandraType(type = CassandraType.Name.TEXT)
+          private String <%- field.fieldName %>ContentType;
+          @Column("<%- field.fieldNameAsDatabaseColumn %>")
+          @CassandraType(type = <%= field.options?.customAnnotation[1] %>)
+      <%_
+        } else {
+      _%>
+          @Column("<%- field.fieldNameAsDatabaseColumn %>")
+          @CassandraType(type = <%= field.options?.customAnnotation[1] %>)
+      <%_
+        }
+      _%>
+    <%_
+      }
+    _%>
+<&_ } -&>
+<%_ } _%>
+
+<%_ for (const field of fields.filter(field => field.fieldWithContentType)) { -%>
+<&_ if (fragment.field<%- field.fieldNameCapitalized %>ContentTypeAnnotationSection) { -&>
+    @Column("<%- field.fieldNameAsDatabaseColumn %>_content_type")
+<&_ } -&>
+<%_ } -%>

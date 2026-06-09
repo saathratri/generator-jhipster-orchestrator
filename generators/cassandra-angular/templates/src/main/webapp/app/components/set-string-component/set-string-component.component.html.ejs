@@ -1,0 +1,42 @@
+<div class="container">
+  <form [formGroup]="form">
+    <!-- Existing fields -->
+    @for (control of fields.controls; track control; let i = $index) {
+    <div class="input-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Value</mat-label>
+        <input matInput [formControl]="getFormControl(i)" readonly />
+        @if (getFormControl(i).invalid && getFormControl(i).touched) { <mat-error>
+          Field is required
+        </mat-error> }
+      </mat-form-field>
+
+      <!-- Action Buttons (10%) -->
+      <div class="action-buttons">
+        <button type="button" mat-icon-button (click)="openEditDialog(i)" [attr.data-cy]="fieldName + '-row-' + i + '-edit'">
+          <mat-icon>edit</mat-icon>
+        </button>
+
+        <button type="button" mat-icon-button (click)="removeInputField(i)" [attr.data-cy]="fieldName + '-row-' + i + '-delete'">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+    }
+
+    <!-- New Field Row (Always visible) -->
+    <div class="input-row">
+      <mat-form-field appearance="outline">
+        <mat-label>New Value</mat-label>
+        <input matInput [formControl]="newFieldControl" [attr.data-cy]="fieldName + '-add-value'" />
+        @if (newFieldControl.invalid && newFieldControl.touched) { <mat-error>
+          Field is required
+        </mat-error> }
+      </mat-form-field>
+
+      <button type="button" mat-raised-button color="primary" [disabled]="newFieldControl.invalid" (click)="addNewField()" class="add-button" [attr.data-cy]="fieldName + '-add-button'">
+        Add
+      </button>
+    </div>
+  </form>
+</div>

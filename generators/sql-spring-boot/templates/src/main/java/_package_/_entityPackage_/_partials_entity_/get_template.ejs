@@ -1,0 +1,83 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%  const optionalOrMono = (reactive) ? 'Mono' : 'Optional';
+    const instanceType = `${optionalOrMono}<${restClass}>`;
+    const instanceName = restInstance;
+    const mapper = `${entityInstance}Mapper`;
+    /* Saathratri modification - entity graph directive parsing for default findOne optimization */
+    const normalizeDirectives = value =>
+      value === undefined || value === null
+        ? []
+        : (Array.isArray(value) ? value : [value]).flatMap(v =>
+            typeof v === 'string' ? v.split('|').map(s => s.trim()).filter(Boolean) : [v],
+          );
+    const parseDirective = directive => {
+      if (typeof directive !== 'string') return undefined;
+      const [rawMethod, rawAttributes] = directive.split(':');
+      const methodName = rawMethod?.trim();
+      const attributePaths = (rawAttributes
+        ?.replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+        ?.split(',')
+        ?.map(attribute => attribute.trim())
+        ?.filter(Boolean)) ?? [];
+      if (methodName && attributePaths.length > 0) {
+        return { methodName, attributePaths };
+      }
+      return undefined;
+    };
+    const entityGraphIncludeDirectives =
+      typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphIncludeCustomAnnotation) : [];
+    const entityGraphExcludeDirectives =
+      typeof annotations !== 'undefined' ? normalizeDirectives(annotations.entityGraphExcludeCustomAnnotation) : [];
+    const parsedIncludeDirectives = entityGraphIncludeDirectives
+      .map(parseDirective)
+      .filter(Boolean);
+    const parsedExcludeDirectives = entityGraphExcludeDirectives
+      .map(parseDirective)
+      .filter(Boolean);
+    // Prefer include directive (small entity graph) over exclude directive (large entity graph)
+    // for the default findOne() method to avoid slow queries and N+1 lazy-load cascades on
+    // bidirectional @OneToOne mappedBy relationships.
+    const defaultEntityGraphDirective =
+      parsedIncludeDirectives.length > 0 ? parsedIncludeDirectives[0] :
+      parsedExcludeDirectives.length > 0 ? parsedExcludeDirectives[0] :
+      undefined;
+    const useDefaultEntityGraphDirective = !reactive && !!defaultEntityGraphDirective;
+    const entityGraphDirectiveMapperReference = defaultEntityGraphDirective
+      ? `${mapper}::to${this._.upperFirst(defaultEntityGraphDirective.methodName)}`
+      : undefined;
+    const entityToDtoReference = (useDefaultEntityGraphDirective && entityGraphDirectiveMapperReference)
+      ? entityGraphDirectiveMapperReference
+      : `${mapper}::toDto`;
+    /* End Saathratri modification */
+    const returnPrefix = returnDirectly ? 'return' : `${instanceType} ${instanceName} =`;
+%>
+<%_ if (!viaService) { _%>
+  <%_ /* Saathratri modification - use entity graph directive for default findOne when available */ _%>
+  <%_ if (useDefaultEntityGraphDirective) { _%>
+        <%- returnPrefix %> <%= entityInstance %>Repository.<%= defaultEntityGraphDirective.methodName %>(id)<% if (!dtoMapstruct) { %>;<% } else { %>
+            .map(<%= entityToDtoReference %>);<% } %>
+  <%_ } else { _%>
+        <%- returnPrefix %> <%= entityInstance %>Repository.<% if (implementsEagerLoadApis) { %>findOneWithEagerRelationships(id)<% } else { %>findById(id)<% } %><% if (!dtoMapstruct) { %>;<% } else { %>
+            .map(<%= entityToDtoReference %>);<% } %>
+  <%_ } _%>
+  <%_ /* End Saathratri modification */ _%>
+<%_ } else { _%>
+        <%- returnPrefix %> <%= entityInstance %>Service.findOne(id);
+<%_ } _%>

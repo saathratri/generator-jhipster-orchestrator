@@ -1,0 +1,50 @@
+<%_
+  // Test samples matching the blueprint's generated model. Composite-key entities nest the key
+  // fields under `compositeId`; single-key entities are flat. In both cases date-backed Long
+  // columns (UTC_DATE / UTC_DATETIME) are typed dayjs.Dayjs in the model (not number), and
+  // Set/Map columns are Set<string> / Record<string, X> — so emit values that match.
+  const composite = primaryKeySaathratri.composite;
+  const keyFieldNames = composite ? primaryKeySaathratri.ids.map(f => f.fieldName) : [primaryKey.name];
+  const keyFields = keyFieldNames.map(n => fields.find(f => f.fieldName === n)).filter(Boolean);
+  const nonKeyFields = fields.filter(f => !keyFieldNames.includes(f.fieldName) && !f.fieldTypeVectorSaathratri && !f.fieldIsEnum);
+  const anyDate = [...keyFields, ...nonKeyFields].some(
+    f => f.fieldTypeLocalDateSaathratri || f.fieldTypeTimedSaathratri || f.fieldTypeMapDayjsSaathratri,
+  );
+  const sampleValue = (field, i) => {
+    if (field.fieldTypeSetSaathratri) return `new Set(['sample-${i}'])`;
+    if (field.fieldTypeMapDayjsSaathratri) return `{ 'key${i}': dayjs('2024-01-0${(i % 9) + 1}T12:00:00Z') }`;
+    if (field.fieldTypeMapSaathratri) {
+      const v = field.tsType === 'number' ? `${i}` : field.tsType === 'boolean' ? (i % 2 === 0 ? 'true' : 'false') : `'val-${i}'`;
+      return `{ 'key${i}': ${v} }`;
+    }
+    if (field.fieldTypeLocalDateSaathratri || field.fieldTypeTimedSaathratri) return `dayjs('2024-01-0${(i % 9) + 1}T12:00:00Z')`;
+    if (field.tsType === 'number') return `${1000 + i}`;
+    if (field.tsType === 'boolean') return i % 2 === 0 ? 'true' : 'false';
+    return `'sample-${field.fieldName}-${i}'`;
+  };
+  const keyLiteral = i => keyFields.map(f => `${f.fieldName}: ${sampleValue(f, i)}`).join(', ');
+  const sampleObj = (i, subset) => {
+    const keyPart = composite ? `compositeId: { ${keyLiteral(i)} }` : keyLiteral(i);
+    const rest = subset.map(f => `${f.fieldName}: ${sampleValue(f, i)}`);
+    return `{\n  ${[keyPart, ...rest].join(',\n  ')},\n}`;
+  };
+  const half = nonKeyFields.slice(0, Math.ceil(nonKeyFields.length / 2));
+_%>
+<%_ if (anyDate) { _%>
+import dayjs from 'dayjs/esm';
+
+<%_ } _%>
+import { I<%= entityAngularName %>, New<%= entityAngularName %> } from './<%= entityFileName %>.model';
+
+export const sampleWithRequiredData: I<%= entityAngularName %> = <%- sampleObj(1, []) %>;
+
+export const sampleWithPartialData: I<%= entityAngularName %> = <%- sampleObj(2, half) %>;
+
+export const sampleWithFullData: I<%= entityAngularName %> = <%- sampleObj(3, nonKeyFields) %>;
+
+export const sampleWithNewData: New<%= entityAngularName %> = <%- sampleObj(4, []) %>;
+
+Object.freeze(sampleWithNewData);
+Object.freeze(sampleWithRequiredData);
+Object.freeze(sampleWithPartialData);
+Object.freeze(sampleWithFullData);

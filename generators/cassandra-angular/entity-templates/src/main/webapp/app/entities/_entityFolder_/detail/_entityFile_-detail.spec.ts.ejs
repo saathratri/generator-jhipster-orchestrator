@@ -1,0 +1,61 @@
+import { beforeEach, describe, expect, it, vitest } from 'vitest';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+
+import { FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { faArrowLeft, faPencilAlt } from '@fortawesome/free-solid-svg-icons';
+import { TranslateModule } from '@ngx-translate/core';
+import { of } from 'rxjs';
+
+import { sampleWithRequiredData } from '../<%= entityFileName %>.test-samples';
+import { <%= entityAngularName %>DetailComponent } from './<%= entityFileName %>-detail';
+
+describe('<%= entityAngularName %> Management Detail Component', () => {
+  let comp: <%= entityAngularName %>DetailComponent;
+  let fixture: ComponentFixture<<%= entityAngularName %>DetailComponent>;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [TranslateModule.forRoot()],
+      providers: [
+        provideRouter(
+          [
+            {
+              path: '**',
+              loadComponent: () => import('./<%= entityFileName %>-detail').then(m => m.<%= entityAngularName %>DetailComponent),
+              resolve: { <%= entityInstance %>: () => of(sampleWithRequiredData) },
+            },
+          ],
+          withComponentInputBinding(),
+        ),
+      ],
+    });
+    const library = TestBed.inject(FaIconLibrary);
+    library.addIcons(faArrowLeft);
+    library.addIcons(faPencilAlt);
+  });
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(<%= entityAngularName %>DetailComponent);
+    comp = fixture.componentInstance;
+  });
+
+  describe('OnInit', () => {
+    it('should load <%= entityInstance %> on init', async () => {
+      const harness = await RouterTestingHarness.create();
+      const instance = await harness.navigateByUrl('/', <%= entityAngularName %>DetailComponent);
+
+      // THEN
+      expect(instance.<%= entityInstance %>()).toEqual(expect.objectContaining(sampleWithRequiredData));
+    });
+  });
+
+  describe('PreviousState', () => {
+    it('should navigate to previous state', () => {
+      vitest.spyOn(globalThis.history, 'back');
+      comp.previousState();
+      expect(globalThis.history.back).toHaveBeenCalled();
+    });
+  });
+});

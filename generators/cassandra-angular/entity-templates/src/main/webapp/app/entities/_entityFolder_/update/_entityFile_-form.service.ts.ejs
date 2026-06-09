@@ -1,0 +1,448 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%_
+  let formDefaultProperties = [];
+  if(primaryKeySaathratri.composite) { 
+    formDefaultProperties = [
+      ...fields.filter(field => !field.isCompositePrimaryKeyField && (field.fieldTypeTimed || field.fieldTypeTimedSaathratri || field.fieldTypeBoolean)).map(field => field.fieldName),
+    ];
+    formDefaultProperties.push(primaryKeySaathratri.name);
+} else { 
+    formDefaultProperties = [
+      ...fields.filter(field => !field.fieldTypeVectorSaathratri && (field.fieldTypeTimed || field.fieldTypeTimedSaathratri || field.fieldTypeBoolean || field.id)).map(field => field.fieldName),
+  ];
+}
+  const containDefaultProperties = formDefaultProperties.length > 0;
+  const entityFormName = anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri ? `${entityAngularName}FormRawValue` : `I${entityAngularName}`;
+  const newEntityFormName = anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri ? `New${entityAngularName}FormRawValue` : `New${entityAngularName}`;
+_%>
+import { Injectable } from '@angular/core';
+import { FormGroup, FormControl, Validators } from '@angular/forms';
+
+<%_ if (fields.some(field => field.fieldTypeTimed || field.fieldTypeTimedSaathratri)) { _%>
+import dayjs from 'dayjs/esm';
+import { DATE_TIME_FORMAT } from 'app/config/input.constants';
+<%_ } _%>
+import { I<%= entityAngularName %>, <%_ if(primaryKeySaathratri.composite) { _%> I<%= entityAngularName %>Id, <%_ } _%> New<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+
+/**
+ * A partial Type with required key is used as form input.
+ */
+<%_ if(primaryKeySaathratri.composite) { _%>
+type PartialWithRequiredKeyOf<T extends { <%= primaryKeySaathratri.name %>: { <%- primaryKeySaathratri.ids.map(field => `${field.fieldName}: unknown`).join(',\n') %> } }> = Partial<Omit<T, '<%= primaryKeySaathratri.name %>'>> & { <%= primaryKeySaathratri.name %>: T['<%= primaryKeySaathratri.name %>'] };
+<%_ } else { _%>
+type PartialWithRequiredKeyOf<T extends { <%= primaryKey.name %>: unknown }> = Partial<Omit<T, '<%= primaryKey.name %>'>> & { <%= primaryKey.name %>: T['<%= primaryKey.name %>'] };
+<%_ } _%>
+
+/**
+ * Type for createFormGroup and resetForm argument.
+ * It accepts I<%= entityAngularName %> for edit and New<%= entityAngularName %>FormGroupInput for create.
+ */
+type <%= entityAngularName %>FormGroupInput = I<%= entityAngularName %> | PartialWithRequiredKeyOf<New<%= entityAngularName %>>;
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+
+/**
+ * Type that converts some properties for forms.
+ */
+type FormValueOf<T extends I<%= entityAngularName %> | New<%= entityAngularName %>> = Omit<T, '<%- fields.filter(field => field.fieldTypeTimed || field.fieldTypeTimedSaathratri).map(field => field.fieldName).join("' | '") %>'> & {
+  <%_ for (const field of fields.filter(field => field.fieldTypeTimed || field.fieldTypeTimedSaathratri)) { _%>
+  <%_ if (field.fieldTypeMapSaathratri) { _%>
+    <%= field.fieldName %>: Record<string, string> | null | undefined;
+  <%_ } else { _%>
+    <%= field.fieldName %>?: string | null;
+  <%_ } _%>
+  <%_ } _%>
+};
+
+type <%= entityAngularName %>FormRawValue =  FormValueOf<I<%= entityAngularName %>>;
+
+type New<%= entityAngularName %>FormRawValue =  FormValueOf<New<%= entityAngularName %>>;
+<%_ } _%>
+<%_ if (containDefaultProperties) { _%>
+
+type <%= entityAngularName %>FormDefaults = Pick<New<%= entityAngularName %>, '<%- formDefaultProperties.join("' | '") %>'>;
+<%_ } _%>
+
+type <%= entityAngularName %>FormGroupContent = {
+<%_ if(primaryKeySaathratri.composite) { _%>
+<%- primaryKeySaathratri.name %>: FormGroup<{
+<%_ for (field of fields.filter(field => field.isCompositePrimaryKeyField)) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
+_%>
+  <%= fieldName %>: FormControl<<%= entityFormName %>['<%= primaryKeySaathratri.name %>']['<%= fieldName %>']>;
+<%_ } _%>
+}>;
+<%_ for (field of fields.filter(field => !field.isCompositePrimaryKeyField && field.fieldName !== 'id')) {
+  const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
+_%>
+<%= fieldName %>: FormControl<<%= entityFormName %>['<%= fieldName %>']>;
+<%_ if ((field.fieldTypeBinary || field.fieldTypeBinarySaathratri) && !field.blobContentTypeText) { _%>
+  <%= fieldName %>ContentType: FormControl<<%= entityFormName %>['<%= fieldName %>ContentType']>;
+  <%_ } _%>
+<%_ } _%>
+<%_ } else { _%>
+<%_ for (field of fields.filter(f => !f.fieldTypeVectorSaathratri)) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidationRequired, tsType, fieldIsEnum } = field;
+_%>
+  <%= fieldName %>: FormControl<<%= entityFormName %>['<%= fieldName %>']>;
+  <%_ if ((field.fieldTypeBinary || field.fieldTypeBinarySaathratri) && !field.blobContentTypeText) { _%>
+  <%= fieldName %>ContentType: FormControl<<%= entityFormName %>['<%= fieldName %>ContentType']>;
+  <%_ } _%>
+<%_ } _%>
+<%_ } _%>
+};
+
+export type <%= entityAngularName %>FormGroup = FormGroup<<%= entityAngularName %>FormGroupContent>;
+
+@Injectable({ providedIn: 'root' })
+export class <%= entityAngularName %>FormService {
+<%_ if(primaryKeySaathratri.composite) { _%>
+  create<%= entityAngularName %>FormGroup(<%= entityInstance %>: <%= entityAngularName %>FormGroupInput = { <%= primaryKeySaathratri.name %>: { <%- primaryKeySaathratri.ids.map(field => `${field.fieldName}: null`).join(',') %> } }): <%= entityAngularName %>FormGroup {
+<%_ } else { _%>
+  create<%= entityAngularName %>FormGroup(<%= entityInstance %>: <%= entityAngularName %>FormGroupInput = { <%= primaryKey.name %>: '' }): <%= entityAngularName %>FormGroup {
+<%_ } _%>
+    const <%= entityInstance %>RawValue =
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+      this.convert<%= entityAngularName %>To<%= entityAngularName %>RawValue(
+<%_ } _%>
+<%_ if (containDefaultProperties) { _%>
+        {
+          ...this.getFormDefaults(),
+          ...<%= entityInstance %>,
+        }
+<%_ } else { _%>
+        <%= entityInstance %>
+<%_ } _%>
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+      )
+<%_ } _%>
+    ;
+
+    return new FormGroup<<%= entityAngularName %>FormGroupContent>({
+<%_ if(primaryKeySaathratri.composite) { _%>
+  <%= primaryKeySaathratri.name %>: new FormGroup({
+<%_ for (const field of fields.filter( field => field.isCompositePrimaryKeyField )) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidateRules, fieldTypeTemporal, fieldValidationRequired, fieldValidationRequiredSaathratri, fieldValidationMinLength, fieldValidationMaxLength, fieldValidationMin, fieldValidationMax, fieldValidationPattern } = field;
+      const usesValidators = fieldValidationRequired || fieldValidationRequiredSaathratri || fieldValidationMinLength || fieldValidationMaxLength || fieldValidationMin || fieldValidationMax || fieldValidationPattern || field.id;
+_%>
+      <%= fieldName %>: new FormControl(
+        { value: <%= entityInstance %>RawValue.<%= primaryKeySaathratri.name %>.<%= fieldName %>, disabled: <%= entityInstance %>RawValue.<%= primaryKeySaathratri.name %>.<%= fieldName %> !== null },
+  <%_ if (usesValidators) { _%>
+        {
+          nonNullable: true,
+          validators: [
+            Validators.required,
+    <%_ if (field.fieldValidationMinLength) { _%>
+            Validators.minLength(<%= field.fieldValidateRulesMinlength %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationMaxLength) { _%>
+            Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationMin) { _%>
+            Validators.min(<%= field.fieldValidateRulesMin %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationMax) { _%>
+            Validators.max(<%= field.fieldValidateRulesMax %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationPattern) { _%>
+            Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),
+    <%_ } _%>
+          ],
+        }
+  <%_ } _%>
+      ),
+  <%_ if ((field.fieldTypeBinary || field.fieldTypeBinarySaathratri) && !field.blobContentTypeText) { _%>
+      <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>RawValue.<%= fieldName %>ContentType),
+  <%_ } _%>
+<%_ } _%>
+}),
+<%_ for (const field of fields.filter( field => !field.isCompositePrimaryKeyField && field.fieldName !== 'id' )) {
+  const { fieldName, fieldType, fieldTypeBlobContent, fieldValidateRules, fieldTypeTemporal, fieldValidationRequired, fieldValidationMinLength, fieldValidationMaxLength, fieldValidationMin, fieldValidationMax, fieldValidationPattern } = field;
+  const usesValidators = fieldValidationRequired || fieldValidationMinLength || fieldValidationMaxLength || fieldValidationMin || fieldValidationMax || fieldValidationPattern || field.id;
+_%>
+  <%= fieldName %>: new FormControl(
+    <%= entityInstance %>RawValue.<%= fieldName %>,
+<%_ if (usesValidators) { _%>
+    {
+      validators: [
+<%_ if (field.fieldValidationRequired) { _%>
+        Validators.required,
+<%_ } _%>
+<%_ if (field.fieldValidationMinLength) { _%>
+        Validators.minLength(<%= field.fieldValidateRulesMinlength %>),
+<%_ } _%>
+<%_ if (field.fieldValidationMaxLength) { _%>
+        Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),
+<%_ } _%>
+<%_ if (field.fieldValidationMin) { _%>
+        Validators.min(<%= field.fieldValidateRulesMin %>),
+<%_ } _%>
+<%_ if (field.fieldValidationMax) { _%>
+        Validators.max(<%= field.fieldValidateRulesMax %>),
+<%_ } _%>
+<%_ if (field.fieldValidationPattern) { _%>
+        Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),
+<%_ } _%>
+      ],
+    }
+<%_ } _%>
+  ),
+<%_ if ((field.fieldTypeBinary || field.fieldTypeBinarySaathratri) && !field.blobContentTypeText) { _%>
+  <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>RawValue.<%= fieldName %>ContentType),
+<%_ } _%>
+<%_ } _%>
+<%_ } else { _%>
+<%_ for (const field of fields.filter(f => !f.fieldTypeVectorSaathratri)) {
+      const { fieldName, fieldType, fieldTypeBlobContent, fieldValidateRules, fieldTypeTemporal, fieldValidationRequired, fieldValidationMinLength, fieldValidationMaxLength, fieldValidationMin, fieldValidationMax, fieldValidationPattern } = field;
+      const usesValidators = fieldValidationRequired || fieldValidationMinLength || fieldValidationMaxLength || fieldValidationMin || fieldValidationMax || fieldValidationPattern || field.id;
+_%>
+      <%= fieldName %>: new FormControl(
+  <%_ if (field.id) { _%>
+        { value: <%= entityInstance %>RawValue.<%= fieldName %>, disabled: <%= entityInstance %>RawValue.<%= fieldName %> !== '' },
+  <%_ } else { _%>
+        <%= entityInstance %>RawValue.<%= fieldName %>,
+  <%_ } _%>
+  <%_ if (usesValidators) { _%>
+        {
+    <%_ if (field.id) { _%>
+          nonNullable: true,
+    <%_ } _%>
+          validators: [
+    <%_ if (field.fieldValidationRequired || field.id) { _%>
+            Validators.required,
+    <%_ } _%>
+    <%_ if (field.fieldValidationMinLength) { _%>
+            Validators.minLength(<%= field.fieldValidateRulesMinlength %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationMaxLength) { _%>
+            Validators.maxLength(<%= field.fieldValidateRulesMaxlength %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationMin) { _%>
+            Validators.min(<%= field.fieldValidateRulesMin %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationMax) { _%>
+            Validators.max(<%= field.fieldValidateRulesMax %>),
+    <%_ } _%>
+    <%_ if (field.fieldValidationPattern) { _%>
+            Validators.pattern('<%= field.fieldValidateRulesPattern.replace(/\\/g, '\\\\') %>'),
+    <%_ } _%>
+          ],
+        }
+  <%_ } _%>
+      ),
+  <%_ if ((field.fieldTypeBinary || field.fieldTypeBinarySaathratri) && !field.blobContentTypeText) { _%>
+      <%= fieldName %>ContentType: new FormControl(<%= entityInstance %>RawValue.<%= fieldName %>ContentType),
+  <%_ } _%>
+<%_ } _%>
+<%_ } _%>
+    });
+  }
+
+  get<%= entityAngularName %>(form: <%= entityAngularName %>FormGroup):<% if (updatableEntity) { %> I<%= entityAngularName %> |<% } %> New<%= entityAngularName %> {
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+    return this.convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>(form.getRawValue() as <%= entityAngularName %>FormRawValue | New<%= entityAngularName %>FormRawValue);
+<%_ } else { _%>
+    return form.getRawValue() as<% if (updatableEntity) { %> I<%= entityAngularName %> |<% } %> New<%= entityAngularName %>;
+<%_ } _%>
+  }
+
+  resetForm(form: <%= entityAngularName %>FormGroup, <%= entityInstance %>: <%= entityAngularName %>FormGroupInput): void {
+    const <%= entityInstance %>RawValue =
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+      this.convert<%= entityAngularName %>To<%= entityAngularName %>RawValue(
+<%_ } _%>
+<%_ if (containDefaultProperties) { _%>
+        {...this.getFormDefaults(), ...<%= entityInstance %> }
+<%_ } else { _%>
+        <%= entityInstance %>
+<%_ } _%>
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+      )
+<%_ } _%>
+    ;
+    form.reset({
+      ...<%= entityInstance %>RawValue,
+<%_ if(primaryKeySaathratri.composite) { _%>
+  <%= primaryKeySaathratri.name %>: {
+<%_ for (const field of primaryKeySaathratri.ids) { _%>
+      <%= field.fieldName %>: { value: <%= entityInstance %>RawValue.<%= primaryKeySaathratri.name %>.<%= field.fieldName %>, disabled: true },
+<%_ } _%>
+  },
+<%_ for (field of fields.filter( field => !field.isCompositePrimaryKeyField )) {
+      if(field.fieldTypeTimedSaathratri || field.fieldTypeLocalDateSaathratri) {
+_%>
+      <%= field.fieldName %>: <%= entityInstance %>RawValue.<%= field.fieldName %>,
+<%_ 
+      }
+    } 
+_%>
+<%_ } else { _%>
+<%_ for (const field of fields.filter(field => field.id)) { _%>
+      <%= field.fieldName %>: { value: <%= entityInstance %>RawValue.<%= field.fieldName %>, disabled: <% if (field.autoGenerate) { %>true<% } else { %>!<%= entityInstance %>RawValue.<%= field.fieldName %><% } %> },
+<%_ } _%>
+<%_ for (const field of fields.filter(field => !field.id)) { _%>
+      <%_ if(field.fieldTypeTimedSaathratri || field.fieldTypeLocalDateSaathratri) { _%>
+        <%= field.fieldName %>: <%= entityInstance %>RawValue.<%= field.fieldName %>,
+      <%_ } _%>
+<%_ } _%>
+<%_ } _%>
+    } as any /* cast to workaround https://github.com/angular/angular/issues/46458 */);
+  }
+<%_ if (containDefaultProperties) { _%>
+
+  private getFormDefaults(): <%= entityAngularName %>FormDefaults {
+    return {
+  <%_ if(primaryKeySaathratri.composite) { _%>
+  <%= primaryKeySaathratri.name %>: {  
+  <%_ for (field of fields.filter( field => field.isCompositePrimaryKeyField) ) {
+        const { fieldName, fieldTypeBoolean, fieldTypeTimed, fieldTypeLocalDate, fieldTypeLocalDateSaathratri, fieldTypeTimedSaathratri } = field;
+  _%>
+    <%_ if (fieldTypeBoolean) { _%>
+      <%= fieldName %>: false,
+    <%_ } else { _%>
+        <%= fieldName %>: null,
+    <%_ } _%>
+  <%_ } _%>
+  },
+<%_ for (field of fields.filter( field => !field.isCompositePrimaryKeyField )) {
+    const { fieldName, fieldTypeBoolean, fieldTypeTimed, fieldTypeLocalDate, fieldTypeSetSaathratri, fieldTypeMapSaathratri } = field;
+_%>
+      <%_ if (fieldTypeBoolean && !fieldTypeSetSaathratri && !fieldTypeMapSaathratri) { _%>
+        <%= fieldName %>: false,
+      <%_ } _%>
+    <%_ } _%>
+  <%_ } else { _%>
+  <%_ for (field of fields.filter(f => !f.fieldTypeVectorSaathratri)) {
+        const { fieldName, fieldTypeBoolean, fieldTypeTimed, fieldTypeLocalDate, fieldTypeSetSaathratri, fieldTypeMapSaathratri } = field;
+  _%>
+    <%_ if (field.id) { _%>
+      <%= fieldName %>: '',
+    <%_ } else if (fieldTypeBoolean && !fieldTypeSetSaathratri && !fieldTypeMapSaathratri) { _%>
+      <%= fieldName %>: false,
+  <%_ } _%>
+    <%_ } _%>
+  <%_ } _%>
+    };
+  }
+<%_ } _%>
+<%_ if (anyFieldIsTimeDerived || anyFieldIsTimeDerivedSaathratri) { _%>
+
+  private convert<%= entityAngularName %>RawValueTo<%= entityAngularName %>(raw<%= entityAngularName %>: <%= entityAngularName %>FormRawValue | New<%= entityAngularName %>FormRawValue): I<%= entityAngularName %> | New<%= entityAngularName %> {
+    return {
+      ...raw<%= entityAngularName %>,
+<%_ if(primaryKeySaathratri.composite) { _%>
+    <%= primaryKeySaathratri.name %>: {
+      ...raw<%= entityAngularName %>.<%= primaryKeySaathratri.name %>,
+<%_ for (field of fields.filter(field => field.isCompositePrimaryKeyField)) {
+      const { fieldName, fieldTypeTimed } = field;
+_%>
+  <%_ if (fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+      <%= fieldName %>: typeof raw<%= entityAngularName %>.<%= primaryKeySaathratri.name %>.<%= fieldName %> === 'number' ? dayjs(raw<%= entityAngularName %>.<%= primaryKeySaathratri.name %>.<%= fieldName %>) : dayjs(raw<%= entityAngularName %>.<%= primaryKeySaathratri.name %>.<%= fieldName %>, DATE_TIME_FORMAT),
+  <%_ } _%>
+<%_ } _%>
+    },
+<%_ for (field of fields.filter(field => !field.isCompositePrimaryKeyField)) {
+      const { fieldName, fieldTypeTimed } = field;
+_%>
+  <%_ if (field.fieldTypeMapDayjsSaathratri) { _%>
+    <%= fieldName %>: raw<%= entityAngularName %>.<%= fieldName %>
+      ? Object.fromEntries(
+          Object.entries(raw<%= entityAngularName %>.<%= fieldName %>).map(([key, value]) => [
+            key,
+            typeof value === 'number' ? dayjs(value) : dayjs(value, DATE_TIME_FORMAT),
+          ])
+        )
+      : {},
+  <%_ } else if (fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+      <%= fieldName %>: typeof raw<%= entityAngularName %>.<%= fieldName %> === 'number' ? dayjs(raw<%= entityAngularName %>.<%= fieldName %>) : dayjs(raw<%= entityAngularName %>.<%= fieldName %>, DATE_TIME_FORMAT),
+  <%_ } _%>
+<%_ } _%>
+<%_ } else { _%>
+<%_ for (field of fields.filter(f => !f.fieldTypeVectorSaathratri)) {
+      const { fieldName, fieldTypeTimed } = field;
+_%>
+  <%_ if (field.fieldTypeMapDayjsSaathratri) { _%>
+    <%= fieldName %>: raw<%= entityAngularName %>.<%= fieldName %>
+      ? Object.fromEntries(
+          Object.entries(raw<%= entityAngularName %>.<%= fieldName %>).map(([key, value]) => [
+            key,
+            typeof value === 'number' ? dayjs(value) : dayjs(value, DATE_TIME_FORMAT),
+          ])
+        )
+      : {},
+  <%_ } else if (fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+      <%= fieldName %>: typeof raw<%= entityAngularName %>.<%= fieldName %> === 'number' ? dayjs(raw<%= entityAngularName %>.<%= fieldName %>) : dayjs(raw<%= entityAngularName %>.<%= fieldName %>, DATE_TIME_FORMAT),
+  <%_ } _%>
+<%_ } _%>
+<%_ } _%>
+    };
+  }
+
+  private convert<%= entityAngularName %>To<%= entityAngularName %>RawValue(<%= entityInstance %>: I<%= entityAngularName %> | (Partial<New<%= entityAngularName %>> & <%= entityAngularName %>FormDefaults)): <%= entityAngularName %>FormRawValue | PartialWithRequiredKeyOf<New<%= entityAngularName %>FormRawValue> {
+    return {
+      ...<%= entityInstance %>,
+<%_ if(primaryKeySaathratri.composite) { _%>
+  <%= primaryKeySaathratri.name %>: {
+    ...<%= entityInstance %>.<%= primaryKeySaathratri.name %>,
+<%_ for (field of fields.filter(field => field.isCompositePrimaryKeyField)) {
+      const { fieldName, fieldTypeTimed } = field;
+_%>
+  <%_ if (fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+      <%= fieldName %>: <%= entityInstance %>.<%= primaryKeySaathratri.name %>.<%= fieldName %> ?? null,
+  <%_ } _%>
+<%_ } _%>
+   },  
+<%_ for (field of fields.filter(field => !field.isCompositePrimaryKeyField)) {
+      const { fieldName, fieldTypeTimed } = field;
+_%>
+  <%_ if(field.fieldTypeMapDayjsSaathratri) { _%>
+    <%= fieldName %>: <%= entityInstance %>.<%= fieldName %>
+      ? Object.fromEntries(
+          Object.entries(<%= entityInstance %>.<%= fieldName %>).map(([key, value]) => [
+            key,
+            value.format(DATE_TIME_FORMAT),
+          ])
+        )
+      : {},
+  <%_ } else if (fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+      <%= fieldName %>: <%= entityInstance %>.<%= fieldName %> ? <%= entityInstance %>.<%= fieldName %>.format(DATE_TIME_FORMAT) : undefined,
+  <%_ } _%>
+<%_ } _%>
+<%_ } else { _%>
+  <%_ for (field of fields.filter(f => !f.fieldTypeVectorSaathratri)) {
+      const { fieldName, fieldTypeTimed } = field;
+_%>
+  <%_ if(field.fieldTypeMapDayjsSaathratri) { _%>
+    <%= fieldName %>: <%= entityInstance %>.<%= fieldName %>
+      ? Object.fromEntries(
+          Object.entries(<%= entityInstance %>.<%= fieldName %>).map(([key, value]) => [
+            key,
+            value.format(DATE_TIME_FORMAT),
+          ])
+        )
+      : {},
+  <%_ } else if (fieldTypeTimed || field.fieldTypeTimedSaathratri) { _%>
+      <%= fieldName %>: <%= entityInstance %>.<%= fieldName %> ? <%= entityInstance %>.<%= fieldName %>.format(DATE_TIME_FORMAT) : undefined,
+  <%_ } _%>
+<%_ } _%>
+<%_ } _%>
+    };
+  }
+<%_ } _%>
+}

@@ -1,0 +1,162 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SubGenerator cassandra-angular of cassandra JHipster blueprint > run > should succeed 1`] = `
+{
+  ".yo-rc.json": {
+    "stateCleared": "modified",
+  },
+  "template-file-cassandra-angular": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/date-time/date-time.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/date-time/date-time.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/date-time/date-time.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/date-time/date-time.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-component/map-boolean-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-component/map-boolean-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-component/map-boolean-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-component/map-boolean-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-edit-dialog-component/map-boolean-edit-dialog-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-edit-dialog-component/map-boolean-edit-dialog-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-edit-dialog-component/map-boolean-edit-dialog-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-boolean-edit-dialog-component/map-boolean-edit-dialog-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-component/map-dayjs-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-component/map-dayjs-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-component/map-dayjs-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-component/map-dayjs-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-edit-dialog-component/map-dayjs-edit-dialog-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-edit-dialog-component/map-dayjs-edit-dialog-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-edit-dialog-component/map-dayjs-edit-dialog-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-dayjs-edit-dialog-component/map-dayjs-edit-dialog-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-component/map-number-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-component/map-number-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-component/map-number-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-component/map-number-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-edit-dialog-component/map-number-edit-dialog-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-edit-dialog-component/map-number-edit-dialog-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-edit-dialog-component/map-number-edit-dialog-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-number-edit-dialog-component/map-number-edit-dialog-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-component/map-string-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-component/map-string-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-component/map-string-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-component/map-string-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-edit-dialog-component/map-string-edit-dialog-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-edit-dialog-component/map-string-edit-dialog-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-edit-dialog-component/map-string-edit-dialog-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/map-string-edit-dialog-component/map-string-edit-dialog-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-component/set-string-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-component/set-string-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-component/set-string-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-component/set-string-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-edit-dialog-component/set-string-edit-dialog-component.component.css": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-edit-dialog-component/set-string-edit-dialog-component.component.html": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-edit-dialog-component/set-string-edit-dialog-component.component.spec.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/components/set-string-edit-dialog-component/set-string-edit-dialog-component.component.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/shared/date/convert-from-date-long-to-dayjs.pipe.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/shared/date/convert-from-dayjs-to-date-long.pipe.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/shared/date/dayjs-date-adapter.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/shared/date/format-utc-date.pipe.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/shared/date/saathratri-local-dayjs-and-utc-unix-utils.ts": {
+    "stateCleared": "modified",
+  },
+  "undefinedapp/shared/material.module.ts": {
+    "stateCleared": "modified",
+  },
+}
+`;

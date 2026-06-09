@@ -1,0 +1,29 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+
+import { MapStringEditDialogComponent } from './map-string-edit-dialog-component.component';
+
+describe('MapStringEditDialogComponent', () => {
+  let component: MapStringEditDialogComponent;
+  let fixture: ComponentFixture<MapStringEditDialogComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [MapStringEditDialogComponent],
+      providers: [
+        { provide: MatDialogRef, useValue: { close() {} } },
+        { provide: MAT_DIALOG_DATA, useValue: { key: 'a', value: 'b' } },
+      ],
+    })
+    .compileComponents();
+
+    fixture = TestBed.createComponent(MapStringEditDialogComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});

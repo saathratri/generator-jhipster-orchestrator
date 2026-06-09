@@ -1,0 +1,71 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.repository;
+
+import java.util.UUID;
+import java.util.List;
+<%_ if (primaryKeySaathratri.composite) { _%>
+import java.util.Optional;
+<%_ } _%>
+
+<%_ if (primaryKeySaathratri.hasTimeUUID) { _%>
+import java.util.Optional;
+<%_ }  _%>
+
+import org.springframework.data.cassandra.repository.<% if (reactive) { %>Reactive<% } %>CassandraRepository;
+<%_ if (primaryKeySaathratri.composite) { _%>
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+<%_ } _%>
+import org.springframework.stereotype.Repository;
+import org.springframework.data.cassandra.repository.Query;
+<%_
+const vectorFieldsForRepo = fields.filter(field => field.fieldTypeVectorSaathratri === true);
+const hasVectorFieldsForRepo = vectorFieldsForRepo.length > 0;
+_%>
+<%_ if (hasVectorFieldsForRepo) { _%>
+import com.datastax.oss.driver.api.core.data.CqlVector;
+<%_ } _%>
+
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>;
+<%_ if (primaryKeySaathratri.composite) { _%>
+import <%= entityAbsolutePackage %>.domain.<%= persistClass %>Id;
+<%_ } _%>
+
+/**
+ * <%= springDataDescription %> repository for the <%= persistClass %> entity.
+ */
+@Repository
+public interface <%= entityClass %>Repository extends <% if (reactive) { %>Reactive<% } %>CassandraRepository<<%= persistClass %>, <%_ if(primaryKeySaathratri.composite) { _%><%= entityClass %>Id<%_ } else { _%><%= primaryKey.type %><%_ } _%>> {
+     <% if (primaryKeySaathratri.composite) {
+          let methodsArray = generatePrimaryKeyMethods(entityClass, entityInstance, entityInstanceSnakeCase, primaryKeySaathratri, "Repository");
+          // Output all method names at once, joined by newlines for readability
+          let methodsOutput = methodsArray.join('\n');
+     %>
+     <%- methodsOutput %>
+     <% } %>
+
+<%_ /* Saathratri modification - ANN vector similarity search methods */ _%>
+<%_ for (const vectorField of vectorFieldsForRepo) { _%>
+    @Query("SELECT * FROM <%= entityTableName %> ORDER BY <%= vectorField.fieldNameUnderscored %> ANN OF ?0 LIMIT ?1")
+    List<<%= persistClass %>> findSimilarBy<%= vectorField.fieldNameCapitalized %>(CqlVector<Float> queryVector, int limit);
+
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+}

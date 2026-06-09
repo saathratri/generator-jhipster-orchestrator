@@ -1,0 +1,112 @@
+<%#
+ Copyright 2013-2025 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= packageName %>.web.rest;
+
+import <%= packageName %>.service.embedding.EmbeddingMigrationService;
+import <%= packageName %>.service.embedding.EmbeddingService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * REST controller for managing embedding migrations.
+ * Provides endpoints to trigger one-time embedding generation for existing entities.
+ */
+@RestController
+@RequestMapping("/api/admin/embeddings")
+public class EmbeddingMigrationResource {
+
+    private static final Logger LOG = LoggerFactory.getLogger(EmbeddingMigrationResource.class);
+
+    private final EmbeddingMigrationService embeddingMigrationService;
+    private final EmbeddingService embeddingService;
+
+    public EmbeddingMigrationResource(
+        EmbeddingMigrationService embeddingMigrationService,
+        EmbeddingService embeddingService
+    ) {
+        this.embeddingMigrationService = embeddingMigrationService;
+        this.embeddingService = embeddingService;
+    }
+
+    /**
+     * GET /api/admin/embeddings/status : Check embedding service status.
+     *
+     * @return status information
+     */
+    @GetMapping("/status")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<EmbeddingStatus> getStatus() {
+        boolean available = embeddingService.isAvailable();
+        return ResponseEntity.ok(new EmbeddingStatus(
+            available,
+            available ? "Embedding service is ready" : "Embedding service not configured. Set OPENAI_API_KEY environment variable"
+        ));
+    }
+
+    /**
+     * POST /api/admin/embeddings/migrate : Trigger embedding migration for all entities.
+     * This is a synchronous operation that may take a long time for large datasets.
+     *
+     * @return migration summary
+     */
+    @PostMapping("/migrate")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<String> migrateEmbeddings() {
+        LOG.info("REST request to migrate embeddings");
+        String result = embeddingMigrationService.migrateAllEmbeddings();
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * POST /api/admin/embeddings/migrate-async : Trigger async embedding migration.
+     * Returns immediately while migration runs in background.
+     *
+     * @return acknowledgement
+     */
+    @PostMapping("/migrate-async")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<String> migrateEmbeddingsAsync() {
+        LOG.info("REST request to migrate embeddings asynchronously");
+        embeddingMigrationService.migrateAllEmbeddingsAsync();
+        return ResponseEntity.accepted().body("Embedding migration started in background. Check logs for progress.");
+    }
+
+<%_ for (const vectorEntity of vectorEntitiesSaathratri) { _%>
+    /**
+     * POST /api/admin/embeddings/migrate/<%= vectorEntity.entityInstance %> : Migrate <%= vectorEntity.entityClass %> embeddings only.
+     *
+     * @return migration summary for <%= vectorEntity.entityClass %>
+     */
+    @PostMapping("/migrate/<%= vectorEntity.entityInstance %>")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<String> migrate<%= vectorEntity.entityClass %>Embeddings() {
+        LOG.info("REST request to migrate <%= vectorEntity.entityClass %> embeddings");
+        String result = embeddingMigrationService.migrate<%= vectorEntity.entityClass %>Embeddings();
+        return ResponseEntity.ok(result);
+    }
+
+<%_ } _%>
+    /**
+     * Status response object.
+     */
+    public record EmbeddingStatus(boolean available, String message) {}
+}

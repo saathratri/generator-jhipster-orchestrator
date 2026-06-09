@@ -1,0 +1,434 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+# ===================================================================
+# Spring Boot configuration for the "prod" profile.
+#
+# This configuration overrides the application.yml file.
+#
+# More information on profiles: https://www.jhipster.tech/profiles/
+# More information on configuration properties: https://www.jhipster.tech/common-application-properties/
+# ===================================================================
+
+# ===================================================================
+# Standard Spring Boot properties.
+# Full reference is available at:
+# https://docs.spring.io/spring-boot/appendix/application-properties/index.html
+# ===================================================================
+
+logging:
+  level:
+    ROOT: INFO
+    tech.jhipster: INFO
+<%_ if (packageName !== 'tech.jhipster') { _%>
+    <%= packageName %>: INFO
+<%_ } _%>
+<%_ if (databaseTypeNeo4j) { _%>
+    org.neo4j.driver: WARN
+<%_ } _%>
+<%_ if (serviceDiscoveryEureka) { _%>
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    service-url:
+      defaultZone: http://admin:${jhipster.registry.password}@localhost:8761/eureka/
+<%_ } _%>
+
+<%_ if (databaseTypeNeo4j) { _%>
+org:
+  neo4j:
+    driver:
+      pool:
+        metrics-enabled: true
+  <%_ if (!databaseMigrationLiquibase) { _%>
+    migrations:
+      locations-to-scan:
+      packages-to-scan: <%= packageName %>.config.neo4j
+      installed-by: <%= baseName %>
+  <%_ } _%>
+<%_ } _%>
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: false
+<%_ if (serviceDiscoveryAny || applicationTypeGateway || applicationTypeMicroservice) { _%>
+  zipkin: # Use the "zipkin" Maven profile to have the Spring Cloud Zipkin dependencies
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
+  tracing:
+    sampling:
+      probability: 1.0 # report 100% of traces
+<%_ } _%>
+
+spring:
+  devtools:
+    restart:
+      enabled: false
+    livereload:
+      enabled: false
+<%_ if (databaseTypeNeo4j) { _%>
+  neo4j:
+    pool:
+      metrics-enabled: true
+    uri: bolt://localhost:7687
+<%_ } _%>
+<%_ if (serviceDiscoveryEureka) { _%>
+  cloud:
+    config:
+      retry:
+        initial-interval: 1000
+        max-interval: 2000
+        max-attempts: 100
+      # --- SAATHRATRI CHANGE: Point to GitHub-hosted config repo instead of local registry ---
+      uri: https://github.com/jhipster/jhipster-registry-sample-config
+      # --- END SAATHRATRI CHANGE ---
+      # name of the config server's property source (file.yml) that we want to use
+      name: <%= baseName %>
+      profile: prod
+      label: main # toggle to switch to a different version of the configuration as stored in git
+      # it can be set to any label, branch or commit of the configuration source Git repository
+<%_ } _%>
+<%_ if (serviceDiscoveryConsul) { _%>
+  cloud:
+    consul:
+      discovery:
+        prefer-ip-address: true
+      host: localhost
+      port: 8500
+<%_ } _%>
+<%_ if (databaseTypeSql && !reactive) { _%>
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+  # --- SAATHRATRI CHANGE: Externalize PostgreSQL credentials via env vars for Heroku/cloud deployment ---
+  <%_ if (prodDatabaseTypePostgresql) { _%>
+    url: ${JDBC_DATABASE_URL_<%- baseName.toUpperCase() %>_PROD}
+    username: ${JDBC_DATABASE_USERNAME_<%- baseName.toUpperCase() %>_PROD}
+    password: ${JDBC_DATABASE_PASSWORD_<%- baseName.toUpperCase() %>_PROD}
+  <%_ } else { _%>
+    url: <%- prodJdbcUrl %>
+  <%_ } _%>
+  # --- END SAATHRATRI CHANGE ---
+    hikari:
+      poolName: Hikari
+      auto-commit: false
+  <%_ if (prodDatabaseTypeMysql || prodDatabaseTypeMariadb || prodDatabaseTypeMssql) { _%>
+      data-source-properties:
+        cachePrepStmts: true
+        prepStmtCacheSize: 250
+        prepStmtCacheSqlLimit: 2048
+        useServerPrepStmts: true
+  <%_ } _%>
+  # --- SAATHRATRI CHANGE: Explicit ddl-auto for PostgreSQL ---
+<%_ if (prodDatabaseTypePostgresql) { _%>
+  jpa:
+    hibernate:
+      # Change to 'update' to create schema, afterwards change to 'none'. Change to 'create-drop' to drop and then create schema.
+      ddl-auto: none
+<%_ } _%>
+  # --- END SAATHRATRI CHANGE ---
+<%_ } _%>
+<%_ if (databaseTypeMongodb && !springBoot4) { _%>
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/<%= baseName %>
+<%_ } _%>
+<%_ if (databaseTypeCassandra) { _%>
+  # --- SAATHRATRI CHANGE: Use DataStax Astra (cloud Cassandra) with env vars and extended timeouts ---
+  cassandra:
+    keyspace-name: ${ASTRA_DB_KEYSPACE_<%- baseName.toUpperCase() %>_PROD}
+    username: ${ASTRA_DB_USERNAME}
+    password: ${ASTRA_DB_PASSWORD}
+    # No schema action
+    schema-action: NONE
+    compression: LZ4
+    # Increase timeouts when connecting to Astra from a dev workstation
+    request:
+      timeout: 300s
+    connection:
+      connect-timeout: 300s
+      init-query-timeout: 300s
+  # --- END SAATHRATRI CHANGE ---
+<%_ } _%>
+<%_ if (searchEngineElasticsearch) { _%>
+  elasticsearch:
+    uris: http://localhost:9200
+<%_ } _%>
+<%_ if (databaseTypeCouchbase) { _%>
+  couchbase:
+    connection-string: couchbase://localhost
+<%_ } _%>
+<%_ if (databaseMigrationLiquibase) { _%>
+  # Replace by 'prod, faker' to add the faker context and have sample data loaded in production
+  # --- SAATHRATRI CHANGE: Additional Heroku deployment context ---
+  # This defines the JDBC URL for the PostgreSQL database that Liquibase should connect to when applying migrations.
+  # This is required to properly deploy on Heroku.
+  # --- END SAATHRATRI CHANGE ---
+  liquibase:
+    contexts: prod
+  <%_ if (databaseTypeSql && reactive) { _%>
+    url: <%- prodJdbcUrl %>
+  <%_ } _%>
+<%_ } _%>
+<%_ if (generateUserManagement) { _%>
+  mail:
+    host: localhost
+    port: 25
+<%_ } _%>
+<%_ if (databaseTypeMongodb && springBoot4) { _%>
+  mongodb:
+    uri: mongodb://localhost:27017/<%= baseName %>
+<%_ } _%>
+<%_ if (databaseTypeSql && reactive) { _%>
+  r2dbc:
+  # --- SAATHRATRI CHANGE: Externalize R2DBC PostgreSQL credentials via env vars ---
+  <%_ if (prodDatabaseTypePostgresql) { _%>
+    url: ${R2DBC_DATABASE_URL_<%- baseName.toUpperCase() %>_PROD}
+    username: ${R2DBC_DATABASE_USERNAME_<%- baseName.toUpperCase() %>_PROD}
+    password: ${R2DBC_DATABASE_PASSWORD_<%- baseName.toUpperCase() %>_PROD}
+  <%_ } else { _%>
+    url: <%- prodR2dbcUrl %>
+  <%_ } _%>
+  # --- END SAATHRATRI CHANGE ---
+<%_ } _%>
+  thymeleaf:
+    cache: true
+# --- SAATHRATRI CHANGE: Auth0 OIDC provider and registration for production ---
+<%_ /* if (authenticationTypeOauth2) { */ _%>
+  security:
+    oauth2:
+      client:
+        provider:
+          oidc:
+            # issuer-uri: http://localhost:9080/realms/jhipster
+            # make sure to include the ending slash!
+            issuer-uri: https://${AUTH0_DOMAIN}/
+        registration:
+          oidc:
+<%_ if (applicationTypeMicroservice) { _%>
+            # client-id: internal
+            # client-secret: internal
+            client-id: ${AUTH0_OAUTH2_CLIENT_ID_WEB}
+            client-secret: ${AUTH0_OAUTH2_CLIENT_SECRET_WEB}
+<%_ } else { _%>
+            # client-id: web_app
+            # client-secret: web_app
+            client-id: ${AUTH0_OAUTH2_CLIENT_ID_WEB}
+            client-secret: ${AUTH0_OAUTH2_CLIENT_SECRET_WEB}
+<%_ } _%>
+            scope: openid, profile, email, offline_access # last one for refresh tokens
+<%_ /* } */ _%>
+# --- END SAATHRATRI CHANGE ---
+
+# ===================================================================
+# To enable TLS in production, generate a certificate using:
+# keytool -genkey -alias <%= baseName.toLowerCase() %> -storetype PKCS12 -keyalg RSA -keysize 2048 -keystore keystore.p12 -validity 3650
+#
+# You can also use Let's Encrypt:
+# See details in topic "Create a Java Keystore (.JKS) from Let's Encrypt Certificates" on https://maximilian-boehm.com/en-gb/blog
+#
+# Then, modify the server.ssl properties so your "server" configuration looks like:
+#
+# server:
+#   port: 443
+#   ssl:
+#     key-store: classpath:config/tls/keystore.p12
+#     key-store-password: password
+#     key-store-type: PKCS12
+#     key-alias: selfsigned
+#     # The ciphers suite enforce the security by deactivating some old and deprecated SSL cipher, this list was tested against SSL Labs (https://www.ssllabs.com/ssltest/)
+#     ciphers: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 ,TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 ,TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 ,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,TLS_DHE_RSA_WITH_AES_128_CBC_SHA,TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,TLS_DHE_RSA_WITH_AES_256_CBC_SHA,TLS_RSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_RSA_WITH_AES_256_CBC_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA,TLS_RSA_WITH_AES_256_CBC_SHA,TLS_DHE_RSA_WITH_CAMELLIA_256_CBC_SHA,TLS_RSA_WITH_CAMELLIA_256_CBC_SHA,TLS_DHE_RSA_WITH_CAMELLIA_128_CBC_SHA,TLS_RSA_WITH_CAMELLIA_128_CBC_SHA
+# ===================================================================
+server:
+  port: <%= serverPort %>
+  shutdown: graceful # see https://docs.spring.io/spring-boot/reference/web/graceful-shutdown.html#web.graceful-shutdown
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json,image/svg+xml
+    min-response-size: 1024
+
+# ===================================================================
+# JHipster specific properties
+#
+# Full reference is available at: https://www.jhipster.tech/common-application-properties/
+# ===================================================================
+
+jhipster:
+  # --- SAATHRATRI CHANGE: Enable CORS in production with env var allowed origins ---
+  cors:
+    allowed-origins: '${ALLOWED_ORIGINS_ALL_MICROSERVICES_INCLUDING_GATEWAY}<%_ if(applicationTypeMicroservice) { _%>,${ALLOWED_ORIGINS_ALL_MICROSERVICES}<%_ } _%>'
+    allowed-methods: '*'
+    allowed-headers: '*'
+    exposed-headers: 'Authorization,Link,X-Total-Count'
+    allow-credentials: true
+    max-age: 1800
+  # --- END SAATHRATRI CHANGE ---
+<%_ if (applicationTypeGateway && cacheProviderHazelcast && serviceDiscoveryAny) { _%>
+  gateway:
+    rate-limiting:
+      enabled: false
+  <%_ if (!reactive) { _%>
+    authorized-microservices-endpoints: # Access Control Policy, if left empty for a route, all endpoints will be accessible
+      app1: /api # recommended prod configuration
+  <%_ } _%>
+<%_ } _%>
+  http:
+    cache: # Used by the CachingHttpHeadersFilter
+      timeToLiveInDays: 1461
+<%_ if (databaseTypeCouchbase) { _%>
+  database:
+    couchbase:
+      bucket-name: <%= baseName %>
+      scope-name: <%= camelizedBaseName %>
+<%_ } _%>
+<%_ if (!cacheProviderNo) { _%>
+  cache: # Cache configuration
+  <%_ if (cacheProviderHazelcast) { _%>
+    hazelcast: # Hazelcast distributed cache
+      time-to-live-seconds: 3600
+      backup-count: 1
+  <%_ } _%>
+  <%_ if (cacheProviderEhcache) { _%>
+    ehcache: # Ehcache configuration
+      time-to-live-seconds: 3600 # By default objects stay 1 hour in the cache
+      max-entries: 1000 # Number of objects in each cache entry
+  <%_ } _%>
+  <%_ if (cacheProviderCaffeine) { _%>
+    caffeine: # Caffeine configuration
+      time-to-live-seconds: 3600 # By default objects stay 1 hour in the cache. This sets expireAfterWrite in Caffeine (https://github.com/ben-manes/caffeine/wiki/Eviction#time-based)
+      max-entries: 1000 # Number of objects in each cache entry
+  <%_ } _%>
+  <%_ if (cacheProviderInfinispan) { _%>
+    infinispan:
+      config-file: <%- springBoot4 ? 'org/infinispan/configuration/' : 'default-configs/' %>default-jgroups-tcp.xml
+      statsEnabled: true
+      # local app cache
+      local:
+        time-to-live-seconds: 3600 # By default objects stay 1 hour (in seconds) in the cache
+        max-entries: 1000 # Number of objects in each cache entry
+      # distributed app cache
+      distributed:
+        time-to-live-seconds: 3600 # By default objects stay 1 hour (in seconds) in the cache
+        max-entries: 1000 # Number of objects in each cache entry
+        instance-count: 2
+      # replicated app cache
+      replicated:
+        time-to-live-seconds: 3600 # By default objects stay 1 hour (in seconds) in the cache
+        max-entries: 1000 # Number of objects in each cache entry
+  <%_ } _%>
+  <%_ if (cacheProviderMemcached) { _%>
+    memcached:
+      enabled: true
+      servers: localhost:11211
+      expiration: 300
+      use-binary-protocol: true
+  <%_ } _%>
+  <%_ if (cacheProviderRedis) { _%>
+    redis: # Redis configuration
+      expiration: 3600 # By default objects stay 1 hour (in seconds) in the cache
+      server: redis://localhost:6379
+      cluster: false
+      # server: redis://localhost:6379,redis://localhost:16379,redis://localhost:26379
+      # cluster: true
+  <%_ } _%>
+<%_ } _%>
+# --- SAATHRATRI CHANGE: Commented-out Eureka registry password env var ---
+<%_ if (serviceDiscoveryEureka) { _%>
+  # registry:
+  # password: ${EUREKA_JHIPSTER_REGISTRY_PASSWORD_PROD}
+<%_ } _%>
+# --- END SAATHRATRI CHANGE ---
+<%_ if (authenticationTypeJwt) { _%>
+  security:
+    authentication:
+      jwt:
+        # --- SAATHRATRI CHANGE: Include base64-secret and extended JWT security comments ---
+        # This token must be encoded using Base64 and be at least 256 bits long (you can type `openssl rand -base64 64` on your command line to generate a 512 bits one)
+        # As this is the PRODUCTION configuration, you MUST change the default key, and store it securely:
+        <%_ if (serviceDiscoveryEureka) { _%>
+        # - In the JHipster Registry (which includes a Spring Cloud Config server)
+        <%_ } else { _%>
+        # - In the Consul configserver
+        <%_ } _%>
+        # - In a separate `application-prod.yml` file, in the same folder as your executable JAR file
+        # - In the `JHIPSTER_SECURITY_AUTHENTICATION_JWT_BASE64_SECRET` environment variable
+        base64-secret: <%= jwtSecretKey %>
+        # --- END SAATHRATRI CHANGE ---
+        # Token is valid 24 hours
+        token-validity-in-seconds: 86400
+        token-validity-in-seconds-for-remember-me: 2592000
+<%_ } _%>
+# --- SAATHRATRI CHANGE: Session-based remember-me key ---
+<%_ if (authenticationTypeSession && !reactive) { _%>
+  security:
+    remember-me:
+      # security key (this key should be unique for your application, and kept secret)
+      key: <%= rememberMeKey %>
+<%_ } _%>
+# --- END SAATHRATRI CHANGE ---
+<%_ if (generateUserManagement) { _%>
+  mail: # specific JHipster mail property, for standard properties see MailProperties
+    base-url: http://my-server-url-to-change # Modify according to your server's URL
+<%_ } _%>
+  logging:
+    use-json-format: false # By default, logs are not in Json format
+    logstash: # Forward logs to logstash over a socket, used by LoggingConfiguration
+      enabled: false
+      host: localhost
+      port: 5000
+      ring-buffer-size: 512
+
+# --- SAATHRATRI CHANGE: Auth0 OAuth2 audience with Azure API Management ---
+<%_ /* if (authenticationTypeOauth2) { */ _%>
+  security:
+    oauth2:
+      audience:
+        # - account
+        # - api://default
+        - https://${AUTH0_DOMAIN}/api/v2/
+        <%_ if (!applicationTypeGateway) { _%>
+        - https://saathratriapimanagementservcie.azure-api.net
+        <%_ } _%>
+<%_ /* } */ _%>
+# --- END SAATHRATRI CHANGE ---
+
+# ===================================================================
+# Application specific properties
+# Add your own application properties here, see the ApplicationProperties class
+# to have type-safe configuration, like in the JHipsterProperties above
+#
+# More documentation is available at:
+# https://www.jhipster.tech/common-application-properties/
+# ===================================================================
+
+# --- SAATHRATRI CHANGE: Cassandra services use AWS S3 and Astra DB application properties ---
+<%_ if (databaseTypeCassandra) { _%>
+application:
+  s3fsBucketName: ${AWS_S3_FS_BUCKET_NAME}
+  # Filename is the key name
+  s3fsKeyName: ${AWS_S3_FS_KEY_NAME}
+  awsRegion: ${ASTRA_DB_REGION}
+  clientId: ${ASTRA_DB_USERNAME}
+  clientSecret: ${ASTRA_DB_PASSWORD}
+  keyspace: ${ASTRA_DB_KEYSPACE_<%- baseName.toUpperCase() %>_PROD}
+<%_ } else { _%>
+# application:
+<%_ } _%>
+# --- END SAATHRATRI CHANGE ---

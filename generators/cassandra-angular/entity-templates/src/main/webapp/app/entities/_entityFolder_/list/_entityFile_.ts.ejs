@@ -1,0 +1,1140 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%_
+  const notSortableFieldsAfterSearchArray = searchEngineNo ? [] : fields
+      .filter(field => !field.hidden && !field.fieldTypeBoolean && !field.fieldTypeNumeric && !field.fieldTypeTemporal);
+
+  const notSortableFieldsAfterSearchFieldNames = notSortableFieldsAfterSearchArray
+      .map(field => field.fieldName);
+
+  const notSortableFieldsAfterSearch = notSortableFieldsAfterSearchArray
+      .map(field => `'${field.fieldName}'`)
+      .join(', ');
+
+  const componentName = entityAngularName + 'Component';
+
+  // Saathratri: Determine if this is a Cassandra entity with no pagination (uses Observable-based loading)
+  const cassandraNoPagination = databaseTypeCassandra && paginationNo;
+  // Saathratri: Determine if this is a Cassandra composite key entity (uses search filters)
+  const cassandraComposite = databaseTypeCassandra && primaryKeySaathratri.composite;
+
+  // Saathratri: Get composite key field names for sorting
+  const compositeKeyFieldNames = primaryKeySaathratri.composite
+    ? fields.filter(f => f.isCompositePrimaryKeyField).map(f => `'${f.fieldName}'`).join(', ')
+    : '';
+
+  // Saathratri: Detect vector fields for AI search
+  const vectorFieldsForAiSearch = fields.filter(f => f.fieldTypeVectorSaathratri === true);
+  const hasVectorFieldsForAiSearch = vectorFieldsForAiSearch.length > 0;
+_%>
+import { Component, computed, effect, inject, NgZone, OnInit, signal, WritableSignal, untracked<%_ if (databaseTypeCassandra && paginationNo) { _%>, HostListener<%_ } _%> } from '@angular/core';
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+import { toSignal } from '@angular/core/rxjs-interop';
+<%_ } _%>
+<%_ if (!paginationNo || (databaseTypeCassandra && paginationNo)) { _%>
+import { HttpHeaders<%_ if (cassandraComposite) { _%>, HttpResponse<%_ } _%> } from '@angular/common/http';
+<%_ } _%>
+import { ActivatedRoute, Data, ParamMap, Router, RouterLink } from '@angular/router';
+import { combineLatest<%_ if (!readOnly) { _%>, filter<%_ } _%><%_ if (cassandraComposite) { _%>, map<%_ } _%><%_ if (cassandraNoPagination) { _%>, Observable<%_ } _%>, Subscription, tap } from 'rxjs';
+<%_ if (!readOnly) { _%>
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+<%_ } _%>
+
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { AlertError } from 'app/shared/alert/alert-error';
+import { Alert } from 'app/shared/alert/alert';
+<%_ if (enableTranslation) { _%>
+import { TranslateDirective } from 'app/shared/language';
+import { TranslateModule } from '@ngx-translate/core';
+<%_ } _%>
+import { sortStateSignal, SortDirective, SortByDirective, type SortState, SortService } from 'app/shared/sort';
+import { DurationPipe, FormatMediumDatetimePipe, FormatMediumDatePipe, ConvertFromDayjsToDateLongPipe } from 'app/shared/date';
+<%_ if (cassandraComposite) { _%>
+import dayjs from 'dayjs/esm';
+import customParseFormat from 'dayjs/esm/plugin/customParseFormat';
+dayjs.extend(customParseFormat);
+import { MaterialModule } from 'app/shared/material.module';
+<%_ } _%>
+<%_ if (paginationPagination) { _%>
+import { ItemCountComponent } from 'app/shared/pagination';
+<%_ } _%>
+<%_ if (searchEngine || cassandraComposite || hasVectorFieldsForAiSearch) { _%>
+import { FormsModule } from '@angular/forms';
+<%_ } _%>
+<%_ if (primaryKeySaathratri.composite) { _%>
+    // Saathratri: Composite Primary Key Code
+    import { I<%= entityAngularName %>, I<%= entityAngularName %>Id } from '../<%= entityFileName %>.model';
+<%_ } else { _%>
+    // Saathratri: Single-value Primary Key Code
+import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+<%_ } // Saathratri _%>
+<%_ if (!paginationNo) { %>
+import {
+  ITEMS_PER_PAGE,
+<%_ if (paginationPagination) { _%>
+  PAGE_HEADER,
+<%_ } _%>
+<%_ if (paginationPagination) { _%>
+  TOTAL_COUNT_RESPONSE_HEADER,
+<%_ } _%>
+} from 'app/config/pagination.constants';
+<%_ } _%>
+import {
+  SORT,
+<%_ if (!readOnly) { _%>
+  ITEM_DELETED_EVENT,
+<%_ } _%>
+  DEFAULT_SORT_DATA
+} from 'app/config/navigation.constants';
+import { <%= cassandraNoPagination ? 'EntityArrayResponseType, ' : '' %><%= cassandraComposite ? 'EntityResponseType, ' : '' %><%= entityAngularName %>Service } from '../service/<%= entityFileName %>.service';
+<%_ if (!readOnly) { _%>
+import { <%= entityAngularName %>DeleteDialogComponent } from '../delete/<%= entityFileName %>-delete-dialog';
+<%_ } _%>
+<%_ if (anyFieldIsBlobDerived) { _%>
+import { DataUtils } from 'app/core/util/data-util.service';
+<%_ } _%>
+<%_ if (paginationInfiniteScroll) { _%>
+import { ParseLinks } from 'app/core/util/parse-links.service';
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+import { FilterComponent, FilterOptions, IFilterOptions, IFilterOption } from 'app/shared/filter';
+<%_ } _%>
+<%_ if (paginationInfiniteScroll) { _%>
+import { InfiniteScrollDirective } from 'ngx-infinite-scroll';
+<%_ } _%>
+<%_
+    const hasMapFields = fields.some(field => field.fieldTypeMapSaathratri);
+_%>
+<%_ if (hasMapFields || hasVectorFieldsForAiSearch) { _%>
+import { KeyValuePipe<%_ if (hasVectorFieldsForAiSearch) { _%>, DecimalPipe<%_ } _%> } from '@angular/common';
+<%_ } else if (hasVectorFieldsForAiSearch) { _%>
+import { DecimalPipe } from '@angular/common';
+<%_ } _%>
+
+@Component({
+    selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>',
+    templateUrl: './<%= entityFileName %>.html',
+    imports: [
+      RouterLink,
+<%_ if (searchEngine || cassandraComposite || hasVectorFieldsForAiSearch) { _%>
+      FormsModule,
+<%_ } _%>
+      FontAwesomeModule,
+      AlertError,
+      Alert,
+<%_ if (enableTranslation) { _%>
+      TranslateDirective,
+      TranslateModule,
+<%_ } _%>
+      SortDirective,
+      SortByDirective,
+      DurationPipe,
+      FormatMediumDatetimePipe,
+      FormatMediumDatePipe,
+      ConvertFromDayjsToDateLongPipe,
+<%_ if (cassandraComposite) { _%>
+      MaterialModule,
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+      FilterComponent,
+<%_ } _%>
+<%_ if (paginationPagination) { _%>
+      ItemCountComponent,
+<%_ } _%>
+<%_ if (paginationInfiniteScroll) { _%>
+      InfiniteScrollDirective,
+<%_ } _%>
+<%_ if (hasMapFields) { _%>
+      KeyValuePipe,
+<%_ } _%>
+<%_ if (hasVectorFieldsForAiSearch) { _%>
+      DecimalPipe,
+<%_ } _%>
+    ],
+})
+export class <%= componentName %> implements OnInit {
+
+<%_ if (notSortableFieldsAfterSearch) { _%>
+    private static readonly NOT_SORTABLE_FIELDS_AFTER_SEARCH = [<%- notSortableFieldsAfterSearch %>];
+
+<%_ } _%>
+    subscription: Subscription | null = null;
+    readonly <%= entityInstancePlural %> = signal<I<%= entityAngularName %>[]>([]);
+
+    sortState = sortStateSignal({});
+<%_ if (searchEngineAny) { _%>
+    readonly currentSearch = signal('');
+<%_ } _%>
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+    filters: IFilterOptions = new FilterOptions();
+<%_ } _%>
+
+<%_ if (paginationPagination) { _%>
+    readonly itemsPerPage = signal(ITEMS_PER_PAGE);
+    readonly totalItems = signal(0);
+    readonly page = signal(1);
+<%_ } else if (paginationInfiniteScroll) { _%>
+    readonly itemsPerPage = signal(ITEMS_PER_PAGE);
+    readonly links: WritableSignal<Record<string, undefined | Record<string, string | undefined>>> = signal({});
+    readonly hasMorePage = computed(() => !!this.links().next);
+    readonly isFirstFetch = computed(() => Object.keys(this.links()).length === 0);
+<%_ } _%>
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+    isLoadingMore = false;
+    // Cassandra Slice pagination state (cursor-based)
+    pagingState: string | null = null;
+    pageSize = 20;
+    hasNextPage = false;
+    totalItems: number | null = null;
+<%_ } _%>
+<%_ /* Saathratri modification - AI search properties */ _%>
+<%_ if (hasVectorFieldsForAiSearch) { _%>
+
+    // AI Search properties
+    aiSearchQuery = '';
+    aiSearchLoading = signal(false);
+    isAiSearchActive = signal(false);
+    aiSearchSelectedFields: Record<string, boolean> = { <%- vectorFieldsForAiSearch.map(vf => `'${vf.fieldName}': true`).join(', ') %> };
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+<%_ if (cassandraComposite) {
+    const partitionKeyFields = fields.filter(f => f.isPartitionedKeySaathratri);
+    const clusteringKeyFields = fields.filter(f => f.isClusteredKeySaathratri);
+_%>
+
+    // Cassandra search form state
+    isSearchFormCollapsed = true;
+    isSearchActive = false;
+    searchCriteria: {
+<%_ for (const field of partitionKeyFields) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri) { _%>
+        <%= field.fieldName %>Date: Date | null;
+        <%= field.fieldName %>Hour: number | null;
+        <%= field.fieldName %>Minute: number | null;
+        <%= field.fieldName %>AmPm: string | null;
+        <%= field.fieldName %>: number | null;
+  <%_ } else if (field.fieldTypeLocalDateSaathratri) { _%>
+        <%= field.fieldName %>Date: Date | null;
+        <%= field.fieldName %>: number | null;
+  <%_ } else if (field.fieldType === 'Boolean') { _%>
+        <%= field.fieldName %>: boolean | null;
+  <%_ } else if (field.fieldTypeNumeric) { _%>
+        <%= field.fieldName %>: number | null;
+  <%_ } else { _%>
+        <%= field.fieldName %>: string | null;
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const field of clusteringKeyFields) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri) { _%>
+        <%= field.fieldName %>Operator: string | null;
+        <%= field.fieldName %>Date: Date | null;
+        <%= field.fieldName %>Hour: number | null;
+        <%= field.fieldName %>Minute: number | null;
+        <%= field.fieldName %>AmPm: string | null;
+        <%= field.fieldName %>: number | null;
+  <%_ } else if (field.fieldTypeLocalDateSaathratri) { _%>
+        <%= field.fieldName %>Operator: string | null;
+        <%= field.fieldName %>Date: Date | null;
+        <%= field.fieldName %>: number | null;
+  <%_ } else if (field.fieldType === 'Boolean') { _%>
+        <%= field.fieldName %>: boolean | null;
+  <%_ } else if (field.fieldTypeNumeric || field.fieldType === 'Long') { _%>
+        <%= field.fieldName %>Operator: string | null;
+        <%= field.fieldName %>: number | null;
+  <%_ } else if (field.fieldTypeTimeUuidSaathratri) { _%>
+        <%= field.fieldName %>Operator: string | null;
+        <%= field.fieldName %>: string | null;
+  <%_ } else { _%>
+        <%= field.fieldName %>: string | null;
+  <%_ } _%>
+<%_ } _%>
+    } = {
+<%_ for (const field of partitionKeyFields) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri) { _%>
+        <%= field.fieldName %>Date: null,
+        <%= field.fieldName %>Hour: null,
+        <%= field.fieldName %>Minute: null,
+        <%= field.fieldName %>AmPm: null,
+        <%= field.fieldName %>: null,
+  <%_ } else if (field.fieldTypeLocalDateSaathratri) { _%>
+        <%= field.fieldName %>Date: null,
+        <%= field.fieldName %>: null,
+  <%_ } else { _%>
+        <%= field.fieldName %>: null,
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const field of clusteringKeyFields) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri) { _%>
+        <%= field.fieldName %>Operator: 'eq',
+        <%= field.fieldName %>Date: null,
+        <%= field.fieldName %>Hour: null,
+        <%= field.fieldName %>Minute: null,
+        <%= field.fieldName %>AmPm: null,
+        <%= field.fieldName %>: null,
+  <%_ } else if (field.fieldTypeLocalDateSaathratri) { _%>
+        <%= field.fieldName %>Operator: 'eq',
+        <%= field.fieldName %>Date: null,
+        <%= field.fieldName %>: null,
+  <%_ } else if (field.fieldTypeNumeric || field.fieldType === 'Long') { _%>
+        <%= field.fieldName %>Operator: 'eq',
+        <%= field.fieldName %>: null,
+  <%_ } else if (field.fieldTypeTimeUuidSaathratri) { _%>
+        <%= field.fieldName %>Operator: 'eq',
+        <%= field.fieldName %>: null,
+  <%_ } else { _%>
+        <%= field.fieldName %>: null,
+  <%_ } _%>
+<%_ } _%>
+    };
+<%_ } _%>
+
+    public readonly router = inject(Router);
+    protected readonly <%= entityInstance %>Service = inject(<%= entityAngularName %>Service);
+<%_ if (cassandraNoPagination) { _%>
+    // Cassandra entities use Observable-based loading (plain boolean, not signal,
+    // because signals don't reliably trigger change detection in Module Federation microfrontends)
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    isLoading = false;
+<%_ } else { _%>
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    readonly isLoading = this.<%= entityInstance %>Service.<%= entityInstancePlural %>Resource.isLoading;
+<%_ } _%>
+    protected readonly activatedRoute = inject(ActivatedRoute);
+    protected readonly sortService = inject(SortService);
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+    protected readonly filterOptions = toSignal(this.filters.filterChanges);
+<%_ } _%>
+<%_ if (paginationInfiniteScroll) { _%>
+    protected parseLinks = inject(ParseLinks);
+<%_ } _%>
+<%_ if (anyFieldIsBlobDerived) { _%>
+    protected dataUtils = inject(DataUtils);
+<%_ } _%>
+<%_ if (!readOnly) { _%>
+    protected modalService = inject(NgbModal);
+<%_ } _%>
+    protected ngZone = inject(NgZone);
+
+<%_ if (!cassandraNoPagination) { _%>
+    constructor() {
+<%_ if (!paginationNo) { _%>
+      effect(() => {
+        const headers = this.<%= entityInstance %>Service.<%= entityInstancePlural %>Resource.headers();
+        if (headers) {
+          this.fillComponentAttributesFromResponseHeader(headers);
+        }
+      });
+<%_ } _%>
+      effect(() => {
+<%_ if (paginationInfiniteScroll) { _%>
+        this.<%- entityInstancePlural %>.update(<%- entityInstancePlural %> => this.fillComponentAttributesFromResponseBody([...this.<%- entityInstance %>Service.<%- entityInstancePlural %>()], <%- entityInstancePlural %>));
+<%_ } else { _%>
+        this.<%- entityInstancePlural %>.set(this.fillComponentAttributesFromResponseBody([...this.<%- entityInstance %>Service.<%- entityInstancePlural %>()]));
+<%_ } _%>
+      });
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+
+      effect(() => {
+        const filterOptions = this.filterOptions();
+        if (filterOptions) {
+          untracked(() => {
+            this.handleNavigation(1, this.sortState(), filterOptions);
+          });
+        }
+      });
+<%_ } _%>
+    }
+<%_ } _%>
+
+<%_ if (primaryKeySaathratri.composite) { _%>
+      // Saathratri: Composite Primary Key Code
+    	track<%= primaryKeySaathratri.nameCapitalized %> = (item: I<%= entityAngularName %>): I<%= entityAngularName %>Id => this.<%= entityInstance %>Service.get<%= entityAngularName %>Identifier(item);
+<%_ } else { _%>
+      // Saathratri: Single-value Primary Key Code
+    track<%= primaryKey.nameCapitalized %> = (item: I<%= entityAngularName %>): <%= primaryKey.tsType %> => this.<%= entityInstance %>Service.get<%= entityAngularName %>Identifier(item);
+<%_ } _%>
+
+    ngOnInit(): void {
+      this.subscription = combineLatest([this.activatedRoute.queryParamMap, this.activatedRoute.data]).pipe(
+        tap(([params, data]) => this.fillComponentAttributeFromRoute(params, data)),
+<%_ if (paginationInfiniteScroll) { _%>
+        tap(() => this.reset()),
+<%_ } _%>
+<%_ if (cassandraNoPagination) { _%>
+        tap(() => {
+          if (this.<%= entityInstancePlural %>().length === 0) {
+            this.load();
+          }
+        }),
+<%_ } else if (!paginationNo || searchEngineAny || jpaMetamodelFiltering) { _%>
+        tap(() => this.load()),
+<%_ } else { _%>
+        tap(() => {
+          if (this.<%= entityInstancePlural %>().length === 0) {
+            this.load();
+          }
+        }),
+<%_ } _%>
+      ).subscribe();
+    }
+
+<%_ if (paginationInfiniteScroll) { _%>
+    reset(): void {
+      this.<%= entityInstancePlural %>.set([]);
+    }
+
+    loadNextPage(): void {
+      this.load();
+    }
+
+<%_ } _%>
+<%_ if (searchEngineAny) { _%>
+    search(query: string): void {
+  <%_ if (paginationPagination) { _%>
+      this.page.set(1);
+  <%_ } _%>
+      this.currentSearch.set(query);
+  <%_ if (notSortableFieldsAfterSearch) { _%>
+      const { predicate } = this.sortState();
+      if (query && predicate && <%= componentName %>.NOT_SORTABLE_FIELDS_AFTER_SEARCH.includes(predicate)) {
+        this.navigateToWithComponentValues(this.getDefaultSortState());
+        return;
+      }
+  <%_ } _%>
+      this.navigateToWithComponentValues(this.sortState());
+    }
+
+    getDefaultSortState(): SortState {
+  <%_ if (notSortableFieldsAfterSearchFieldNames.includes(primaryKey.name)) { _%>
+      return {};
+  <%_ } else { _%>
+      return this.sortService.parseSortParam(this.activatedRoute.snapshot.data[DEFAULT_SORT_DATA]);
+  <%_ } _%>
+    }
+<%_ } _%>
+
+<%_ if (anyFieldIsBlobDerived) { _%>
+    byteSize(base64String: string): string {
+      return this.dataUtils.byteSize(base64String);
+    }
+
+    openFile(base64String: string, contentType: string | null | undefined): void {
+      return this.dataUtils.openFile(base64String, contentType);
+    }
+
+<%_ } _%>
+<%_ if (!readOnly) { _%>
+    delete(<%= entityInstance %>: I<%= entityAngularName %>): void {
+      const modalRef = this.modalService.open(<%= entityAngularName %>DeleteDialogComponent, { size: 'lg', backdrop: 'static' });
+      modalRef.componentInstance.<%= entityInstance %> = <%= entityInstance %>;
+      // unsubscribe not needed because closed completes on modal close
+      modalRef.closed
+        .pipe(
+          filter(reason => reason === ITEM_DELETED_EVENT),
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+          tap(() => this.resetAndLoad())
+<%_ } else { _%>
+          tap(() => this.load())
+<%_ } _%>
+        ).subscribe();
+    }
+
+<%_ } _%>
+    load(): void {
+<%_ if (cassandraNoPagination) { _%>
+      this.isLoading = true;
+      this.queryBackend().subscribe({
+        next: (res: EntityArrayResponseType) => {
+          this.onResponseSuccess(res);
+          this.isLoading = false;
+        },
+        error: () => {
+          this.isLoading = false;
+        },
+      });
+<%_ } else { _%>
+      this.queryBackend();
+<%_ } _%>
+    }
+
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+    resetAndLoad(): void {
+      this.pagingState = null;
+      this.hasNextPage = false;
+      this.totalItems = null;
+      this.<%= entityInstancePlural %>.set([]);
+      this.load();
+    }
+
+    loadMore(): void {
+      if (this.hasNextPage && !this.isLoadingMore) {
+        this.isLoadingMore = true;
+        this.queryBackend().subscribe({
+          next: (res: EntityArrayResponseType) => {
+            this.onResponseSuccess(res, true);
+            this.isLoadingMore = false;
+          },
+          error: () => {
+            this.isLoadingMore = false;
+          },
+        });
+      }
+    }
+
+    @HostListener('window:scroll')
+    onWindowScroll(): void {
+      const scrollPosition = window.scrollY + window.innerHeight;
+      const pageHeight = document.documentElement.scrollHeight;
+      const threshold = 200;
+
+      if (scrollPosition >= pageHeight - threshold && this.hasNextPage && !this.isLoadingMore && !this.isLoading) {
+        this.loadMore();
+      }
+    }
+
+<%_ } _%>
+<%_ if (cassandraComposite) {
+    const partitionKeyFieldsForMethods = fields.filter(f => f.isPartitionedKeySaathratri);
+    const allClusteringFields = fields.filter(f => f.isClusteredKeySaathratri);
+    const clusteringFieldsWithOperators = allClusteringFields.filter(f =>
+        f.fieldTypeTimedSaathratri || f.fieldTypeLocalDateSaathratri ||
+        f.fieldTypeNumeric || f.fieldType === 'Long' || f.fieldTypeTimeUuidSaathratri
+    );
+_%>
+    // Cassandra search form methods
+    toggleSearchForm(): void {
+        this.isSearchFormCollapsed = !this.isSearchFormCollapsed;
+    }
+
+    hasActiveSearch(): boolean {
+        return this.isSearchActive;
+    }
+
+    isSearchFormValid(): boolean {
+<%_ for (const field of partitionKeyFieldsForMethods) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri || field.fieldTypeLocalDateSaathratri) { _%>
+        if (this.searchCriteria.<%= field.fieldName %> === null) {
+            return false;
+        }
+  <%_ } else if (field.fieldType === 'String') { _%>
+        if (this.searchCriteria.<%= field.fieldName %> === null || this.searchCriteria.<%= field.fieldName %> === '') {
+            return false;
+        }
+  <%_ } else { _%>
+        if (this.searchCriteria.<%= field.fieldName %> === null) {
+            return false;
+        }
+  <%_ } _%>
+<%_ } _%>
+        return true;
+    }
+
+    isClusteringFieldDisabled(fieldName: string): boolean {
+        const criteria = this.searchCriteria as any;
+        const allClusteringFieldNames: string[] = [<%- allClusteringFields.map(f => `'${f.fieldName}'`).join(', ') %>];
+        const fieldsWithOperators: string[] = [<%- clusteringFieldsWithOperators.map(f => `'${f.fieldName}'`).join(', ') %>];
+
+        const fieldIndex = allClusteringFieldNames.indexOf(fieldName);
+        if (fieldIndex <= 0) {
+            return false;
+        }
+
+        for (let i = 0; i < fieldIndex; i++) {
+            const prevFieldName = allClusteringFieldNames[i];
+            if (fieldsWithOperators.includes(prevFieldName)) {
+                const prevOperator = criteria[prevFieldName + 'Operator'];
+                if (prevOperator && prevOperator !== 'eq') {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    onOperatorChange(fieldName: string): void {
+        const criteria = this.searchCriteria as any;
+        const allClusteringFieldNames: string[] = [<%- allClusteringFields.map(f => `'${f.fieldName}'`).join(', ') %>];
+        const fieldsWithOperators: string[] = [<%- clusteringFieldsWithOperators.map(f => `'${f.fieldName}'`).join(', ') %>];
+
+        const fieldIndex = allClusteringFieldNames.indexOf(fieldName);
+        if (fieldIndex < 0) return;
+
+        const operator = criteria[fieldName + 'Operator'];
+        if (operator && operator !== 'eq') {
+            for (let i = fieldIndex + 1; i < allClusteringFieldNames.length; i++) {
+                const nextFieldName = allClusteringFieldNames[i];
+                criteria[nextFieldName] = null;
+                if (fieldsWithOperators.includes(nextFieldName)) {
+                    criteria[nextFieldName + 'Operator'] = 'eq';
+                }
+                if (criteria[nextFieldName + 'Date'] !== undefined) {
+                    criteria[nextFieldName + 'Date'] = null;
+                }
+                if (criteria[nextFieldName + 'Hour'] !== undefined) {
+                    criteria[nextFieldName + 'Hour'] = null;
+                    criteria[nextFieldName + 'Minute'] = null;
+                    criteria[nextFieldName + 'AmPm'] = null;
+                }
+            }
+        }
+    }
+
+    performSearch(): void {
+        if (!this.isSearchFormValid()) {
+            return;
+        }
+        this.isSearchActive = true;
+        this.pagingState = null;
+        this.hasNextPage = false;
+        this.totalItems = null;
+        this.<%= entityInstancePlural %>.set([]);
+        this.load();
+    }
+
+    clearSearch(): void {
+<%_ for (const field of partitionKeyFieldsForMethods) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri) { _%>
+        this.searchCriteria.<%= field.fieldName %>Date = null;
+        this.searchCriteria.<%= field.fieldName %>Hour = null;
+        this.searchCriteria.<%= field.fieldName %>Minute = null;
+        this.searchCriteria.<%= field.fieldName %>AmPm = null;
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } else if (field.fieldTypeLocalDateSaathratri) { _%>
+        this.searchCriteria.<%= field.fieldName %>Date = null;
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } else { _%>
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const field of allClusteringFields) { _%>
+  <%_ if (field.fieldTypeTimedSaathratri) { _%>
+        this.searchCriteria.<%= field.fieldName %>Operator = 'eq';
+        this.searchCriteria.<%= field.fieldName %>Date = null;
+        this.searchCriteria.<%= field.fieldName %>Hour = null;
+        this.searchCriteria.<%= field.fieldName %>Minute = null;
+        this.searchCriteria.<%= field.fieldName %>AmPm = null;
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } else if (field.fieldTypeLocalDateSaathratri) { _%>
+        this.searchCriteria.<%= field.fieldName %>Operator = 'eq';
+        this.searchCriteria.<%= field.fieldName %>Date = null;
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } else if (field.fieldTypeNumeric || field.fieldType === 'Long') { _%>
+        this.searchCriteria.<%= field.fieldName %>Operator = 'eq';
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } else if (field.fieldTypeTimeUuidSaathratri) { _%>
+        this.searchCriteria.<%= field.fieldName %>Operator = 'eq';
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } else { _%>
+        this.searchCriteria.<%= field.fieldName %> = null;
+  <%_ } _%>
+<%_ } _%>
+        this.isSearchActive = false;
+        this.pagingState = null;
+        this.hasNextPage = false;
+        this.totalItems = null;
+        this.<%= entityInstancePlural %>.set([]);
+        this.load();
+    }
+
+    onSearchDateChange(fieldName: string, isDateTime = false): void {
+        const criteria = this.searchCriteria as any;
+        const dateValue: Date | null = criteria[fieldName + 'Date'];
+
+        if (!dateValue) {
+            criteria[fieldName] = null;
+            return;
+        }
+
+        if (isDateTime) {
+            const hour: number | null = criteria[fieldName + 'Hour'];
+            const minute: number | null = criteria[fieldName + 'Minute'];
+            const amPm: string | null = criteria[fieldName + 'AmPm'];
+
+            if (hour === null || minute === null || !amPm) {
+                const combinedDateTime = new Date(dateValue);
+                combinedDateTime.setHours(0, 0, 0, 0);
+                criteria[fieldName] = combinedDateTime.getTime();
+                return;
+            }
+
+            let adjustedHours = hour;
+            if (amPm === 'PM' && hour !== 12) {
+                adjustedHours = hour + 12;
+            } else if (amPm === 'AM' && hour === 12) {
+                adjustedHours = 0;
+            }
+
+            const combinedDateTime = new Date(dateValue);
+            combinedDateTime.setHours(adjustedHours, minute, 0, 0);
+            criteria[fieldName] = combinedDateTime.getTime();
+        } else {
+            const dateOnly = new Date(dateValue);
+            dateOnly.setHours(0, 0, 0, 0);
+            criteria[fieldName] = dateOnly.getTime();
+        }
+    }
+
+<%_ } // end cassandraComposite search methods _%>
+<%_ /* Saathratri modification - AI search methods */ _%>
+<%_ if (hasVectorFieldsForAiSearch) { _%>
+
+    toggleAiSearchField(fieldName: string): void {
+        this.aiSearchSelectedFields[fieldName] = !this.aiSearchSelectedFields[fieldName];
+    }
+
+    // Public (not private) so member-ordering passes for the public/protected
+    // methods declared after the AI-search block in the same class.
+    getSelectedAiSearchFields(): string[] {
+        const allFields = [<%- vectorFieldsForAiSearch.map(vf => `'${vf.fieldName}'`).join(', ') %>];
+        const selected = allFields.filter(f => this.aiSearchSelectedFields[f]);
+        return selected.length > 0 ? selected : allFields;
+    }
+
+    performAiSearch(query: string): void {
+        if (!query.trim()) {
+            this.clearAiSearch();
+            return;
+        }
+        this.aiSearchLoading.set(true);
+        const fields = this.getSelectedAiSearchFields();
+        this.<%= entityInstance %>Service.aiSearch(query.trim(), 20, fields).subscribe({
+            next: results => {
+                this.<%= entityInstancePlural %>.set(results);
+                this.isAiSearchActive.set(true);
+                this.aiSearchLoading.set(false);
+            },
+            error: () => {
+                this.aiSearchLoading.set(false);
+            },
+        });
+    }
+
+    clearAiSearch(): void {
+        this.aiSearchQuery = '';
+        this.isAiSearchActive.set(false);
+        this.load();
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
+    navigateToWithComponentValues(event: SortState): void {
+      this.handleNavigation(<% if (paginationPagination) { %>this.page(), <% } %>event<% if (jpaMetamodelFiltering && paginationPagination) { %>, this.filters.filterOptions<% } %><% if (searchEngineAny) { %>, this.currentSearch()<% } %>);
+    }
+
+<%_ if (paginationPagination) { _%>
+    navigateToPage(page: number): void {
+      this.handleNavigation(page, this.sortState()<% if (jpaMetamodelFiltering && paginationPagination) { %>, this.filters.filterOptions<% } %><% if (searchEngineAny) { %>, this.currentSearch()<% } %>);
+    }
+
+<%_ } _%>
+
+<%_ if (anyFieldIsSetSaathratri) { _%>
+  toArray(set: Set<string> | null | undefined): string[] {
+    return set ? Array.from(set) : [];
+  }
+<%_ } _%>
+
+    protected fillComponentAttributeFromRoute(params: ParamMap, data: Data): void {
+<%_ if (paginationPagination) { _%>
+      const page = params.get(PAGE_HEADER);
+      this.page.set(+(page ?? 1));
+<%_ } _%>
+      this.sortState.set(this.sortService.parseSortParam(params.get(SORT) ?? data[DEFAULT_SORT_DATA]));
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+      this.filters.initializeFromParams(params);
+<%_ } _%>
+<%_ if (searchEngineAny) { _%>
+      if (params.has('search') && params.get('search') !== '') {
+        this.currentSearch.set(params.get('search') as string);
+  <%_ if (notSortableFieldsAfterSearch) { _%>
+          const { predicate } = this.sortState();
+          if (predicate && <%= componentName %>.NOT_SORTABLE_FIELDS_AFTER_SEARCH.includes(predicate)) {
+            this.sortState.set({});
+          }
+  <%_ } _%>
+      }
+<%_ } _%>
+    }
+
+<%_ if (cassandraNoPagination) { _%>
+    protected onResponseSuccess(response: EntityArrayResponseType, append = false): void {
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+      this.extractPaginationHeaders(response.headers);
+<%_ } _%>
+      const dataFromBody = this.fillComponentAttributesFromResponseBody(response.body);
+
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+      if (append && dataFromBody.length === 0) {
+        this.hasNextPage = false;
+        return;
+      }
+
+      if (append) {
+        const current = this.<%= entityInstancePlural %>();
+        const existingKeys = new Set(current.map(item => this.getEntityKey(item)));
+        const newItems = dataFromBody.filter(item => !existingKeys.has(this.getEntityKey(item)));
+        if (newItems.length === 0) {
+          this.hasNextPage = false;
+          return;
+        }
+        this.<%= entityInstancePlural %>.set(this.refineData([...current, ...newItems]));
+      } else {
+        this.<%= entityInstancePlural %>.set(this.refineData(dataFromBody));
+      }
+      if (this.hasNextPage && this.totalItems !== null) {
+        this.hasNextPage = this.<%= entityInstancePlural %>().length < this.totalItems;
+      }
+<%_ } else { _%>
+      this.<%= entityInstancePlural %>.set(this.refineData(dataFromBody));
+<%_ } _%>
+    }
+<%_ } _%>
+
+<%_ if (paginationNo) { _%>
+    protected refineData(data: I<%= entityAngularName %>[]): I<%= entityAngularName %>[] {
+      const { predicate, order } = this.sortState();
+      if (!predicate || !order) {
+        return data;
+      }
+
+<%_ if (cassandraComposite) { _%>
+      const compositeKeyFields = [<%- compositeKeyFieldNames %>];
+
+      return data.sort((a, b) => {
+        let aVal: any;
+        let bVal: any;
+
+        if (compositeKeyFields.includes(predicate)) {
+          aVal = a.<%= primaryKeySaathratri.name %>[predicate as keyof I<%= entityAngularName %>Id];
+          bVal = b.<%= primaryKeySaathratri.name %>[predicate as keyof I<%= entityAngularName %>Id];
+        } else {
+          aVal = (a as any)[predicate];
+          bVal = (b as any)[predicate];
+        }
+
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+
+        let result = 0;
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          result = aVal.localeCompare(bVal);
+        } else if (aVal < bVal) {
+          result = -1;
+        } else if (aVal > bVal) {
+          result = 1;
+        }
+
+        return order === 'asc' ? result : -result;
+      });
+<%_ } else { _%>
+      return data.sort(this.sortService.startSort({ predicate, order }));
+<%_ } _%>
+    }
+
+<%_ } else if (!cassandraNoPagination) { _%>
+    protected fillComponentAttributesFromResponseBody(data: I<%= entityAngularName %>[]<% if (paginationInfiniteScroll) { %>, currentValue: I<%= entityAngularName %>[]<% } %>): I<%= entityAngularName %>[] {
+<%_ if (paginationInfiniteScroll) { _%>
+      const <%= entityInstancePlural %>New = [...currentValue];
+      for (const d of data) {
+  <%_ if (primaryKey) { _%>
+        if (!<%= entityInstancePlural %>New.some(op => op.<%= primaryKey.name %> === d.<%= primaryKey.name %>)) {
+  <%_ } _%>
+          <%= entityInstancePlural %>New.push(d);
+  <%_ if (primaryKey) { _%>
+        }
+  <%_ } _%>
+      }
+      return <%= entityInstancePlural %>New;
+<%_ } else { _%>
+      return data;
+<%_ } _%>
+    }
+<%_ } _%>
+
+<%_ if (cassandraNoPagination) { _%>
+    protected fillComponentAttributesFromResponseBody(data: I<%= entityAngularName %>[] | null): I<%= entityAngularName %>[] {
+      return data ?? [];
+    }
+<%_ } _%>
+
+<%_ if (!paginationNo && !cassandraNoPagination) { _%>
+    protected fillComponentAttributesFromResponseHeader(headers: HttpHeaders): void {
+  <%_ if (paginationPagination) { _%>
+      this.totalItems.set(Number(headers.get(TOTAL_COUNT_RESPONSE_HEADER)));
+  <%_ } else if (paginationInfiniteScroll) { _%>
+      const linkHeader = headers.get('link');
+      if (linkHeader) {
+        this.links.set(this.parseLinks.parseAll(linkHeader));
+      } else {
+        this.links.set({});
+      }
+    <%_ } _%>
+    }
+
+<%_ } _%>
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+    protected extractPaginationHeaders(headers: HttpHeaders): void {
+      const hasNextPage = headers.get('X-Has-Next-Page');
+      this.hasNextPage = hasNextPage === 'true';
+
+      const pagingStateHeader = headers.get('X-Paging-State');
+      this.pagingState = pagingStateHeader ?? null;
+
+      const totalCountHeader = headers.get('X-Total-Count');
+      this.totalItems = totalCountHeader !== null ? Number(totalCountHeader) : null;
+    }
+
+    private getEntityKey(item: I<%= entityAngularName %>): string {
+<%_ if (primaryKeySaathratri.composite) { _%>
+      return this.getCompositeKey(item);
+<%_ } else { _%>
+      return JSON.stringify(this.<%= entityInstance %>Service.get<%= entityAngularName %>Identifier(item));
+<%_ } _%>
+    }
+
+<%_ if (primaryKeySaathratri.composite) { _%>
+    private getCompositeKey(item: I<%= entityAngularName %>): string {
+      const compositeId = item.<%= primaryKeySaathratri.name %>;
+      return [
+<%_ const compositeIdFieldNames = fields.filter(field => field.isCompositePrimaryKeyField).map(field => field.fieldName); _%>
+<%_ compositeIdFieldNames.forEach((fieldName, index) => { _%>
+        compositeId.<%= fieldName %><%= index < compositeIdFieldNames.length - 1 ? ',' : '' %>
+<%_ }) _%>
+      ].join('|');
+    }
+
+<%_ } _%>
+<%_ } _%>
+<%_ if (cassandraComposite) {
+    const allPkFields = primaryKeySaathratri.ids;
+    const ckeyName = primaryKeySaathratri.nameCapitalized;
+_%>
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    protected queryBackend(): Observable<EntityArrayResponseType> {
+      const queryObject: any = {
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+        pagingState: this.pagingState,
+        size: this.pageSize,
+<%_ } _%>
+        sort: this.sortService.buildSortParam(this.sortState()),
+      };
+
+      if (this.isSearchActive) {
+<%_ // Generate cascading if-else for each combination, most specific first
+    for (let i = allPkFields.length - 1; i >= 0; i--) {
+        let conditions = [];
+        let methodNameParts = [];
+        let methodArgs = [];
+
+        for (let j = 0; j <= i; j++) {
+            const field = allPkFields[j];
+            methodNameParts.push(`${ckeyName}${field.fieldNameCapitalized}`);
+
+            if (field.fieldTypeTimedSaathratri || field.fieldTypeLocalDateSaathratri) {
+                conditions.push(`this.searchCriteria.${field.fieldName} !== null`);
+                methodArgs.push(`this.searchCriteria.${field.fieldName}`);
+            } else if (field.fieldType === 'Boolean') {
+                conditions.push(`this.searchCriteria.${field.fieldName} !== null`);
+                methodArgs.push(`this.searchCriteria.${field.fieldName}`);
+            } else if (field.fieldTypeNumeric) {
+                conditions.push(`this.searchCriteria.${field.fieldName} !== null`);
+                methodArgs.push(`this.searchCriteria.${field.fieldName}`);
+            } else {
+                conditions.push(`this.searchCriteria.${field.fieldName} && this.searchCriteria.${field.fieldName}.trim() !== ''`);
+                methodArgs.push(`this.searchCriteria.${field.fieldName}`);
+            }
+        }
+
+        const conditionStr = conditions.join(' && ');
+        const argsStr = methodArgs.join(', ');
+        const isAllKeysProvided = i === allPkFields.length - 1;
+
+        const lastField = allPkFields[i];
+        const supportsComparison = lastField.isClusteredKeySaathratri &&
+            (lastField.fieldType === 'Long' || lastField.fieldTypeTimeUuidSaathratri ||
+             lastField.fieldTypeTimedSaathratri || lastField.fieldTypeLocalDateSaathratri);
+
+        const baseMethodName = methodNameParts.join('And');
+
+        if (isAllKeysProvided) {
+            const findByMethodName = 'findBy' + baseMethodName;
+_%>
+            if (<%- conditionStr %>) {
+<%_ if (supportsComparison) { _%>
+                const operator<%= lastField.fieldNameCapitalized %> = this.searchCriteria.<%= lastField.fieldName %>Operator ?? 'eq';
+                if (operator<%= lastField.fieldNameCapitalized %> === 'eq') {
+                    return this.<%= entityInstance %>Service.<%= findByMethodName %>(<%- argsStr %>)
+                        .pipe(
+                            map((res: EntityResponseType) => {
+                                const entity = res.body;
+                                return new HttpResponse({
+                                    body: entity ? [entity] : [],
+                                    headers: res.headers,
+                                    status: res.status,
+                                });
+                            }),
+                        );
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'lt') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>LessThanPageable(<%- argsStr %>, queryObject);
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'lte') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>LessThanEqualPageable(<%- argsStr %>, queryObject);
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'gt') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>GreaterThanPageable(<%- argsStr %>, queryObject);
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'gte') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>GreaterThanEqualPageable(<%- argsStr %>, queryObject);
+                }
+                return this.<%= entityInstance %>Service.<%= findByMethodName %>(<%- argsStr %>)
+                    .pipe(
+                        map((res: EntityResponseType) => {
+                            const entity = res.body;
+                            return new HttpResponse({
+                                body: entity ? [entity] : [],
+                                headers: res.headers,
+                                status: res.status,
+                            });
+                        })
+                    );
+<%_ } else { _%>
+                return this.<%= entityInstance %>Service.<%= findByMethodName %>(<%- argsStr %>)
+                    .pipe(
+                        map((res: EntityResponseType) => {
+                            const entity = res.body;
+                            return new HttpResponse({
+                                body: entity ? [entity] : [],
+                                headers: res.headers,
+                                status: res.status,
+                            });
+                        })
+                    );
+<%_ } _%>
+            }
+<%_     } else {
+            const methodName = 'findAllBy' + baseMethodName + 'Pageable';
+_%>
+             else if (<%- conditionStr %>) {
+<%_ if (supportsComparison) { _%>
+                const operator<%= lastField.fieldNameCapitalized %> = this.searchCriteria.<%= lastField.fieldName %>Operator ?? 'eq';
+                if (operator<%= lastField.fieldNameCapitalized %> === 'lt') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>LessThanPageable(<%- argsStr %>, queryObject);
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'lte') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>LessThanEqualPageable(<%- argsStr %>, queryObject);
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'gt') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>GreaterThanPageable(<%- argsStr %>, queryObject);
+                } else if (operator<%= lastField.fieldNameCapitalized %> === 'gte') {
+                    return this.<%= entityInstance %>Service.findAllBy<%= baseMethodName %>GreaterThanEqualPageable(<%- argsStr %>, queryObject);
+                }
+                return this.<%= entityInstance %>Service.<%= methodName %>(<%- argsStr %>, queryObject);
+<%_ } else { _%>
+                return this.<%= entityInstance %>Service.<%= methodName %>(<%- argsStr %>, queryObject);
+<%_ } _%>
+            }
+<%_     }
+    } // end for loop _%>
+        }
+        // Fallback: no valid criteria
+        return this.<%= entityInstance %>Service.querySlice(queryObject);
+<%_ } else if (databaseTypeCassandra && paginationNo) { _%>
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    protected queryBackend(): Observable<EntityArrayResponseType> {
+      const queryObject: any = {
+        pagingState: this.pagingState,
+        size: this.pageSize,
+        sort: this.sortService.buildSortParam(this.sortState()),
+      };
+
+      return this.<%= entityInstance %>Service.querySlice(queryObject);
+<%_ } else { _%>
+    protected queryBackend(): void {
+<%_ if (paginationPagination) { _%>
+      const pageToLoad: number = this.page();
+<%_ } _%>
+      const queryObject<% if ((jpaMetamodelFiltering && paginationPagination) || searchEngine) { %>: any <% } %> = {
+<%_ if (paginationPagination) { _%>
+        page: pageToLoad - 1,
+<%_ } _%>
+<%_ if (!paginationNo) { _%>
+        size: this.itemsPerPage(),
+<%_ } _%>
+<%_ if(implementsEagerLoadApis || containsBagRelationships) { _%>
+        eagerload: true,
+<%_ } _%>
+<%_ if (searchEngineAny) { _%>
+        query: this.currentSearch(),
+<%_ } _%>
+<%_ if (!paginationInfiniteScroll) { _%>
+        sort: this.sortService.buildSortParam(this.sortState()),
+<%_ } _%>
+      };
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+      for (const filterOption of this.filters.filterOptions) {
+        queryObject[filterOption.name] = filterOption.values;
+      }
+<%_ } _%>
+<%_ if (paginationInfiniteScroll) { _%>
+      if (this.hasMorePage()) {
+        Object.assign(queryObject, this.links().next);
+      } else if (this.isFirstFetch()) {
+        Object.assign(queryObject, { sort: this.sortService.buildSortParam(this.sortState()) });
+      }
+
+<%_ } _%>
+      this.<%= entityInstance %>Service.<%= entityInstancePlural %>Params.set(queryObject);
+<%_ } _%>
+    }
+
+    // eslint-disable-next-line @typescript-eslint/member-ordering
+    protected handleNavigation(<% if (paginationPagination) { %>page: number, <% } %>sortState: SortState<% if (jpaMetamodelFiltering && paginationPagination) { %>, filterOptions?: IFilterOption[]<% } %><% if (searchEngineAny) { %>, currentSearch?: string<% } %>): void {
+<%_ if (paginationInfiniteScroll) { _%>
+      this.links.set({});
+
+<%_ } _%>
+<%_ if (databaseTypeCassandra && paginationNo) { _%>
+      this.pagingState = null;
+      this.hasNextPage = false;
+      this.totalItems = null;
+      this.<%= entityInstancePlural %>.set([]);
+
+<%_ } _%>
+      const queryParamsObj<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>: any<%_ } _%> = {
+<%_ if (searchEngineAny) { _%>
+        search: currentSearch,
+<%_ } _%>
+<%_ if (paginationPagination) { _%>
+        page,
+        size: this.itemsPerPage(),
+<%_ } _%>
+        sort: this.sortService.buildSortParam(sortState),
+      };
+
+<%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
+      if (filterOptions) {
+        for (const filterOption of filterOptions) {
+          queryParamsObj[filterOption.nameAsQueryParam()] = filterOption.values;
+        }
+      }
+<%_ } _%>
+
+      this.ngZone.run(() => {
+        this.router.navigate(['./'], {
+          relativeTo: this.activatedRoute,
+          queryParams: queryParamsObj,
+        });
+      });
+    }
+}

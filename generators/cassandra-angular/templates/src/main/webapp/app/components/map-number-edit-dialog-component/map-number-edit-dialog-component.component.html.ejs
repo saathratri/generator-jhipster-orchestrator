@@ -1,0 +1,23 @@
+<h2 mat-dialog-title class="dialog-title">Edit Entry</h2>
+
+<mat-dialog-content class="dialog-content">
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Key</mat-label>
+      <input matInput formControlName="key" readonly />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Value</mat-label>
+      <input matInput type="number" formControlName="value" [attr.data-cy]="'dialog-edit-value'" />
+      @if (form.controls['value'].invalid && form.controls['value'].touched) { <mat-error>
+        Please enter a valid number
+      </mat-error> }
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="dialog-actions">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" [disabled]="form.invalid" (click)="onSave()" [attr.data-cy]="'dialog-save-button'">Save Changes</button>
+</mat-dialog-actions>

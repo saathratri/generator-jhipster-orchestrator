@@ -1,0 +1,25 @@
+<h2 mat-dialog-title>Edit Entry</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Key</mat-label>
+      <input matInput formControlName="key" readonly />
+    </mat-form-field>
+
+    <app-date-time
+      formControlName="value"
+      dateTimeLabel="Value"
+      [labelClass]="'form-label'"
+      [isRequired]="true"
+      (isValid)="onDateTimeValid(data.key, $event)"
+      (dirtyStateChange)="updateDirtyState($event)"
+      [isNew]="false">
+    </app-date-time>
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary" [disabled]="form.invalid" (click)="onSave()" [attr.data-cy]="'dialog-save-button'">Save Changes</button>
+</mat-dialog-actions>

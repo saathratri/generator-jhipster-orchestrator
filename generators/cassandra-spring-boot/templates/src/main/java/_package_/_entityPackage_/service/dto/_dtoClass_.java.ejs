@@ -1,0 +1,309 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%- entityAbsolutePackage %>.service.dto;
+
+import java.util.Objects;
+<%_ if (entityApiDescription || importApiModelProperty) { _%>
+import io.swagger.v3.oas.annotations.media.Schema;
+<%_ } _%>
+<%_ if (anyFieldIsInstant) { _%>
+import java.time.Instant;
+<%_ } _%>
+<%_ if (anyFieldIsLocalDate) { _%>
+import java.time.LocalDate;
+<%_ } _%>
+<%_ if (anyFieldIsZonedDateTime) { _%>
+import java.time.ZonedDateTime;
+<%_ } _%>
+<%_ if (anyFieldIsDuration) { _%>
+import java.time.Duration;
+<%_ } _%>
+<%_ if (anyPropertyHasValidation) { _%>
+import jakarta.validation.constraints.*;
+<%_ } _%>
+import java.io.Serializable;
+<%_ if (anyFieldIsBigDecimal) { _%>
+import java.math.BigDecimal;
+<%_ } _%>
+<%_ if (anyFieldIsBlobDerived && databaseTypeCassandra) { _%>
+import java.nio.ByteBuffer;
+<%_ } _%>
+<%_ if (restProperties.some(property => property.collection)) { _%>
+import java.util.Set;
+import java.util.HashSet;
+<%_ } _%>
+<%_ if (anyFieldIsUUID) { _%>
+import java.util.UUID;
+<%_ } _%>
+<%_ if (anyFieldIsBlobDerived && databaseTypeSql) { _%>
+import jakarta.persistence.Lob;
+<%_ } _%>
+<%_ Object.keys(uniqueEnums).forEach(function(element) { _%>
+import <%- entityAbsolutePackage %>.domain.enumeration.<%- element %>;
+<%_ }); _%>
+<%_ for (const field of fields.filter(field => !field.javaInherited && !field.transient && (embedded || !field.id || !primaryKey.composite))) { _%>
+    <%_
+      if(field.fieldTypeSetSaathratri) {
+    _%>
+  import java.util.Set;
+     <%_ 
+         break;
+       }
+     _%>
+     <%_
+      if(field.fieldTypeMapSaathratri) {
+    _%>
+  import java.util.Map;
+     <%_ 
+         break;
+       }
+     _%>
+<%_ } _%>
+
+/**
+ * A DTO for the {@link <%- entityAbsolutePackage %>.domain.<%- persistClass %>} entity.
+ */
+<%_ if (entityApiDescription) { _%>
+@Schema(description = "<%- entityApiDescription %>")
+<%_ } _%>
+@SuppressWarnings("common-java:DuplicatedBlocks")
+public class <%- dtoClass %> implements Serializable {
+
+<%_ if (!embedded && primaryKeySaathratri.composite) { _%>
+    private <%= dtoClass %>Id <%= primaryKeySaathratri.name %>;
+<%_ } else { _%>
+    private <%= primaryKey.type %> <%= primaryKey.name %>;
+<%_ } _%>
+<%_ for (property of restProperties) { _%>
+  <%_ if (!isCompositePrimaryKeyServerProperty(primaryKeySaathratri, property) && property.propertyName !== 'id' && !property.fieldTypeVectorSaathratri) { _%>
+    <%_ if (property.fieldValidationRequired) { _%>
+    @NotNull
+    <%_ } _%>
+    <%_ if (property.fieldValidationMinLength && property.fieldValidationMaxLength) { _%>
+    @Size(min = <%= property.fieldValidateRulesMinlength %>, max = <%= property.fieldValidateRulesMaxlength %>)
+    <%_ } else if (property.fieldValidationMinLength) { _%>
+    @Size(min = <%= property.fieldValidateRulesMinlength %>)
+    <%_ } else if (property.fieldValidationMaxLength) { _%>
+    @Size(max = <%= property.fieldValidateRulesMaxlength %>)
+    <%_ } _%>
+    <%_ if (property.fieldValidationPattern) { _%>
+    @Pattern(regexp = "<%- property.fieldValidateRulesPattern %>")
+    <%_ } _%>
+    <%_ if (property.fieldValidationMin || property.fieldValidationMax) { _%>
+      <%_ if (property.fieldTypeBigDecimal) { _%>
+        <%_ if (property.fieldValidationMin) { _%>
+    @DecimalMin(value = "<%= property.fieldValidateRulesMin %>")
+        <%_ } _%>
+        <%_ if (property.fieldValidationMax) { _%>
+    @DecimalMax(value = "<%= property.fieldValidateRulesMax %>")
+        <%_ } _%>
+      <%_ } else { _%>
+        <%_ if (property.fieldValidationMin) { _%>
+    @Min(value = <%= property.fieldValidateRulesMin %>)
+        <%_ } _%>
+        <%_ if (property.fieldValidationMax) { _%>
+    @Max(value = <%= property.fieldValidateRulesMax %>)
+        <%_ } _%>
+      <%_ } _%>
+    <%_ } _%>
+    <%_
+        if(property.fieldTypeSetSaathratri) {
+    _%>
+    private Set<<%- (property.propertyDtoJavaType || property.fieldType) %>> <%- property.propertyName %>;
+    <%_
+        } else if(property.fieldTypeMapSaathratri) {
+    _%>
+    private Map<String, <%- (property.propertyDtoJavaType || property.fieldType) %>> <%- property.propertyName %>;
+    <%_
+        } else {
+    _%>
+    private <%- (property.propertyDtoJavaType || property.fieldType) %> <%- property.propertyName %>;
+    <%_
+        }
+    _%>
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const vf of restProperties.filter(p => p.fieldTypeVectorSaathratri)) { _%>
+    private java.util.List<Float> <%- vf.propertyName %>;
+<%_ } _%>
+<%_ for(const field of fields) { _%>
+    <%_ if(field.fieldTypeBlobContent === 'image' || field.fieldTypeBlobContent === 'any') { _%>
+            private String <%= field.fieldName %>ContentType;
+    <%_ } _%>
+  <%_ } _%>
+public <%- dtoClass %> () {
+    // Empty constructor needed for Jackson.
+}
+<%_ if (primaryKeySaathratri.composite) { _%>
+    public <%= dtoClass %>Id get<%= primaryKeySaathratri.nameCapitalized %>() {
+        return this.<%= primaryKeySaathratri.name %>;
+    }
+
+    public void set<%= primaryKeySaathratri.nameCapitalized %>(<%= dtoClass %>Id <%= primaryKeySaathratri.name %>) {
+        this.<%= primaryKeySaathratri.name %> = <%= primaryKeySaathratri.name %>;
+    }
+    <%_ if (fluentMethods) { _%>
+        public <%= dtoClass %> <%= primaryKeySaathratri.name %>(<%= dtoClass %>Id <%= primaryKeySaathratri.name %>) {
+            this.<%= primaryKeySaathratri.name %> = <%= primaryKeySaathratri.name %>;
+            return this;
+        }
+  <%_ } _%>
+<%_ } else { _%>
+
+    public <%= primaryKey.type %> get<%= primaryKey.nameCapitalized %>() {
+        return this.<%= primaryKey.name %>;
+    }
+    public void set<%= primaryKey.nameCapitalized %>(<%= primaryKey.type %> <%= primaryKey.name %>) {
+        this.<%= primaryKey.name %> = <%= primaryKey.name %>;
+    }
+    <%_ if (fluentMethods) { _%>
+        public <%= dtoClass %> <%= primaryKey.name %>(<%= primaryKey.type %> <%= primaryKey.name %>) {
+            this.<%= primaryKey.name %> = <%= primaryKey.name %>;
+            return this;
+        }
+  <%_ } _%>
+  <%_ } _%>
+
+<%_ for(const field of fields) { _%>
+    <%_ if(field.fieldTypeBlobContent === 'image' || field.fieldTypeBlobContent === 'any') { _%>
+            public String get<%= field.fieldInJavaBeanMethod %>ContentType() {
+                return this.<%= field.fieldName %>ContentType;
+            }
+            public void set<%= field.fieldInJavaBeanMethod %>ContentType(String <%= field.fieldName %>ContentType) {
+                this.<%= field.fieldName %>ContentType = <%= field.fieldName %>ContentType;
+}
+            <%_ if (fluentMethods) { _%>
+                public <%= dtoClass %> <%= field.fieldName %>ContentType(String <%= field.fieldName %>ContentType) {
+                    this.<%= field.fieldName %>ContentType = <%= field.fieldName %>ContentType;
+                    return this;
+                }
+              <%_ } _%>
+    <%_ } _%>
+<%_ } _%>
+
+<%_ for (property of restProperties) { _%>
+  <%_ if (!isCompositePrimaryKeyServerProperty(primaryKeySaathratri, property) && property.propertyName !== 'id' && !property.fieldTypeVectorSaathratri) { _%>
+
+    <%_ if(property.fieldTypeSetSaathratri) { _%>
+    public Set<<%- (property.propertyDtoJavaType || property.fieldType) %>> get<%- property.propertyJavaBeanName %>() {
+        return <%- property.propertyName %>;
+    }
+
+    public void set<%- property.propertyJavaBeanName %>(Set<<%- (property.propertyDtoJavaType || property.fieldType) %>> <%- property.propertyName %>) {
+        this.<%- property.propertyName %> = <%- property.propertyName %>;
+    }
+      <%_ if (fluentMethods) { _%>
+
+
+        public <%= dtoClass %> <%= property.propertyName %>(Set<<%= (property.propertyDtoJavaType || property.fieldType) %>> <%= property.propertyName %>) {
+            this.<%= property.propertyName %> = <%= property.propertyName %>;
+            return this;
+    }
+  <%_ } _%>
+  <%_ } else if(property.fieldTypeMapSaathratri) {_%>
+
+  public Map<String, <%- (property.propertyDtoJavaType || property.fieldType) %>> get<%- property.propertyJavaBeanName %>() {
+        return <%- property.propertyName %>;
+    }
+
+    public void set<%- property.propertyJavaBeanName %>(Map<String, <%- (property.propertyDtoJavaType || property.fieldType) %>> <%- property.propertyName %>) {
+        this.<%- property.propertyName %> = <%- property.propertyName %>;
+    }
+      <%_ if (fluentMethods) { _%>
+
+
+        public <%= dtoClass %> <%= property.propertyName %>(Map<String, <%= (property.propertyDtoJavaType || property.fieldType) %>> <%= property.propertyName %>) {
+            this.<%= property.propertyName %> = <%= property.propertyName %>;
+            return this;
+    }
+  <%_ } _%>
+  <%_ } else { _%>
+    public <%- (property.propertyDtoJavaType || property.fieldType) %> get<%- property.propertyJavaBeanName %>() {
+        return <%- property.propertyName %>;
+    }
+
+    public void set<%- property.propertyJavaBeanName %>(<%- (property.propertyDtoJavaType || property.fieldType) %> <%- property.propertyName %>) {
+        this.<%- property.propertyName %> = <%- property.propertyName %>;
+    }
+      <%_ if (fluentMethods) { _%>
+
+
+        public <%= dtoClass %> <%= property.propertyName %>(<%= (property.propertyDtoJavaType || property.fieldType) %> <%= property.propertyName %>) {
+            this.<%= property.propertyName %> = <%= property.propertyName %>;
+            return this;
+    }
+  <%_ } _%>
+  <%_ } _%>
+    <%_ } _%>
+<%_ } _%>
+<%_ for (const vf of restProperties.filter(p => p.fieldTypeVectorSaathratri)) { _%>
+
+    public java.util.List<Float> get<%- this._.upperFirst(vf.propertyName) %>() {
+        return <%- vf.propertyName %>;
+    }
+
+    public void set<%- this._.upperFirst(vf.propertyName) %>(java.util.List<Float> <%- vf.propertyName %>) {
+        this.<%- vf.propertyName %> = <%- vf.propertyName %>;
+    }
+<%_ } _%>
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof <%- dtoClass %>)) return false;
+
+        <%- dtoClass %> that = (<%- dtoClass %>) o;
+        <%_ if (primaryKeySaathratri.composite) { _%>
+        if (this.get<%= primaryKeySaathratri.nameCapitalized %>() == null) {
+            return false;
+        }
+        return Objects.equals(get<%= primaryKeySaathratri.nameCapitalized %>(), that.get<%= primaryKeySaathratri.nameCapitalized %>());
+<%_ } else { _%>
+        if (this.get<%= primaryKey.nameCapitalized %>() == null) {
+            return false;
+        }
+        return Objects.equals(get<%= primaryKey.nameCapitalized %>(), that.get<%= primaryKey.nameCapitalized %>());
+<%_ } _%>
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(<%= primaryKeySaathratri.name %>);
+    }
+
+    // prettier-ignore
+    @Override
+    public String toString() {
+        return "<%= entityClass %>DTO {" + <%_ if (primaryKeySaathratri.composite) { _%> "<%= primaryKeySaathratri.name %> = " + get<%= primaryKeySaathratri.nameCapitalized %> <%_ } else { _%> "<%= primaryKey.name %> = " + get<%= primaryKey.nameCapitalized %><%_ } _%>() +
+<%_ for ([idx, reference] of restProperties.entries()) {
+  const refName = reference.name || reference.propertyName || reference.fieldName;
+  const refType = reference.type || reference.propertyDtoJavaType || reference.fieldType;
+  const isQuoted = (reference.field || reference).fieldTypeString || (reference.field || reference).fieldTypeUUID;_%>
+  <%_ if (!isCompositePrimaryKeyServerReference(primaryKeySaathratri, reference) && !reference.fieldTypeVectorSaathratri) { _%>
+            "<%= idx === 0 ? '' : ', ' %><%= refName %>=<% if (isQuoted) { %>'<% } %>" + <%= buildJavaGet(reference) %> <% if (isQuoted) { %>+ "'" <% } %>+
+            <%_ if(refType === 'ByteBuffer') { _%>
+            ", <%= refName %>ContentType='" + get<%= this._.upperFirst(refName) %>ContentType() + "'" +
+<%_ } _%>
+<%_
+      }
+    }
+_%>
+            "}";
+    }
+}

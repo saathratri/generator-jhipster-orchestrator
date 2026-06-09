@@ -1,0 +1,76 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%
+const variablesWithTypes = generateEntityClientFields(primaryKey, fields, relationships, dto, undefined, embedded);
+%>
+<%_
+// Saathratri Modification
+const variablesWithTypesSaathratri = generateEntityClientFieldsSaathratri(fields, 'Model');
+const variablesWithTypesPrimaryKey = getCompositePrimaryKeyClientServiceModelPrimaryKeyVariableDeclarationStatements(primaryKeySaathratri, fields, variablesWithTypesSaathratri);
+const variablesWithTypesNonPrimaryKey = getCompositePrimaryKeyClientServiceModelNonPrimaryKeyVariableDeclarationStatements(primaryKeySaathratri, fields, variablesWithTypesSaathratri);
+const defaultVariablesValues = getCompositePrimaryKeyClientModelGenerateEntityClientFieldDefaultValues(fields);
+// End of Saathratri Modification
+_%>
+<%_ if (anyFieldIsDateDerived || anyFieldIsDateDerivedSaathratri || anyFieldIsTimeDerivedSaathratri) { _%>
+import dayjs from 'dayjs/esm';
+<%_ } _%>
+
+<%_ 
+   // Saathratri:
+   if (primaryKeySaathratri.composite) { 
+_%>
+export interface I<%= entityAngularName %> {
+    <%= primaryKeySaathratri.name %>: I<%= entityAngularName %>Id,
+<%_ variablesWithTypesNonPrimaryKey.forEach(variablesWithType => { _%>
+    <%- variablesWithType %>;
+<%_ }); _%>
+<%_ for (const field of fields.filter(f => f.fieldTypeVectorSaathratri)) { _%>
+    <%= field.fieldName %>?: number[] | null;
+<%_ } _%>
+}
+export interface I<%= entityAngularName %>Id {
+<%_ variablesWithTypesPrimaryKey.forEach(variablesWithType => { _%>
+    <%- variablesWithType %>;
+<%_ }); _%>
+}
+
+export type New<%= entityAngularName %> = Omit<I<%= entityAngularName %>, '<%= primaryKeySaathratri.name %>'> & { <%= primaryKeySaathratri.name %>: I<%= entityAngularName %>Id; };
+<%_ 
+    } else {
+    // Single-value Primary Key
+_%>
+export interface I<%= entityAngularName %> {
+<%_ for (const field of fields.filter(f => !f.fieldTypeVectorSaathratri)) {
+      const { fieldName, fieldValidationRequired, id } = field;
+      const tsType = `${field.fieldIsEnum ? 'keyof typeof ' : ''}${field.tsType}`;
+_%>
+      <%= fieldName %><% if (!id /* && !fieldValidationRequired */) { %>?<% } %>: <%_ if(field.fieldTypeMapDayjsSaathratri) { _%>Record<string, dayjs.Dayjs> |  null,<%_ } else if(field.fieldTypeLocalDateSaathratri || field.fieldTypeTimedSaathratri) { _%>dayjs.Dayjs |  null,<%_ } else if (field.fieldTypeSetSaathratri) { _%>Set<string> | null,<%_ } else if (field.fieldTypeMapSaathratri) { _%>Record<string, <%= tsType %>> | null,<%_ } else if(!id) { _%><%= tsType %> | null,<%_ } else { _%><%= tsType %>,<%_} _%>
+  <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
+  <%= fieldName %>ContentType<% if (!id /* && !fieldValidationRequired */) { %>?<% } %>: string<% if (!id /* && !fieldValidationRequired */) { %> | null<% } %>,
+  <%_ } _%>
+<%_ } _%>
+<%_ for (const field of fields.filter(f => f.fieldTypeVectorSaathratri)) { _%>
+  <%= field.fieldName %>?: number[] | null,
+<%_ } _%>
+}
+<%_ if (!readOnly && primaryKey) { _%>
+
+    export type New<%= entityAngularName %> = Omit<I<%= entityAngularName %>, '<%= primaryKey.name %>'> & { <%= primaryKey.name %>: string };
+    <%_ } _%>
+<%_ } _%>

@@ -1,0 +1,32 @@
+import { Component, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MaterialModule } from '../../shared/material.module';
+
+@Component({
+  // eslint-disable-next-line @angular-eslint/component-selector
+  selector: 'app-set-string-edit-dialog-component',
+  standalone: true,
+  imports: [MaterialModule, CommonModule, ReactiveFormsModule, MatDialogModule],
+  templateUrl: './set-string-edit-dialog-component.component.html',
+  styleUrls: ['./set-string-edit-dialog-component.component.css'],
+})
+export class SetStringEditDialogComponent {
+  dialogRef = inject<MatDialogRef<SetStringEditDialogComponent>>(MatDialogRef);
+  data = inject<{ value: string }>(MAT_DIALOG_DATA);
+
+  form: FormGroup = new FormGroup({
+      value: new FormControl(this.data.value, Validators.required),
+    });
+
+  onCancel(): void {
+    this.dialogRef.close();
+  }
+
+  onSave(): void {
+    if (this.form.valid) {
+      this.dialogRef.close(this.form.get('value')?.value);
+    }
+  }
+}

@@ -1,0 +1,165 @@
+<%#
+ Copyright 2013-2025 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= packageName %>.service.embedding;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.ai.embedding.Embedding;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingResponse;
+
+/**
+ * Unit tests for {@link EmbeddingService}.
+ *
+ * The {@link EmbeddingModel} is mocked with a deterministic vector so the suite runs offline
+ * with no OPENAI_API_KEY (mirrors the runtime "AI disabled" path). These tests cover the
+ * blueprint's embedding logic: embedding generation, the null/blank/disabled guards, and the
+ * byte / pgvector-string round-trip conversions used to persist <code>vector(n)</code> columns.
+ */
+@ExtendWith(MockitoExtension.class)
+class EmbeddingServiceTest {
+
+    private static final float[] SAMPLE_EMBEDDING = new float[] { 0.1f, -0.2f, 0.3f, 0.4f };
+
+    @Mock
+    private EmbeddingModel embeddingModel;
+
+    private EmbeddingService serviceWithModel() {
+        return new EmbeddingService(embeddingModel);
+    }
+
+    private EmbeddingService serviceWithoutModel() {
+        return new EmbeddingService(null);
+    }
+
+    private void stubModelToReturn(float[] vector) {
+        EmbeddingResponse response = new EmbeddingResponse(List.of(new Embedding(vector, 0)));
+        when(embeddingModel.embedForResponse(any())).thenReturn(response);
+    }
+
+    @Test
+    void isAvailableReflectsWhetherModelIsConfigured() {
+        assertThat(serviceWithModel().isAvailable()).isTrue();
+        assertThat(serviceWithoutModel().isAvailable()).isFalse();
+    }
+
+    @Test
+    void generateEmbeddingReturnsModelVector() {
+        stubModelToReturn(SAMPLE_EMBEDDING);
+
+        float[] result = serviceWithModel().generateEmbedding("hello world");
+
+        assertThat(result).isEqualTo(SAMPLE_EMBEDDING);
+    }
+
+    @Test
+    void generateEmbeddingReturnsNullWhenModelUnavailable() {
+        assertThat(serviceWithoutModel().generateEmbedding("hello world")).isNull();
+    }
+
+    @Test
+    void generateEmbeddingReturnsNullForNullOrBlankText() {
+        EmbeddingService service = serviceWithModel();
+        assertThat(service.generateEmbedding(null)).isNull();
+        assertThat(service.generateEmbedding("")).isNull();
+        assertThat(service.generateEmbedding("   ")).isNull();
+    }
+
+    @Test
+    void generateEmbeddingReturnsNullWhenModelThrows() {
+        when(embeddingModel.embedForResponse(any())).thenThrow(new RuntimeException("boom"));
+
+        assertThat(serviceWithModel().generateEmbedding("hello world")).isNull();
+    }
+
+    @Test
+    void generateEmbeddingAsFloatsDelegatesToGenerateEmbedding() {
+        stubModelToReturn(SAMPLE_EMBEDDING);
+
+        assertThat(serviceWithModel().generateEmbeddingAsFloats("hello world")).isEqualTo(SAMPLE_EMBEDDING);
+    }
+
+    @Test
+    void generateEmbeddingAsVectorStringFormatsTheVector() {
+        stubModelToReturn(new float[] { 0.5f, 1.0f });
+
+        String vectorString = serviceWithModel().generateEmbeddingAsVectorString("hello world");
+
+        assertThat(vectorString).isEqualTo("[0.50000000, 1.00000000]");
+    }
+
+    @Test
+    void generateEmbeddingAsVectorStringReturnsNullWhenUnavailable() {
+        assertThat(serviceWithoutModel().generateEmbeddingAsVectorString("hello world")).isNull();
+    }
+
+    @Test
+    void floatArrayToBytesAndBackRoundTrips() {
+        EmbeddingService service = serviceWithoutModel();
+
+        byte[] bytes = service.floatArrayToBytes(SAMPLE_EMBEDDING);
+        assertThat(bytes).hasSize(SAMPLE_EMBEDDING.length * 4);
+
+        float[] roundTripped = service.bytesToFloatArray(bytes);
+        assertThat(roundTripped).containsExactly(SAMPLE_EMBEDDING);
+    }
+
+    @Test
+    void floatArrayToVectorStringProducesPgVectorLiteral() {
+        EmbeddingService service = serviceWithoutModel();
+
+        // Use values that are exactly representable as IEEE-754 floats so the formatted text is stable.
+        String vectorString = service.floatArrayToVectorString(new float[] { 0.5f, 0.25f, 0.75f });
+
+        assertThat(vectorString).isEqualTo("[0.50000000, 0.25000000, 0.75000000]");
+    }
+
+    @Test
+    void vectorStringToFloatArrayParsesPgVectorLiteral() {
+        EmbeddingService service = serviceWithoutModel();
+
+        float[] parsed = service.vectorStringToFloatArray("[0.1, 0.2, 0.3]");
+
+        assertThat(parsed).hasSize(3);
+        assertThat(parsed[0]).isCloseTo(0.1f, within(1e-6f));
+        assertThat(parsed[1]).isCloseTo(0.2f, within(1e-6f));
+        assertThat(parsed[2]).isCloseTo(0.3f, within(1e-6f));
+    }
+
+    @Test
+    void vectorStringRoundTripsThroughFloatArray() {
+        EmbeddingService service = serviceWithoutModel();
+
+        String vectorString = service.floatArrayToVectorString(SAMPLE_EMBEDDING);
+        float[] parsed = service.vectorStringToFloatArray(vectorString);
+
+        assertThat(parsed).hasSize(SAMPLE_EMBEDDING.length);
+        for (int i = 0; i < SAMPLE_EMBEDDING.length; i++) {
+            assertThat(parsed[i]).isCloseTo(SAMPLE_EMBEDDING[i], within(1e-6f));
+        }
+    }
+}

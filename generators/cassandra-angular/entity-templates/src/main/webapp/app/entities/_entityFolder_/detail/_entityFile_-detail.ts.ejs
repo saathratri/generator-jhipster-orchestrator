@@ -1,0 +1,89 @@
+<%#
+ Copyright 2013-2024 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+import { Component, <% if (anyFieldIsBlobDerived) { %>inject, <% } %>input } from '@angular/core';
+<%_ if (anyFieldIsMapSaathratri || fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
+import { <%_ if (anyFieldIsMapSaathratri) { _%>KeyValuePipe, <%_ } _%><%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>DecimalPipe, <%_ } _%>} from '@angular/common';
+<%_ } _%>
+import { RouterModule } from '@angular/router';
+
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { Alert } from 'app/shared/alert/alert';
+import { AlertError } from 'app/shared/alert/alert-error';
+<%_ if (enableTranslation) { _%>
+import { TranslateDirective } from 'app/shared/language';
+import { TranslateModule } from '@ngx-translate/core';
+<%_ } _%>
+import { DurationPipe, FormatMediumDatetimePipe, FormatMediumDatePipe, ConvertFromDayjsToDateLongPipe } from 'app/shared/date';
+import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
+<%_ if (anyFieldIsBlobDerived) { _%>
+import { DataUtils } from 'app/core/util/data-util.service';
+<%_ } _%>
+
+@Component({
+    selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>-detail',
+    templateUrl: './<%= entityFileName %>-detail.html',
+    imports: [
+      FontAwesomeModule,
+      Alert,
+      AlertError,
+<%_ if (enableTranslation) { _%>
+      TranslateDirective,
+      TranslateModule,
+<%_ } _%>
+      RouterModule,
+      DurationPipe,
+      FormatMediumDatetimePipe,
+      FormatMediumDatePipe,
+      ConvertFromDayjsToDateLongPipe,
+<%_ if (anyFieldIsMapSaathratri) { _%>
+      KeyValuePipe,
+<%_ } _%>
+<%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
+      DecimalPipe,
+<%_ } _%>
+    ],
+})
+export class <%= entityAngularName %>DetailComponent {
+    <%= entityInstance %> = input<I<%= entityAngularName %> | null>(null);
+
+<%_ if (anyFieldIsBlobDerived) { _%>
+    protected dataUtils = inject(DataUtils);
+<%_ } _%>
+
+<%_ if (anyFieldIsBlobDerived) { _%>
+    byteSize(base64String: string): string {
+        return this.dataUtils.byteSize(base64String);
+    }
+
+    openFile(base64String: string, contentType: string | null | undefined): void {
+        this.dataUtils.openFile(base64String, contentType);
+    }
+<%_ } _%>
+
+<%_ if (anyFieldIsSetSaathratri) { _%>
+    toArray(set: Set<string> | null | undefined): string[] {
+        return set ? Array.from(set) : [];
+      }
+<%_ } _%>
+
+    previousState(): void {
+        window.history.back();
+    }
+
+}

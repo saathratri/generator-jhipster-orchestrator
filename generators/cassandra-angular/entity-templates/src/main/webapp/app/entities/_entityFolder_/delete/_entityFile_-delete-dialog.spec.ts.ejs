@@ -1,0 +1,64 @@
+<%_
+  // confirmDelete takes the whole entity for composite keys, or the single id otherwise; and
+  // service.delete returns Observable<HttpResponse<{}>> (so mock with an HttpResponse, not
+  // undefined). The dialog component class is <Entity>DeleteDialogComponent.
+  const deleteArg = primaryKeySaathratri.composite ? 'sampleWithRequiredData' : `sampleWithRequiredData.${primaryKey.name}`;
+_%>
+import { beforeEach, describe, expect, it, vitest } from 'vitest';
+import { HttpResponse } from '@angular/common/http';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap/modal';
+import { of } from 'rxjs';
+
+import { sampleWithRequiredData } from '../<%= entityFileName %>.test-samples';
+import { <%= entityAngularName %>Service } from '../service/<%= entityFileName %>.service';
+
+import { <%= entityAngularName %>DeleteDialogComponent } from './<%= entityFileName %>-delete-dialog';
+
+describe('<%= entityAngularName %> Management Delete Component', () => {
+  let comp: <%= entityAngularName %>DeleteDialogComponent;
+  let fixture: ComponentFixture<<%= entityAngularName %>DeleteDialogComponent>;
+  let service: <%= entityAngularName %>Service;
+  let mockActiveModal: NgbActiveModal;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [NgbActiveModal],
+    });
+    fixture = TestBed.createComponent(<%= entityAngularName %>DeleteDialogComponent);
+    comp = fixture.componentInstance;
+    service = TestBed.inject(<%= entityAngularName %>Service);
+    mockActiveModal = TestBed.inject(NgbActiveModal);
+  });
+
+  describe('confirmDelete', () => {
+    it('should call delete service on confirmDelete', () => {
+      // GIVEN
+      vitest.spyOn(service, 'delete').mockReturnValue(of(new HttpResponse<{}>()));
+      vitest.spyOn(mockActiveModal, 'close');
+
+      // WHEN
+      comp.confirmDelete(<%- deleteArg %>);
+
+      // THEN
+      expect(service.delete).toHaveBeenCalledWith(<%- deleteArg %>);
+      expect(mockActiveModal.close).toHaveBeenCalledWith('deleted');
+    });
+
+    it('should not call delete service on clear', () => {
+      // GIVEN
+      vitest.spyOn(service, 'delete');
+      vitest.spyOn(mockActiveModal, 'close');
+      vitest.spyOn(mockActiveModal, 'dismiss');
+
+      // WHEN
+      comp.cancel();
+
+      // THEN
+      expect(service.delete).not.toHaveBeenCalled();
+      expect(mockActiveModal.close).not.toHaveBeenCalled();
+      expect(mockActiveModal.dismiss).toHaveBeenCalled();
+    });
+  });
+});

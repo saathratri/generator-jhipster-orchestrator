@@ -1,0 +1,109 @@
+<%#
+ Copyright 2013-2019 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%=packageName%>.domain;
+import org.springframework.data.cassandra.core.cql.PrimaryKeyType;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyClass;
+import org.springframework.data.cassandra.core.mapping.PrimaryKeyColumn;
+import org.springframework.data.cassandra.core.mapping.CassandraType;
+<%_ if (anyPropertyHasValidation) { _%>
+    import jakarta.validation.constraints.*;
+<%_ } _%>
+import java.util.Objects;
+<%_ if (primaryKeySaathratri.ids.some(id => id.fieldType === 'UUID')) { _%>
+import java.util.UUID;
+<%_ } _%>
+<%_ if (primaryKeySaathratri.ids.some(id => id.fieldType === 'Instant')) { _%>
+import java.time.Instant;
+<%_ } _%>
+
+@PrimaryKeyClass
+public class <%= entityClass %>Id implements java.io.Serializable {
+<%_
+// here we lie to the field_validators code because it was coded to expect fields[idx] to contain the validation info
+const realFields = fields;
+fields = primaryKeySaathratri.ids.map(pk => pk.field);
+for (let idx=0; idx< primaryKeySaathratri.ids.length; idx++) { _%>
+
+    @PrimaryKeyColumn(name = "<%= primaryKeySaathratri.ids[idx].columnName %>", ordinal = <%- `${primaryKeySaathratri.ids[idx].fieldOrdinalSaathratri ? primaryKeySaathratri.ids[idx].fieldOrdinalSaathratri : idx}` %>, type = <%= primaryKeySaathratri.ids[idx].options.customAnnotation[0] %><% if (primaryKeySaathratri.ids[idx].fieldValidate === true) { %><% if (primaryKeySaathratri.ids[idx].fieldValidateRules.includes('maxlength')) { %>, length = <%= primaryKeySaathratri.ids[idx].fieldValidateRulesMaxlength %><% } %><% if (primaryKeySaathratri.ids[idx].required) { %>, nullable = false<% } %><% if (primaryKeySaathratri.ids[idx].unique) { %>, unique = true<% } %><% } %>)
+    @CassandraType(type = <%= primaryKeySaathratri.ids[idx].options.customAnnotation[1] %>)
+    private <%= primaryKeySaathratri.ids[idx].fieldType %> <%= primaryKeySaathratri.ids[idx].fieldName %>;
+<%_ }
+// we put back the real value of fields
+fields = realFields; _%>
+
+    public <%= entityClass %>Id(){}
+
+    public <%= entityClass %>Id(<%= primaryKeySaathratri.ids.map(pk => pk.fieldType + ' ' + pk.fieldName).join(', ') %>){
+<%_ for (let idx=0; idx< primaryKeySaathratri.ids.length; idx++) { _%>
+        this.<%= primaryKeySaathratri.ids[idx].fieldName %> = <%= primaryKeySaathratri.ids[idx].fieldName %>;
+<%_ }_%>
+    }
+    <%_ for (reference of restProperties) { _%>
+        <%_ if (isCompositePrimaryKeyServerReference(primaryKeySaathratri, reference)) {
+          const refName = reference.name || reference.propertyName || reference.fieldName;
+          const refType = reference.type || reference.propertyDtoJavaType || reference.fieldType; _%>
+            public <%= buildJavaGetter(reference) %> {
+                return this.<%= refName %>;
+            }
+
+            public void <%= buildJavaSetter(reference) %> {
+                this.<%= refName %> = <%= refName %>;
+            }
+
+            public <%= persistClass %>Id <%= refName %>(<%= refType %> <%= refName %>) {
+                this.<%= refName %> = <%= refName %>;
+                return this;
+            }
+        <%_ } _%>
+    <%_ } _%>
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof <%= entityClass %>Id)) {
+            return false;
+        }
+
+        <%= entityClass %>Id <%= entityInstance %>Id = (<%= entityClass %>Id) o;
+        return <%- primaryKeySaathratri.ids.map(f => `Objects.equals(${f.fieldName}, ${entityInstance}Id.${f.fieldName})`).join('\n            && ') %>;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(<%= primaryKeySaathratri.ids.map(f => f.fieldName).join(', ')%>);
+    }
+
+    // prettier-ignore
+    @Override
+    public String toString() {
+        return "<%= entityClass %>Id { " +
+    <%_ for ([idx, reference] of restProperties.entries()) {
+      const refName = reference.name || reference.propertyName || reference.fieldName;
+      const isQuoted = (reference.field || reference).fieldTypeString || (reference.field || reference).fieldTypeUUID; _%>
+      <%_ if (isCompositePrimaryKeyServerReference(primaryKeySaathratri, reference)) { _%>
+                "<%= idx === 0 ? '' : ',' %><%= refName %>=<% if (isQuoted) { %>'<% } %>" + <%= buildJavaGet(reference) %> <% if (isQuoted) { %>+ "'" <% } %>+
+    <%_       
+          }
+        }
+    _%>
+                " }";
+    }
+}
