@@ -1,11 +1,11 @@
-# JHipster Orchestrator-8 Blueprint - Development Guide for Claude
+# JHipster Orchestrator Blueprint - Development Guide for Claude
 
 ## Project Overview
 
-**generator-jhipster-orchestrator** is a custom JHipster 8 blueprint designed for the Saathratri project. It extends JHipster's default generation capabilities to support microservices architecture with specialized handling for both SQL (PostgreSQL) and Cassandra databases.
+**generator-jhipster-orchestrator** is a custom JHipster 9 blueprint designed for the Saathratri project. It extends JHipster's default generation capabilities to support microservices architecture with specialized handling for both SQL (PostgreSQL) and Cassandra databases.
 
 **Version:** 1.0.1
-**JHipster Version:** 8.10.0
+**JHipster Version:** 9.0.0
 **Blueprint Type:** Side-by-Side (works alongside default JHipster generators)
 
 ## Key Architectural Concepts
@@ -378,7 +378,7 @@ Blueprint metadata and generator configuration:
 {
   "generator-jhipster-orchestrator": {
     "baseName": "orchestrator",
-    "jhipsterVersion": "8.6.0",
+    "jhipsterVersion": "9.0.0",
     "generators": ["app", "client", "cypress", "docker", "entity", "server", "spring-boot", "heroku"]
   }
 }
