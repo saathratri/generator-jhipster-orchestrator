@@ -430,7 +430,7 @@ export default class extends BaseApplicationGenerator {
           this.editFile(pomFile, content => {
             // Add Spring AI version property
             if (!content.includes('spring-ai.version')) {
-              content = content.replace('    </properties>', '        <spring-ai.version>2.0.0-M7</spring-ai.version>\n    </properties>');
+              content = content.replace('    </properties>', '        <spring-ai.version>2.0.0</spring-ai.version>\n    </properties>');
             }
 
             // Add Spring AI BOM to dependencyManagement
@@ -472,24 +472,29 @@ export default class extends BaseApplicationGenerator {
             if (!content.includes('spring-ai-openai')) {
               // Try to match after </dependencyManagement> first
               const depMgmtPattern = '</dependencyManagement>\n\n    <dependencies>\n';
+              // Spring AI 2.0.0 GA's spring-ai-openai brings only openai-java-core; the okhttp
+              // transport (com.openai.client.okhttp.OpenAIOkHttpClient, used by EmbeddingConfiguration)
+              // must be declared explicitly. Pin to the 4.39.1 line spring-ai-openai:2.0.0 manages.
+              const openAiDeps =
+                '        <dependency>\n' +
+                '            <groupId>org.springframework.ai</groupId>\n' +
+                '            <artifactId>spring-ai-openai</artifactId>\n' +
+                '        </dependency>\n' +
+                '        <dependency>\n' +
+                '            <groupId>com.openai</groupId>\n' +
+                '            <artifactId>openai-java-client-okhttp</artifactId>\n' +
+                '            <version>4.39.1</version>\n' +
+                '        </dependency>\n';
               if (content.includes(depMgmtPattern)) {
                 content = content.replace(
                   depMgmtPattern,
-                  '</dependencyManagement>\n\n    <dependencies>\n' +
-                    '        <dependency>\n' +
-                    '            <groupId>org.springframework.ai</groupId>\n' +
-                    '            <artifactId>spring-ai-openai</artifactId>\n' +
-                    '        </dependency>\n',
+                  '</dependencyManagement>\n\n    <dependencies>\n' + openAiDeps,
                 );
               } else {
                 // No dependencyManagement section, first <dependencies> is the main one
                 content = content.replace(
                   '    <dependencies>\n',
-                  '    <dependencies>\n' +
-                    '        <dependency>\n' +
-                    '            <groupId>org.springframework.ai</groupId>\n' +
-                    '            <artifactId>spring-ai-openai</artifactId>\n' +
-                    '        </dependency>\n',
+                  '    <dependencies>\n' + openAiDeps,
                 );
               }
             }
