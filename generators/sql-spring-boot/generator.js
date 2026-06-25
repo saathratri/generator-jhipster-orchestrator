@@ -433,6 +433,37 @@ export default class extends BaseApplicationGenerator {
           });
         }
 
+        // Create the pgvector extension before any vector(n) column. The vector column itself is
+        // emitted into the entity changelog via field.columnType, which runs ahead of the per-entity
+        // changelog patcher below (that patcher reads on-disk changelogs that aren't written yet at
+        // POST_WRITING_ENTITIES, so it can't reliably prepend CREATE EXTENSION). Write a dedicated
+        // early changelog and wire it ahead of every changelog include in master.xml instead.
+        // Idempotent (IF NOT EXISTS): a no-op in dev/prod, which also get it from the postgres init
+        // script; the Testcontainers test DB has no init script and relies solely on this changeSet.
+        if (application.hasVectorFieldsSaathratri) {
+          const extChangelog = 'src/main/resources/config/liquibase/changelog/00000000000001_added_vector_extension.xml';
+          this.fs.write(
+            this.destinationPath(extChangelog),
+            `<?xml version="1.0" encoding="utf-8"?>\n` +
+              `<databaseChangeLog\n` +
+              `    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"\n` +
+              `    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"\n` +
+              `    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">\n` +
+              `    <!-- Saathratri: create the pgvector extension before any vector(n) column is created. -->\n` +
+              `    <changeSet id="00000000000001-create-vector-extension" author="jhipster">\n` +
+              `        <sql dbms="postgresql">CREATE EXTENSION IF NOT EXISTS vector</sql>\n` +
+              `    </changeSet>\n` +
+              `</databaseChangeLog>\n`,
+          );
+          this.editFile('src/main/resources/config/liquibase/master.xml', content => {
+            if (typeof content !== 'string' || content.includes('00000000000001_added_vector_extension.xml')) return content;
+            return content.replace(
+              /(\n[ \t]*)(<include file="config\/liquibase\/changelog\/)/,
+              `$1<include file="config/liquibase/changelog/00000000000001_added_vector_extension.xml" relativeToChangelogFile="false"/>$1$2`,
+            );
+          });
+        }
+
         // Add Spring AI dependencies if any entity has vector fields
         if (application.hasVectorFieldsSaathratri) {
           this.editFile(pomFile, content => {
