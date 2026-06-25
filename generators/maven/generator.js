@@ -7,8 +7,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 

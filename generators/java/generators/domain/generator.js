@@ -1,11 +1,9 @@
-
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import command from './command.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
     /******************************************************************/
-    // Important: The checkBlueprint: true flag is used to check if the 
+    // Important: The checkBlueprint: true flag is used to check if the
     // blueprint is installed and uses it to process the generator.
     // The base generator is called where the properties are defined.
     // The other option is sbsBlueprint: true, which is used to delegate
@@ -15,8 +13,8 @@ export default class extends BaseApplicationGenerator {
     // I will handle the other elements that compose the composite primary
     // key using custom annotations.  I could not figure out how to get
     // past the getJavaValueGeneratorForType() method's "Java type ...
-    // does not have a random generator implemented" error.  It was 
-    // getting too complicated to try to figure that out.  
+    // does not have a random generator implemented" error.  It was
+    // getting too complicated to try to figure that out.
     // Also, if I changed checkBlueprint to true, it would require me
     // to put extra code in this generator to include all the Java
     // code and configuration files; that is also too complicated.
@@ -41,8 +39,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 
@@ -62,8 +59,8 @@ export default class extends BaseApplicationGenerator {
     return this.asComposingTaskGroup({
       async composeTask() {
         if (['cassandra'].includes(this.jhipsterConfigWithDefaults.databaseType)) {
-         // Delegate the client sub-generator to the angular blueprint.
-         await this.composeWithJHipster('jhipster-orchestrator:cassandra-java:domain');
+          // Delegate the client sub-generator to the angular blueprint.
+          await this.composeWithJHipster('jhipster-orchestrator:cassandra-java:domain');
         }
       },
     });

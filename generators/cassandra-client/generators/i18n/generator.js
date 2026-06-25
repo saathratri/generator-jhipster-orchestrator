@@ -1,6 +1,6 @@
-import BaseApplicationGenerator from "generator-jhipster/generators/base-application";
+import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
-import { languagesSaathratriUtils } from "../../cassandra-client-utils.js";
+import { languagesSaathratriUtils } from '../../cassandra-client-utils.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -18,7 +18,7 @@ export default class extends BaseApplicationGenerator {
       async writingTemplateTask({ application }) {
         await this.writeFiles({
           sections: {
-            files: [{ templates: ["template-file-cassandra-client-i18n"] }],
+            files: [{ templates: ['template-file-cassandra-client-i18n'] }],
           },
           context: application,
         });
@@ -27,7 +27,7 @@ export default class extends BaseApplicationGenerator {
           sections: {
             files: [
               {
-                condition: (generator) => generator.databaseTypeCassandra,
+                condition: generator => generator.databaseTypeCassandra,
                 templates: [
                   {
                     sourceFile: `src/main/webapp/i18n/en/global.json.ejs`,
@@ -46,15 +46,12 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.WRITING_ENTITIES]() {
     return this.asWritingEntitiesTaskGroup({
       async writingEntitiesTemplateTask({ application, entities }) {
-        for (const entity of entities.filter((e) => !e.builtIn)) {
+        for (const entity of entities.filter(e => !e.builtIn)) {
           await this.writeFiles({
             sections: {
               files: [
                 {
-                  condition: (generator) =>
-                    !generator.embedded &&
-                    generator.databaseTypeCassandra &&
-                    !entity.skipClient,
+                  condition: generator => !generator.embedded && generator.databaseTypeCassandra && !entity.skipClient,
                   templates: [
                     {
                       sourceFile: `entity/i18n/entity_en.json.ejs`,

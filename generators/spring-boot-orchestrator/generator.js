@@ -1,5 +1,4 @@
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import command from './command.js';
 
 // Larger Maven heap for MapStruct annotation processing on SQL services. This lives here (not in
 // maven-orchestrator) because the orchestrator's `maven` router overrides `jhipster:maven`, which
@@ -16,8 +15,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 
@@ -199,7 +197,7 @@ export default class extends BaseApplicationGenerator {
                 },
               ],
             },
-            context: { ...application, dtoFolderName: this.appname + 'dto' },
+            context: { ...application, dtoFolderName: `${this.appname}dto` },
           });
         }
       },
@@ -258,7 +256,7 @@ export default class extends BaseApplicationGenerator {
           // NB: mem-fs buffers on Windows use CRLF even when the final file on disk is LF,
           // so the line-break matcher must be `\r?\n` (plain `\n` silently fails to match).
           const commentedCorsBlock =
-            /  # CORS is disabled by default on microservices, as you should access them through a gateway\.\r?\n  # If you want to enable it, please uncomment the configuration below\.\r?\n  # cors:\r?\n  #   allowed-origins: "http:\/\/localhost:9000,https:\/\/localhost:9000"\r?\n  #   allowed-methods: "\*"\r?\n  #   allowed-headers: "\*"\r?\n  #   exposed-headers: "Authorization,Link,X-Total-Count"\r?\n  #   allow-credentials: true\r?\n  #   max-age: 1800\r?\n/;
+            / {2}# CORS is disabled by default on microservices, as you should access them through a gateway\.\r?\n {2}# If you want to enable it, please uncomment the configuration below\.\r?\n {2}# cors:\r?\n {2}# {3}allowed-origins: "http:\/\/localhost:9000,https:\/\/localhost:9000"\r?\n {2}# {3}allowed-methods: "\*"\r?\n {2}# {3}allowed-headers: "\*"\r?\n {2}# {3}exposed-headers: "Authorization,Link,X-Total-Count"\r?\n {2}# {3}allow-credentials: true\r?\n {2}# {3}max-age: 1800\r?\n/;
 
           const activeCorsBlock =
             '  # --- SAATHRATRI CHANGE: Enable CORS in dev for Angular clients ---\n' +
@@ -293,12 +291,12 @@ export default class extends BaseApplicationGenerator {
           return content.replace(
             '    <dependencies>',
             '    <dependencies>\n' +
-            '        <!-- AWS S3 SDK for downloading Astra DB secure connect bundle (Cassandra prod) -->\n' +
-            '        <dependency>\n' +
-            '            <groupId>com.amazonaws</groupId>\n' +
-            '            <artifactId>aws-java-sdk-s3</artifactId>\n' +
-            '            <version>1.12.762</version>\n' +
-            '        </dependency>',
+              '        <!-- AWS S3 SDK for downloading Astra DB secure connect bundle (Cassandra prod) -->\n' +
+              '        <dependency>\n' +
+              '            <groupId>com.amazonaws</groupId>\n' +
+              '            <artifactId>aws-java-sdk-s3</artifactId>\n' +
+              '            <version>1.12.762</version>\n' +
+              '        </dependency>',
           );
         });
       },
@@ -360,10 +358,7 @@ export default class extends BaseApplicationGenerator {
           if (content.includes('.cors(withDefaults())')) {
             return content;
           }
-          return content.replace(
-            '            .csrf(csrf -> csrf',
-            '            .cors(withDefaults())\n            .csrf(csrf -> csrf',
-          );
+          return content.replace('            .csrf(csrf -> csrf', '            .cors(withDefaults())\n            .csrf(csrf -> csrf');
         });
       },
 
@@ -390,7 +385,7 @@ export default class extends BaseApplicationGenerator {
           return;
         }
 
-        const baseName = application.baseName;
+        const { baseName } = application;
 
         this.editFile(logbackPath, content => {
           // Idempotent: skip if our marker is already present.
@@ -402,45 +397,42 @@ export default class extends BaseApplicationGenerator {
           const fileLogPatternLine =
             '    <property name="FILE_LOG_PATTERN" value="${FILE_LOG_PATTERN:-%d{${LOG_DATEFORMAT_PATTERN:-yyyy-MM-dd HH:mm:ss.SSS}} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%t] %-40.40logger{39} : %crlf(%m) %n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}}"/>';
           if (!content.includes('FILE_LOG_PATTERN')) {
-            content = content.replace(
-              /(<property name="CONSOLE_LOG_PATTERN"[^\n]*\/>)/,
-              '$1\n' + fileLogPatternLine,
-            );
+            content = content.replace(/(<property name="CONSOLE_LOG_PATTERN"[^\n]*\/>)/, `$1\n${fileLogPatternLine}`);
           }
 
           // 2. Insert the FILE + ASYNC appender block right after the console-appender
           //    include. Using plain string concatenation to keep ${FILE_LOG_PATTERN}
           //    verbatim in the generated XML (logback resolves it at runtime).
           const appenderBlock =
-            '\n\n' +
-            '    <!-- SAATHRATRI CHANGE: dev file logging -->\n' +
-            '    <!-- Rolling file appender: 5 MB max size, 1 archive, truncated on restart -->\n' +
-            '    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">\n' +
-            '        <file>logs/' + baseName + '.log</file>\n' +
-            '        <append>false</append>\n' +
-            '        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">\n' +
-            '            <fileNamePattern>logs/' + baseName + '.%i.log</fileNamePattern>\n' +
-            '            <minIndex>1</minIndex>\n' +
-            '            <maxIndex>1</maxIndex>\n' +
-            '        </rollingPolicy>\n' +
-            '        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">\n' +
-            '            <maxFileSize>5MB</maxFileSize>\n' +
-            '        </triggeringPolicy>\n' +
-            '        <encoder>\n' +
-            '            <charset>utf-8</charset>\n' +
-            '            <Pattern>${FILE_LOG_PATTERN}</Pattern>\n' +
-            '        </encoder>\n' +
-            '    </appender>\n' +
-            '\n' +
-            '    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">\n' +
-            '        <queueSize>512</queueSize>\n' +
-            '        <appender-ref ref="FILE"/>\n' +
-            '    </appender>\n' +
-            '    <!-- END SAATHRATRI CHANGE -->';
+            `\n\n` +
+            `    <!-- SAATHRATRI CHANGE: dev file logging -->\n` +
+            `    <!-- Rolling file appender: 5 MB max size, 1 archive, truncated on restart -->\n` +
+            `    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">\n` +
+            `        <file>logs/${baseName}.log</file>\n` +
+            `        <append>false</append>\n` +
+            `        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">\n` +
+            `            <fileNamePattern>logs/${baseName}.%i.log</fileNamePattern>\n` +
+            `            <minIndex>1</minIndex>\n` +
+            `            <maxIndex>1</maxIndex>\n` +
+            `        </rollingPolicy>\n` +
+            `        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">\n` +
+            `            <maxFileSize>5MB</maxFileSize>\n` +
+            `        </triggeringPolicy>\n` +
+            `        <encoder>\n` +
+            `            <charset>utf-8</charset>\n` +
+            `            <Pattern>\${FILE_LOG_PATTERN}</Pattern>\n` +
+            `        </encoder>\n` +
+            `    </appender>\n` +
+            `\n` +
+            `    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">\n` +
+            `        <queueSize>512</queueSize>\n` +
+            `        <appender-ref ref="FILE"/>\n` +
+            `    </appender>\n` +
+            `    <!-- END SAATHRATRI CHANGE -->`;
 
           content = content.replace(
             '<include resource="org/springframework/boot/logging/logback/console-appender.xml" />',
-            '<include resource="org/springframework/boot/logging/logback/console-appender.xml" />' + appenderBlock,
+            `<include resource="org/springframework/boot/logging/logback/console-appender.xml" />${appenderBlock}`,
           );
 
           // 3. Add ASYNC appender-ref to the root logger.
@@ -462,7 +454,7 @@ export default class extends BaseApplicationGenerator {
         if (!(application.applicationTypeMicroservice || application.applicationTypeGateway)) {
           return;
         }
-        const baseName = application.baseName;
+        const { baseName } = application;
         const httpPort = Number(application.serverPort) || 8080;
         const debugPort = httpPort + 10000;
 
@@ -531,9 +523,7 @@ export default class extends BaseApplicationGenerator {
 
         const packageFolder = (application.packageFolder ?? '').replace(/\/+$/, '');
         if (!packageFolder) {
-          this.log.warn(
-            '[spring-boot-orchestrator] POST_WRITING_ENTITIES: packageFolder unavailable, skipping DTO module copy',
-          );
+          this.log.warn('[spring-boot-orchestrator] POST_WRITING_ENTITIES: packageFolder unavailable, skipping DTO module copy');
           return;
         }
 
@@ -562,30 +552,20 @@ export default class extends BaseApplicationGenerator {
 
           // ${dtoClass}.java — generated for SQL entities with `dto mapstruct` and for
           // every Cassandra entity.
-          if (
-            tryCopy(
-              `src/main/java/${packageFolder}/service/dto/${entity.dtoClass}.java`,
-              `${dtoModuleDtoDir}/${entity.dtoClass}.java`,
-            )
-          ) {
+          if (tryCopy(`src/main/java/${packageFolder}/service/dto/${entity.dtoClass}.java`, `${dtoModuleDtoDir}/${entity.dtoClass}.java`)) {
             copied += 1;
           }
 
           // ${dtoClass}Id.java — generated only for Cassandra composite-key entities.
           if (
-            tryCopy(
-              `src/main/java/${packageFolder}/service/dto/${entity.dtoClass}Id.java`,
-              `${dtoModuleDtoDir}/${entity.dtoClass}Id.java`,
-            )
+            tryCopy(`src/main/java/${packageFolder}/service/dto/${entity.dtoClass}Id.java`, `${dtoModuleDtoDir}/${entity.dtoClass}Id.java`)
           ) {
             copied += 1;
           }
         }
 
         if (copied > 0) {
-          this.log.ok(
-            `[spring-boot-orchestrator] Copied ${copied} DTO file(s) to ${application.baseName}dto module`,
-          );
+          this.log.ok(`[spring-boot-orchestrator] Copied ${copied} DTO file(s) to ${application.baseName}dto module`);
         }
 
         // Write a .gitignore to the DTO module root so target/ build artifacts
@@ -593,11 +573,7 @@ export default class extends BaseApplicationGenerator {
         // JHipster .gitignore template, so without this the target/ directory
         // leaks into git after the first `mvn install`.
         const gitignorePath = `../${application.baseName}dto/.gitignore`;
-        const gitignoreContent = [
-          '/target/',
-          '!.mvn/wrapper/maven-wrapper.jar',
-          '',
-        ].join('\n');
+        const gitignoreContent = ['/target/', '!.mvn/wrapper/maven-wrapper.jar', ''].join('\n');
         this.writeDestination(this.destinationPath(gitignorePath), gitignoreContent);
         this.log.ok(`[spring-boot-orchestrator] Wrote ${gitignorePath}`);
       },

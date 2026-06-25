@@ -258,6 +258,14 @@ export default class extends BaseApplicationGenerator {
           application.devJdbcUrlSaathratri = application.devJdbcUrl;
         }
 
+        // JHipster 9.1.0 moved `microfrontend` (and related client ports) into the client
+        // generator's application mutation, so they are absent when this server-focused
+        // subgenerator re-renders application-dev.yml without the client app-prep having run.
+        // Default them to upstream's "no client" values so the shared template renders.
+        application.microfrontend ??= false;
+        application.devServerPort ??= 4200;
+        application.devServerPortProxy ??= application.devServerPort;
+
         await this.writeFiles({
           sections: {
             files: [
@@ -486,16 +494,10 @@ export default class extends BaseApplicationGenerator {
                 '            <version>4.39.1</version>\n' +
                 '        </dependency>\n';
               if (content.includes(depMgmtPattern)) {
-                content = content.replace(
-                  depMgmtPattern,
-                  '</dependencyManagement>\n\n    <dependencies>\n' + openAiDeps,
-                );
+                content = content.replace(depMgmtPattern, `</dependencyManagement>\n\n    <dependencies>\n${openAiDeps}`);
               } else {
                 // No dependencyManagement section, first <dependencies> is the main one
-                content = content.replace(
-                  '    <dependencies>\n',
-                  '    <dependencies>\n' + openAiDeps,
-                );
+                content = content.replace('    <dependencies>\n', `    <dependencies>\n${openAiDeps}`);
               }
             }
 
@@ -870,7 +872,7 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
           (application.packageName ? `${application.packageName.replace(/\./g, '/')}/` : undefined) ??
           ''
         ).replace(/\/+$/, '');
-        const packageName = application.packageName;
+        const { packageName } = application;
         if (!packageFolder || !packageName) {
           this.log.warn('[sql-spring-boot] injectLazyRelationshipReadEndpoints: package metadata unavailable, skipping');
           return;
@@ -884,8 +886,8 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
           const excluded = getExcludedRelationships(entity);
           if (!excluded.length) continue;
 
-          const entityClass = entity.entityClass;
-          const entityInstance = entity.entityInstance;
+          const { entityClass } = entity;
+          const { entityInstance } = entity;
           const idType = entity.primaryKey?.type || 'UUID';
           const resourcePath = `src/main/java/${packageFolder}/web/rest/${entityClass}Resource.java`;
           const serviceImplPath = `src/main/java/${packageFolder}/service/impl/${entityClass}ServiceImpl.java`;

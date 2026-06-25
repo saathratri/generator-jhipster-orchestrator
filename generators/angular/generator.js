@@ -29,8 +29,10 @@ export default class extends BaseApplicationGenerator {
         if (['cassandra'].includes(this.jhipsterConfigWithDefaults.databaseType)) {
           await this.composeWithJHipster('jhipster-orchestrator:cassandra-angular');
         }
-        if (['sql'].includes(this.jhipsterConfigWithDefaults.databaseType)
-            || 'gateway' === this.jhipsterConfigWithDefaults.applicationType) {
+        if (
+          ['sql'].includes(this.jhipsterConfigWithDefaults.databaseType) ||
+          'gateway' === this.jhipsterConfigWithDefaults.applicationType
+        ) {
           await this.composeWithJHipster('jhipster-orchestrator:sql-angular');
         }
       },

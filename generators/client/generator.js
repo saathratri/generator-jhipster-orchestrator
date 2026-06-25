@@ -1,6 +1,4 @@
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import { clientRootTemplatesBlock, clientSrcTemplatesBlock } from 'generator-jhipster/generators/client/support';
-import command from './command.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -9,8 +7,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 
@@ -38,8 +35,10 @@ export default class extends BaseApplicationGenerator {
            * widgets that can be created, updated, and retrieved with the correct
            * date and datetime set by the user.
            */
-          if (['cassandra'].includes(this.jhipsterConfigWithDefaults.databaseType)
-              || 'gateway' === this.jhipsterConfigWithDefaults.applicationType) {
+          if (
+            ['cassandra'].includes(this.jhipsterConfigWithDefaults.databaseType) ||
+            'gateway' === this.jhipsterConfigWithDefaults.applicationType
+          ) {
             // Delegate the client sub-generator to the Cassandra server generator.
             await this.composeWithJHipster('jhipster-orchestrator:cassandra-client');
           }

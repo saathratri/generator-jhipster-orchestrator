@@ -165,13 +165,13 @@ This master script runs five phases in order:
 
 The example JDL (`saathratri-apps-orchestrator-mf.jdl`) merges the two upstream example JDLs — SQL entities prefixed `Psql`, Cassandra entities prefixed `Cass` — and generates:
 
-| App | Database | Notes |
-|---|---|---|
-| `orchestratorgateway` | PostgreSQL | Spring Cloud Gateway with microfrontends to all four services |
-| `psqlblog` | SQL / pgvector | `PsqlBlog`, `PsqlPost`, `PsqlTag` (vector fields), `PsqlTajUser` |
-| `psqlstore` | SQL | `PsqlProduct`, `PsqlReport` |
-| `cassandrablog` | Cassandra | Composite-key `CassBlog`/`CassPost`, `CassTag` (vectors), `Cass*` Set/Map entities |
-| `cassandrastore` | Cassandra | `CassProduct`, `CassReport` |
+| App                   | Database       | Notes                                                                              |
+| --------------------- | -------------- | ---------------------------------------------------------------------------------- |
+| `orchestratorgateway` | PostgreSQL     | Spring Cloud Gateway with microfrontends to all four services                      |
+| `psqlblog`            | SQL / pgvector | `PsqlBlog`, `PsqlPost`, `PsqlTag` (vector fields), `PsqlTajUser`                   |
+| `psqlstore`           | SQL            | `PsqlProduct`, `PsqlReport`                                                        |
+| `cassandrablog`       | Cassandra      | Composite-key `CassBlog`/`CassPost`, `CassTag` (vectors), `Cass*` Set/Map entities |
+| `cassandrastore`      | Cassandra      | `CassProduct`, `CassReport`                                                        |
 
 Plus `docker-compose/` and a `${service}dto/` DTO Maven project per service.
 
@@ -181,39 +181,39 @@ Plus `docker-compose/` and a `${service}dto/` DTO Maven project per service.
 
 ### Orchestrator-owned sub-generators
 
-| Sub-generator | Purpose |
-|---|---|
-| `server` | Creates the DTO Maven project skeleton (`pom.xml`, `mvnw`, `README.md`) in `../../${appname}dto/` |
-| `client` | Routes to `sql-angular` or `cassandra-angular` by `databaseType` |
-| `spring-boot` | Routes to `sql-spring-boot` or `cassandra-spring-boot`; overrides core config templates |
-| `java` / `java:domain` | SBS passthrough; routes Cassandra entities to `cassandra-java:domain` |
-| `docker` | Routes to `sql-docker` or `cassandra-docker`; patches the Keycloak realm |
-| `liquibase` | Composes `liquibase-orchestrator` |
-| `maven` | Overrides `jhipster:maven` (no-op in JHipster 8 — see note below) |
-| `angular` | Injects Angular Material theme + `@angular/material` / `@angular/cdk` deps |
-| `spring-boot-orchestrator` | SQL/Cassandra server customizations: CORS/logback/pom patches, DTO module scaffolding, `.mvn/jvm.config` (8 GB heap) |
-| `liquibase-orchestrator` | pgvector column changelogs and `@customQueryAnnotation` / `eager` / `@entityGraph*` index changelogs, needled into `master.xml` |
-| `maven-orchestrator` | No-op (see note) |
-| `docker-orchestrator` | Docker Compose customizations |
-| `heroku-orchestrator` | Heroku `Procfile`, `system.properties`, `bootstrap-heroku.yml` + `heroku` Maven profile |
+| Sub-generator              | Purpose                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `server`                   | Creates the DTO Maven project skeleton (`pom.xml`, `mvnw`, `README.md`) in `../../${appname}dto/`                               |
+| `client`                   | Routes to `sql-angular` or `cassandra-angular` by `databaseType`                                                                |
+| `spring-boot`              | Routes to `sql-spring-boot` or `cassandra-spring-boot`; overrides core config templates                                         |
+| `java` / `java:domain`     | SBS passthrough; routes Cassandra entities to `cassandra-java:domain`                                                           |
+| `docker`                   | Routes to `sql-docker` or `cassandra-docker`; patches the Keycloak realm                                                        |
+| `liquibase`                | Composes `liquibase-orchestrator`                                                                                               |
+| `maven`                    | Overrides `jhipster:maven` (no-op in JHipster 8 — see note below)                                                               |
+| `angular`                  | Injects Angular Material theme + `@angular/material` / `@angular/cdk` deps                                                      |
+| `spring-boot-orchestrator` | SQL/Cassandra server customizations: CORS/logback/pom patches, DTO module scaffolding, `.mvn/jvm.config` (8 GB heap)            |
+| `liquibase-orchestrator`   | pgvector column changelogs and `@customQueryAnnotation` / `eager` / `@entityGraph*` index changelogs, needled into `master.xml` |
+| `maven-orchestrator`       | No-op (see note)                                                                                                                |
+| `docker-orchestrator`      | Docker Compose customizations                                                                                                   |
+| `heroku-orchestrator`      | Heroku `Procfile`, `system.properties`, `bootstrap-heroku.yml` + `heroku` Maven profile                                         |
 
 ### SQL sub-generators (from `generator-jhipster-ai-postgresql`)
 
-| Sub-generator | Purpose |
-|---|---|
+| Sub-generator     | Purpose                                                                                       |
+| ----------------- | --------------------------------------------------------------------------------------------- |
 | `sql-spring-boot` | Entity Resource, Service, ServiceImpl, DTO (copied to DTO project), Mapper, integration tests |
-| `sql-angular` | Entity pages with human-readable FK display and AI search |
-| `sql-docker` | PostgreSQL Docker Compose with pgvector and dynamic port management |
+| `sql-angular`     | Entity pages with human-readable FK display and AI search                                     |
+| `sql-docker`      | PostgreSQL Docker Compose with pgvector and dynamic port management                           |
 
 ### Cassandra sub-generators (from `generator-jhipster-cassandra`)
 
-| Sub-generator | Purpose |
-|---|---|
+| Sub-generator           | Purpose                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------- |
 | `cassandra-spring-boot` | Entity Resource, Service, ServiceImpl, DTO/DTOId (copied to DTO project), Mapper |
-| `cassandra-angular` | Entity pages with UTC date handling and Material date pickers |
-| `cassandra-docker` | Cassandra Docker Compose with dynamic port management |
-| `cassandra-java` | Domain entities with composite primary keys and type codecs |
-| `cassandra-client` | i18n translations for Cassandra entities |
+| `cassandra-angular`     | Entity pages with UTC date handling and Material date pickers                    |
+| `cassandra-docker`      | Cassandra Docker Compose with dynamic port management                            |
+| `cassandra-java`        | Domain entities with composite primary keys and type codecs                      |
+| `cassandra-client`      | i18n translations for Cassandra entities                                         |
 
 ---
 
@@ -296,12 +296,12 @@ For the full Cassandra composite-key / `SET` / `MAP` / vector JDL catalogue, see
 
 The orchestrator overrides only the templates that need Saathratri-specific changes:
 
-| Area | Template(s) | Saathratri Change |
-|---|---|---|
-| Backend config | `application.yml`, `application-dev.yml`, `application-prod.yml`, `bootstrap*.yml` | CORS `DedupeResponseHeader`, Keycloak/Auth0 OIDC, Astra DB + S3, Eureka/JWT secrets |
-| Backend code | `Application.java`, `ApplicationProperties.java`, `pom.xml` | `CqlSession` bean, AWS S3 + Astra DB properties, S3 SDK dependency |
-| Frontend | `package.json`, `global.scss` | `@angular/material` / `@angular/cdk`, Material theme CSS import |
-| Docker | `jhipster-realm.json` | `orchestrator-client-id` service account, `spa_app` client, `tenantIds` mapper, `read:users` scope |
+| Area           | Template(s)                                                                        | Saathratri Change                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Backend config | `application.yml`, `application-dev.yml`, `application-prod.yml`, `bootstrap*.yml` | CORS `DedupeResponseHeader`, Keycloak/Auth0 OIDC, Astra DB + S3, Eureka/JWT secrets                    |
+| Backend code   | `Application.java`, `ApplicationProperties.java`, `pom.xml`                        | `CqlSession` bean, AWS S3 + Astra DB properties, S3 SDK dependency                                     |
+| Frontend       | `package.json`, `global.scss`                                                      | `@angular/material` / `@angular/cdk`, Material theme CSS import                                        |
+| Docker         | `jhipster-realm.json`                                                              | `orchestrator-client-id` service account, `spa_app` client, `tenantIds` mapper, `read:users` scope |
 
 Every change is marked: `<%# --- SAATHRATRI CHANGE: ... --- %>` (EJS), `# --- SAATHRATRI CHANGE: ... ---` (YAML), `// --- SAATHRATRI CHANGE: ... ---` (Java).
 
@@ -331,7 +331,7 @@ The suite stays green across regenerations because the prepare phase rewrites th
 
 ### Debugging test failures
 
-The golden rule is **fix the templates, never the generated app** (it is overwritten on every regeneration) — and for this *assembled* blueprint, fix `sql-*` / `cassandra-*` template bugs in the **base repos**, not in this repo's copies. The full runbook is in **[`TESTING.md`](TESTING.md)**. For the generated-app backend/frontend bug catalogues, see the companion [`generator-jhipster-cassandra/TESTING.md`](https://github.com/amarpatel-xx/generator-jhipster-cassandra/blob/main/TESTING.md) and [`generator-jhipster-ai-postgresql/TESTING.md`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql/blob/main/TESTING.md).
+The golden rule is **fix the templates, never the generated app** (it is overwritten on every regeneration) — and for this _assembled_ blueprint, fix `sql-*` / `cassandra-*` template bugs in the **base repos**, not in this repo's copies. The full runbook is in **[`TESTING.md`](TESTING.md)**. For the generated-app backend/frontend bug catalogues, see the companion [`generator-jhipster-cassandra/TESTING.md`](https://github.com/amarpatel-xx/generator-jhipster-cassandra/blob/main/TESTING.md) and [`generator-jhipster-ai-postgresql/TESTING.md`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql/blob/main/TESTING.md).
 
 ### E2E (Cypress) & custom widgets
 
@@ -351,16 +351,16 @@ okta apps create jhipster
 
 ## 🧯 Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| `"Could not retrieve version of blueprint"` | Cosmetic warning — sub-generators don't export version info. Generation proceeds normally. |
-| `"Generator xyz was not found"` | Run the prepare script after `npm link` — it copies the `sql-*` / `cassandra-*` generators in. |
-| `this.parseJHipsterArguments is not a function` | Removed in JHipster 9 — delete the call. |
-| `method: 'copy'` template errors | Removed in JHipster 9 — use `binary: true` (binary) or `noEjs: true` (text). |
-| `jhipsterConfigWithDefaults.packageFolder` is undefined | Use `(data) => data.packageFolder` in `renameTo` callbacks. |
-| `this.dateFormatForLiquibase is not a function` | Removed in JHipster 9 — format the timestamp inline. |
-| XML comment errors in `pom.xml` | Use EJS comments `<%# ... %>`, not XML `<!-- ... -->` (XML disallows `--` inside comments). |
-| DTO projects not generated | Ensure `server` exists in the global install (`npm link`), the prepare script ran, and `renameTo` uses `(data) => data.packageFolder`. |
+| Symptom                                                 | Fix                                                                                                                                    |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `"Could not retrieve version of blueprint"`             | Cosmetic warning — sub-generators don't export version info. Generation proceeds normally.                                             |
+| `"Generator xyz was not found"`                         | Run the prepare script after `npm link` — it copies the `sql-*` / `cassandra-*` generators in.                                         |
+| `this.parseJHipsterArguments is not a function`         | Removed in JHipster 9 — delete the call.                                                                                               |
+| `method: 'copy'` template errors                        | Removed in JHipster 9 — use `binary: true` (binary) or `noEjs: true` (text).                                                           |
+| `jhipsterConfigWithDefaults.packageFolder` is undefined | Use `(data) => data.packageFolder` in `renameTo` callbacks.                                                                            |
+| `this.dateFormatForLiquibase is not a function`         | Removed in JHipster 9 — format the timestamp inline.                                                                                   |
+| XML comment errors in `pom.xml`                         | Use EJS comments `<%# ... %>`, not XML `<!-- ... -->` (XML disallows `--` inside comments).                                            |
+| DTO projects not generated                              | Ensure `server` exists in the global install (`npm link`), the prepare script ran, and `renameTo` uses `(data) => data.packageFolder`. |
 
 ---
 

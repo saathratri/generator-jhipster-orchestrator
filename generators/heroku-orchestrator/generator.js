@@ -1,5 +1,5 @@
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import command from './command.js';
+
 import { herokuSaathratriUtils } from './heroku-saathratri-utils.js';
 
 export default class extends BaseApplicationGenerator {
@@ -9,8 +9,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 
@@ -89,22 +88,21 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.WRITING]() {
     return this.asWritingTaskGroup({
       async writingTemplateTask({ application }) {
-        
         this.includeServerFiles();
 
         await this.writeFiles({
           sections: {
             files: [
               {
-                condition: generator => (generator.applicationTypeMicroservice || generator.applicationTypeGateway),
+                condition: generator => generator.applicationTypeMicroservice || generator.applicationTypeGateway,
                 path: './',
-                templates: [ 'template-file-heroku-orchestrator', 'Procfile', 'system.properties', '.slugignore' ],
+                templates: ['template-file-heroku-orchestrator', 'Procfile', 'system.properties', '.slugignore'],
               },
               {
-                condition: generator => (generator.applicationTypeMicroservice || generator.applicationTypeGateway),
+                condition: generator => generator.applicationTypeMicroservice || generator.applicationTypeGateway,
                 path: './src/main/resources/config/',
-                templates: [ 'application-heroku.yml', 'bootstrap-heroku.yml' ],
-              }
+                templates: ['application-heroku.yml', 'bootstrap-heroku.yml'],
+              },
             ],
           },
           context: { ...application, ...herokuSaathratriUtils },
@@ -133,10 +131,7 @@ export default class extends BaseApplicationGenerator {
         if ((application.applicationTypeMicroservice || application.applicationTypeGateway) && application.buildToolMaven) {
           this.editFile('pom.xml', content => {
             if (!content.includes('<id>heroku</id>')) {
-              content = content.replace(
-                '        <profile.tls/>\n',
-                '        <profile.tls/>\n        <profile.heroku/>\n'
-              );
+              content = content.replace('        <profile.tls/>\n', '        <profile.tls/>\n        <profile.heroku/>\n');
               content = content.replace(
                 '            <id>tls</id>\n' +
                   '            <properties>\n' +
@@ -153,11 +148,11 @@ export default class extends BaseApplicationGenerator {
                   '            <properties>\n' +
                   '                <profile.heroku>,heroku</profile.heroku>\n' +
                   '            </properties>\n' +
-                  '        </profile>\n'
+                  '        </profile>\n',
               );
               content = content.replace(
                 /(<spring\.profiles\.active>prod[^<]*?)(<\/spring\.profiles\.active>)/,
-                (m, p1, p2) => p1 + '${profile.heroku}' + p2
+                (m, p1, p2) => `${p1}\${profile.heroku}${p2}`,
               );
               this.log.info('[heroku-orchestrator] Added `heroku` Maven profile to pom.xml');
             }

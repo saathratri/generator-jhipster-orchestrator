@@ -66,7 +66,7 @@ npx vitest run            # full suite
 Expected: **Test Files 21 passed (21) / Tests 52 passed (52)**.
 
 Most `generators/*/generator.spec.js` run their sub-generator through the blueprint and assert
-`result.getStateSnapshot()` against `__snapshots__/generator.spec.js.snap`. After an *intended*
+`result.getStateSnapshot()` against `__snapshots__/generator.spec.js.snap`. After an _intended_
 change to which files a sub-generator writes:
 
 ```bash
@@ -98,10 +98,11 @@ The suite was scaffolded but fully red until these were repaired (commit `ea31d2
     blueprintPackagePath: fileURLToPath(new URL('./', import.meta.url)),
   });
   ```
-  Missing the `blueprintPackagePath` throws *"Blueprint generators package path must be configured"*.
+  Missing the `blueprintPackagePath` throws _"Blueprint generators package path must be configured"_.
 - **Spec run chain** is the current API:
   ```js
-  await helpers.run(BLUEPRINT_NAMESPACE)
+  await helpers
+    .run(BLUEPRINT_NAMESPACE)
     .withJHipsterConfig()
     .withOptions({ ignoreNeedlesError: true })
     .withJHipsterGenerators()
@@ -116,10 +117,10 @@ The suite was scaffolded but fully red until these were repaired (commit `ea31d2
 `BLUEPRINT_NAMESPACE` in each spec depends on whether the sub-generator has a custom name or
 overrides a JHipster core generator:
 
-| Sub-generator kind | `BLUEPRINT_NAMESPACE` | Examples |
-|---|---|---|
-| Custom-named | `jhipster-orchestrator:<name>` | `heroku-orchestrator`, `sql-spring-boot`, `cassandra-angular`, `data-relational`, `data-cassandra` |
-| Core-name override | `jhipster:<name>` | `server`, `client`, `angular`, `docker`, `java`, `spring-boot` |
+| Sub-generator kind | `BLUEPRINT_NAMESPACE`          | Examples                                                                                           |
+| ------------------ | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| Custom-named       | `jhipster-orchestrator:<name>` | `heroku-orchestrator`, `sql-spring-boot`, `cassandra-angular`, `data-relational`, `data-cassandra` |
+| Core-name override | `jhipster:<name>`              | `server`, `client`, `angular`, `docker`, `java`, `spring-boot`                                     |
 
 A wrong prefix (e.g. the old `heroku-saathratri` typo) makes the runner fail to resolve the
 generator. The copied `sql-*` / `cassandra-*` specs arrive from the base repos carrying their
@@ -127,16 +128,16 @@ generator. The copied `sql-*` / `cassandra-*` specs arrive from the base repos c
 them — see §3.
 
 **Behavioral specs use an integration entry point, not the leaf namespace.** Most of the
-orchestrator's customizations are `POST_WRITING` `editFile()` patches against files the *base*
+orchestrator's customizations are `POST_WRITING` `editFile()` patches against files the _base_
 Spring Boot generator writes (`pom.xml`, `SecurityConfiguration.java`, `logback-spring.xml`,
 `application-dev.yml`). Running a leaf generator alone produces none of those, so the edit has
 nothing to patch. The §2.4 specs therefore run the **whole server stack** and assert the result:
 
-| Generator under test | Entry namespace | Why |
-|---|---|---|
-| `heroku-orchestrator`, `spring-boot-orchestrator`, `docker-orchestrator`, `server` | `jhipster:server` (+ `applicationType` micro/gateway, `authenticationType: oauth2`) | server composes these and the base files their `editFile`s patch exist |
-| `liquibase-orchestrator` | `jhipster:liquibase` (+ entities) | lighter; produces `master.xml` + vector/index entity changelogs |
-| `maven-orchestrator` | `jhipster-orchestrator:maven-orchestrator` (leaf) | a no-op stub — server/app don't compose the maven router (see §2.4); the heap config it owned moved to `spring-boot-orchestrator` |
+| Generator under test                                                               | Entry namespace                                                                     | Why                                                                                                                               |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `heroku-orchestrator`, `spring-boot-orchestrator`, `docker-orchestrator`, `server` | `jhipster:server` (+ `applicationType` micro/gateway, `authenticationType: oauth2`) | server composes these and the base files their `editFile`s patch exist                                                            |
+| `liquibase-orchestrator`                                                           | `jhipster:liquibase` (+ entities)                                                   | lighter; produces `master.xml` + vector/index entity changelogs                                                                   |
+| `maven-orchestrator`                                                               | `jhipster-orchestrator:maven-orchestrator` (leaf)                                   | a no-op stub — server/app don't compose the maven router (see §2.4); the heap config it owned moved to `spring-boot-orchestrator` |
 
 `authenticationType: oauth2` is required for the `docker-orchestrator` realm spec — the base docker
 generator only computes `keycloakSecrets` (which the realm template references) under oauth2.
@@ -147,17 +148,17 @@ generator only computes `keycloakSecrets` (which the realm template references) 
 
 These are the customizations the orchestrator adds **on top of** the base blueprints — none of them
 are covered by the inherited `sql-*` / `cassandra-*` snapshot specs (those test the base templates;
-the orchestrator's edits run *after*, in preserved `*-orchestrator` submodules). Each spec asserts
+the orchestrator's edits run _after_, in preserved `*-orchestrator` submodules). Each spec asserts
 the generated **content**, so it fails loudly if a Saathratri customization regresses.
 
-| Sub-generator | What the spec asserts (content, not just file presence) |
-|---|---|
-| `heroku-orchestrator` | `Procfile`/`system.properties`/`.slugignore`/`application-heroku.yml`/`bootstrap-heroku.yml` written for micro+gateway; `Procfile` activates `prod,heroku`; the additive `heroku` Maven profile (`<profile.heroku/>`, `<id>heroku</id>`, `<profile.heroku>,heroku</profile.heroku>`) is injected into `pom.xml` and `${profile.heroku}` is appended to the prod `spring.profiles.active`. Negative: a **monolith** gets none of it. |
+| Sub-generator              | What the spec asserts (content, not just file presence)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `heroku-orchestrator`      | `Procfile`/`system.properties`/`.slugignore`/`application-heroku.yml`/`bootstrap-heroku.yml` written for micro+gateway; `Procfile` activates `prod,heroku`; the additive `heroku` Maven profile (`<profile.heroku/>`, `<id>heroku</id>`, `<profile.heroku>,heroku</profile.heroku>`) is injected into `pom.xml` and `${profile.heroku}` is appended to the prod `spring.profiles.active`. Negative: a **monolith** gets none of it.                                                                                                                                                                                                         |
 | `spring-boot-orchestrator` | dev CORS block (with the `localhost:4200` origins) patched into `application-dev.yml`; `.cors(withDefaults())` patched into `SecurityConfiguration.java`; the `SAATHRATRI CHANGE: dev file logging` FILE+ASYNC appenders patched into `logback-spring.xml`; the sibling `…dto/` Maven module scaffolded (`.gitignore` + pom); **`.mvn/jvm.config` written with the 8 GB Maven heap (`-Xmx8g …`) for SQL services** (gateway + SQL microservices), not for Cassandra. Cassandra services get the `aws-java-sdk-s3` dependency (Astra secure bundle); SQL services do **not**. Gateway does **not** get the microservice-only dev CORS patch. |
-| `liquibase-orchestrator` | SQL `master.xml` written; a pgvector field (`@customAnnotation("VECTOR") @customAnnotation("1536")`) generates an `added_vector_<Entity>.xml` changelog containing `vector(1536)`; `@customQueryAnnotation("… params[ … ] index")` generates an `added_custom_query_indexes_<Entity>.xml` with a `<createIndex>` per directive (single + composite columns), and `eager[ rel ]` on a many-to-one indexes the FK column (`idx_<table>_<fk>_id`); all are needled into `master.xml`. Negatives: a plain entity adds no vector/index changelog. |
-| `docker-orchestrator` | Keycloak `realm-config/jhipster-realm.json` carries the orchestrator service-account client (`orchestrator-client-id` / `orchestrator-client-secret`) for service-to-service OAuth2. Negative: a monolith realm has no such client. |
-| `server` | dispatch routing — SQL config pulls in `sql-spring-boot` (not cassandra) and composes `heroku-orchestrator`; Cassandra config pulls in `cassandra-spring-boot` (not SQL). Keeps the original monolith `getStateSnapshot()` snapshot. |
-| `maven-orchestrator` | composes/loads cleanly (emits its WRITING stub) and asserts it does **not** itself write `.mvn/jvm.config` — see the note below. |
+| `liquibase-orchestrator`   | SQL `master.xml` written; a pgvector field (`@customAnnotation("VECTOR") @customAnnotation("1536")`) generates an `added_vector_<Entity>.xml` changelog containing `vector(1536)`; `@customQueryAnnotation("… params[ … ] index")` generates an `added_custom_query_indexes_<Entity>.xml` with a `<createIndex>` per directive (single + composite columns), and `eager[ rel ]` on a many-to-one indexes the FK column (`idx_<table>_<fk>_id`); all are needled into `master.xml`. Negatives: a plain entity adds no vector/index changelog.                                                                                                |
+| `docker-orchestrator`      | Keycloak `realm-config/jhipster-realm.json` carries the orchestrator service-account client (`orchestrator-client-id` / `orchestrator-client-secret`) for service-to-service OAuth2. Negative: a monolith realm has no such client.                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `server`                   | dispatch routing — SQL config pulls in `sql-spring-boot` (not cassandra) and composes `heroku-orchestrator`; Cassandra config pulls in `cassandra-spring-boot` (not SQL). Keeps the original monolith `getStateSnapshot()` snapshot.                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `maven-orchestrator`       | composes/loads cleanly (emits its WRITING stub) and asserts it does **not** itself write `.mvn/jvm.config` — see the note below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ### `maven-orchestrator` is a no-op; the jvm.config lives in `spring-boot-orchestrator`
 
@@ -165,7 +166,7 @@ the generated **content**, so it fails loudly if a Saathratri customization regr
 instead. So the orchestrator's `maven` router (and `maven-orchestrator`) **never execute** in real
 generation — generated services contain no `template-file-maven-orchestrator` stub (compare: the
 `spring-boot-orchestrator`, `liquibase-orchestrator`, `docker-orchestrator`, `heroku-orchestrator`
-stubs *are* present). That is why the 8 GB `.mvn/jvm.config` heap override used to ship empty.
+stubs _are_ present). That is why the 8 GB `.mvn/jvm.config` heap override used to ship empty.
 
 **Fix:** the heap config now lives in `spring-boot-orchestrator` POST_WRITING
 (`writeJvmConfigForSql`), which provably runs for the gateway and SQL microservices and already

@@ -11,11 +11,13 @@
 ## Key Architectural Concepts
 
 ### 1. Side-by-Side Blueprint Pattern
+
 - Uses `sbsBlueprint: true` to complement (not replace) JHipster's generators
 - Allows selective overriding of specific generation phases
 - Maintains compatibility with JHipster's core functionality
 
 ### 2. Database-Specific Generator Chains
+
 The blueprint uses a delegation pattern where base generators delegate to database-specific implementations:
 
 ```
@@ -28,7 +30,9 @@ docker → cassandra-docker (for Cassandra)
 ```
 
 ### 3. JHipster Generator Lifecycle
+
 All generators follow this priority/phase sequence:
+
 1. INITIALIZING
 2. PROMPTING
 3. CONFIGURING
@@ -96,11 +100,13 @@ generator-jhipster-orchestrator/
 **Location:** `generators/sql-spring-boot/utils/dto-utils.js`
 
 The blueprint automatically generates DTOs in a separate module:
+
 - **Module path:** `../${appname}dto/`
 - **Purpose:** Enable clean separation between service layer and data layer
 - **Generated files:** DTO classes corresponding to JPA entities
 
 **Key Functions:**
+
 - `getDtoImportFullTypeWithEnums(entity)` - Get import statements for DTOs
 - Template processing in `sql-spring-boot/templates/src/main/java/_package_/_entityPackage_/service/dto/`
 
@@ -109,19 +115,22 @@ The blueprint automatically generates DTOs in a separate module:
 **Location:** `generators/cassandra-spring-boot/utils/cassandra-composite-key-utils.js`
 
 Handles complex Cassandra primary keys using custom annotations:
+
 - `@customAnnotation("PrimaryKeyType.PARTITIONED")` - Partition key fields
 - `@customAnnotation("PrimaryKeyType.CLUSTERED")` - Clustering key fields
 
 **Key Functions:**
+
 ```javascript
-getCompositeKeyClassImportFullType(entity)  // Get composite key class imports
-getCompositeIdFieldInEntity(fields)         // Extract composite ID field
-getListOfIdFields(fields)                   // Get all ID fields
-getPartitionedKeyFields(fields)             // Get partition key fields
-getClusteredKeyFields(fields)               // Get clustering key fields
+getCompositeKeyClassImportFullType(entity); // Get composite key class imports
+getCompositeIdFieldInEntity(fields); // Extract composite ID field
+getListOfIdFields(fields); // Get all ID fields
+getPartitionedKeyFields(fields); // Get partition key fields
+getClusteredKeyFields(fields); // Get clustering key fields
 ```
 
 **Generated Components:**
+
 - Composite key classes (e.g., `EntityId.java`)
 - Custom equals/hashCode for composite keys
 - Proper field ordering (partitioned → clustered → regular)
@@ -131,32 +140,38 @@ getClusteredKeyFields(fields)               // Get clustering key fields
 **Storage Strategy:** UTC dates stored as Unix timestamps (Long)
 
 **Backend:**
+
 - Fields: `LocalDate` and `ZonedDateTime` in Java
 - Storage: Unix milliseconds (Long) in Cassandra
 - Conversion: Automatic via custom getters/setters
 
 **Frontend (Angular):**
+
 - `ConvertFromDateLongToDayjs` pipe - Convert Long → Dayjs
 - `FormatMediumDatetime` pipe - Format for display
 - Angular Material date pickers integrated
 - Custom validators for date ranges
 
 **Key Files:**
+
 - `generators/cassandra-angular/templates/src/main/webapp/app/shared/date/`
 - `generators/cassandra-spring-boot/templates/.../domain/_persistClass_Entity_.java.ejs`
 
 ### 4. Cassandra Collection Types (Map/Set)
 
 **Set Fields:**
+
 - Custom Angular component: `entity-field-set-update.component.ts`
 - Add/remove items from Set<String>, Set<Long>, etc.
 
 **Map Fields:**
+
 - Custom Angular dialog: `entity-map-field-edit-dialog.component.ts`
 - Supports: Boolean, String, Number, Dayjs values
 - Edit dialog with key-value pair management
 
 **Key Files:**
+
 - `generators/cassandra-angular/templates/src/main/webapp/app/entities/set-field/`
 - `generators/cassandra-angular/templates/src/main/webapp/app/entities/map-field/`
 
@@ -165,27 +180,32 @@ getClusteredKeyFields(fields)               // Get clustering key fields
 **Purpose:** Prevent port conflicts in microservices development
 
 **SQL Port Management:**
+
 - File: `generators/sql-spring-boot/utils/last-used-port.json`
 - Tracks last PostgreSQL port (starts at 5433)
 - Auto-increments for each new service
 
 **Cassandra Port Management:**
+
 - File: `generators/cassandra-docker/utils/last-used-ports.json`
 - Tracks multiple ports: CQL (9042+), JMX (7199+), Thrift (9160+), Storage (7000+)
 - Manages port ranges to avoid conflicts
 
 **Key Functions:**
+
 - `getAndUpdateLastUsedPostgreSQLPort()` in `sql-utils.js`
 - Port assignment in `cassandra-utils.js`
 
 ### 6. Custom Annotations for Display
 
 **`@customAnnotation("DISPLAY_IN_GUI_RELATIONSHIP_LINK")`**
+
 - Applied to entity fields
 - Marks which field to display when showing relationships in UI
 - Example: Show `name` field instead of `id` in dropdowns
 
 **Usage in `.jhipster/Entity.json`:**
+
 ```json
 {
   "fields": [
@@ -207,12 +227,14 @@ getClusteredKeyFields(fields)               // Get clustering key fields
 > itself only emits the app skeleton + config (`Application.java`, `application*.yml`, `pom.xml`).
 
 **QueryService Pattern (SQL):**
+
 - Template: `generators/sql-spring-boot/templates/src/main/java/_package_/_entityPackage_/service/_entityClass_QueryService.java.ejs`
 - Generates `EntityQueryService` for complex filtering
 - Uses Spring Data JPA Specifications
 - Enables dynamic query construction
 
 **ServiceImpl Pattern:**
+
 - Interface + Implementation separation
 - Templates: `_entityClass_Service.java.ejs` + `service/impl/_entityClass_ServiceImpl.java.ejs`
   under `generators/sql-spring-boot/templates/...` (SQL) and
@@ -224,6 +246,7 @@ getClusteredKeyFields(fields)               // Get clustering key fields
 ### Adding a New Generator
 
 1. **Create directory structure:**
+
    ```
    generators/my-new-generator/
    ├── generator.js      # Main generator logic
@@ -234,6 +257,7 @@ getClusteredKeyFields(fields)               // Get clustering key fields
    ```
 
 2. **Basic generator.js structure:**
+
    ```javascript
    import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
@@ -280,12 +304,14 @@ getClusteredKeyFields(fields)               // Get clustering key fields
 ### Modifying Entity Generation
 
 **For SQL entities:**
+
 1. Edit templates in `generators/sql-spring-boot/templates/`
 2. Key templates:
    - `src/main/java/_package_/_entityPackage_/domain/_persistClass_.java.ejs`
    - `src/main/java/_package_/_entityPackage_/service/_entityClass_Service.java.ejs`
 
 **For Cassandra entities:**
+
 1. Edit templates in `generators/cassandra-java-domain/templates/`
 2. Handle composite keys in `cassandra-spring-boot/utils/cassandra-composite-key-utils.js`
 3. Update Angular UI in `generators/cassandra-angular/templates/`
@@ -296,6 +322,7 @@ getClusteredKeyFields(fields)               // Get clustering key fields
    `.jhipster/Entity.json` → add to `customAnnotations` array
 
 2. **Process in generator:**
+
    ```javascript
    entity.fields.forEach(field => {
      const hasCustomAnnotation = field.customAnnotations?.includes('MY_ANNOTATION');
@@ -317,22 +344,21 @@ getClusteredKeyFields(fields)               // Get clustering key fields
 ### Testing Generators
 
 **Run tests:**
+
 ```bash
 npm run test                    # Run all tests
 npm run test -- generators/sql-spring-boot/generator.spec.js  # Specific test
 ```
 
 **Test structure (using Vitest):**
+
 ```javascript
 import { describe, it, expect } from 'vitest';
 import { helpers } from 'yeoman-test';
 
 describe('generator - my-generator', () => {
   it('should generate files', async () => {
-    const result = await helpers
-      .create('jhipster:my-generator')
-      .withOptions({ blueprint: 'orchestrator' })
-      .run();
+    const result = await helpers.create('jhipster:my-generator').withOptions({ blueprint: 'orchestrator' }).run();
 
     result.assertFile(['expected-file.java']);
   });
@@ -344,24 +370,24 @@ describe('generator - my-generator', () => {
 ### SQL Utils (`sql-spring-boot/utils/sql-utils.js`)
 
 ```javascript
-getAndUpdateLastUsedPostgreSQLPort()  // Get next available PostgreSQL port
+getAndUpdateLastUsedPostgreSQLPort(); // Get next available PostgreSQL port
 ```
 
 ### DTO Utils (`sql-spring-boot/utils/dto-utils.js`)
 
 ```javascript
-getDtoImportFullTypeWithEnums(entity) // Get DTO import statements
+getDtoImportFullTypeWithEnums(entity); // Get DTO import statements
 ```
 
 ### Cassandra Composite Key Utils
 
 ```javascript
-getCompositeKeyClassImportFullType(entity)  // Composite key imports
-getCompositeIdFieldInEntity(fields)         // Get composite ID field
-getListOfIdFields(fields)                   // All ID fields
-getPartitionedKeyFields(fields)             // Partition keys
-getClusteredKeyFields(fields)               // Clustering keys
-hasCompositePrimaryKey(fields)              // Check if composite key exists
+getCompositeKeyClassImportFullType(entity); // Composite key imports
+getCompositeIdFieldInEntity(fields); // Get composite ID field
+getListOfIdFields(fields); // All ID fields
+getPartitionedKeyFields(fields); // Partition keys
+getClusteredKeyFields(fields); // Clustering keys
+hasCompositePrimaryKey(fields); // Check if composite key exists
 ```
 
 ### Cassandra Utils (`cassandra-spring-boot/utils/cassandra-utils.js`)
@@ -373,7 +399,9 @@ hasCompositePrimaryKey(fields)              // Check if composite key exists
 ## Configuration Files
 
 ### .yo-rc.json
+
 Blueprint metadata and generator configuration:
+
 ```json
 {
   "generator-jhipster-orchestrator": {
@@ -385,7 +413,9 @@ Blueprint metadata and generator configuration:
 ```
 
 ### package.json
+
 Key scripts:
+
 ```bash
 npm run lint           # Check code quality
 npm run lint-fix       # Auto-fix linting issues
@@ -397,11 +427,13 @@ npm run test           # Run tests
 ## Common Patterns
 
 ### 1. Accessing Application Configuration
+
 ```javascript
 const { baseName, packageName, databaseType } = this.jhipsterConfigWithDefaults;
 ```
 
 ### 2. Delegating to Sub-Generators
+
 ```javascript
 async composeWithJHipster(generatorName) {
   await this.composeWithJHipster(`orchestrator:${generatorName}`);
@@ -409,6 +441,7 @@ async composeWithJHipster(generatorName) {
 ```
 
 ### 3. Conditional Template Rendering
+
 ```ejs
 <%_ if (databaseType === 'cassandra') { _%>
   // Cassandra-specific code
@@ -418,6 +451,7 @@ async composeWithJHipster(generatorName) {
 ```
 
 ### 4. Iterating Over Entities
+
 ```javascript
 for (const entity of entities) {
   // Process each entity
@@ -427,6 +461,7 @@ for (const entity of entities) {
 ```
 
 ### 5. Field Type Checking
+
 ```javascript
 const isDate = field.fieldType === 'LocalDate';
 const isDateTime = field.fieldType === 'ZonedDateTime' || field.fieldType === 'Instant';
@@ -439,25 +474,30 @@ const isRelationship = field.fieldType.includes('.');
 ### Common Issues
 
 **1. Generator not found:**
+
 - Ensure `index.js` exports the generator properly
 - Check that generator is registered in parent's composition
 
 **2. Template not rendering:**
+
 - Verify template path in `writeFiles` section
 - Check context variables are passed correctly
 - Validate EJS syntax with `npm run ejslint`
 
 **3. Port conflicts:**
+
 - Check `last-used-port.json` or `last-used-ports.json`
 - Manually reset port if needed
 - Ensure port increment logic is working
 
 **4. Composite key issues (Cassandra):**
+
 - Verify `PrimaryKeyType.PARTITIONED` and `CLUSTERED` annotations
 - Check field ordering in generated composite key class
 - Ensure at least one partitioned key exists
 
 **5. DTO generation fails:**
+
 - Check entity has proper relationships configured
 - Verify DTO templates exist
 - Ensure DTO module path is correct
@@ -465,6 +505,7 @@ const isRelationship = field.fieldType.includes('.');
 ## Technology Stack
 
 **Backend:**
+
 - Java 17+
 - Spring Boot 3.x
 - Spring Data JPA (SQL) / Spring Data Cassandra (NoSQL)
@@ -473,6 +514,7 @@ const isRelationship = field.fieldType.includes('.');
 - Maven
 
 **Frontend:**
+
 - Angular 17+
 - Angular Material (Cassandra apps)
 - TypeScript 5.x
@@ -480,11 +522,13 @@ const isRelationship = field.fieldType.includes('.');
 - Webpack with microfrontend support
 
 **DevOps:**
+
 - Docker / Docker Compose
 - Keycloak (authentication)
 - Heroku (deployment)
 
 **Build Tools:**
+
 - Yeoman (generator framework)
 - EJS (templating)
 - Vitest (testing)
@@ -505,39 +549,43 @@ const isRelationship = field.fieldType.includes('.');
 
 ## File References for Common Tasks
 
-| Task | Primary Files |
-|------|---------------|
-| Add SQL entity template | `generators/sql-spring-boot/templates/src/main/java/_package_/_entityPackage_/domain/` |
-| Add Cassandra entity template | `generators/cassandra-java-domain/templates/src/main/java/_package_/_entityPackage_/domain/` |
-| Modify DTO generation | `generators/sql-spring-boot/utils/dto-utils.js` |
-| Change composite key logic | `generators/cassandra-spring-boot/utils/cassandra-composite-key-utils.js` |
-| Update Angular UI (SQL) | `generators/sql-angular/templates/src/main/webapp/app/entities/` |
-| Update Angular UI (Cassandra) | `generators/cassandra-angular/templates/src/main/webapp/app/entities/` |
+| Task                                                           | Primary Files                                                                                                                                |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Add SQL entity template                                        | `generators/sql-spring-boot/templates/src/main/java/_package_/_entityPackage_/domain/`                                                       |
+| Add Cassandra entity template                                  | `generators/cassandra-java-domain/templates/src/main/java/_package_/_entityPackage_/domain/`                                                 |
+| Modify DTO generation                                          | `generators/sql-spring-boot/utils/dto-utils.js`                                                                                              |
+| Change composite key logic                                     | `generators/cassandra-spring-boot/utils/cassandra-composite-key-utils.js`                                                                    |
+| Update Angular UI (SQL)                                        | `generators/sql-angular/templates/src/main/webapp/app/entities/`                                                                             |
+| Update Angular UI (Cassandra)                                  | `generators/cassandra-angular/templates/src/main/webapp/app/entities/`                                                                       |
 | Modify entity service layer (Service/ServiceImpl/QueryService) | `generators/sql-spring-boot/templates/.../service/` or `generators/cassandra-spring-boot/templates/.../service/` (copied — fix in base repo) |
-| Change app skeleton/config (Application.java, *.yml, pom) | `generators/spring-boot-orchestrator/templates/` |
-| Modify Docker setup | `generators/sql-docker/` or `generators/cassandra-docker/` |
-| Change Heroku config | `generators/heroku-orchestrator/templates/` |
-| Add test cases | `generators/[generator-name]/generator.spec.js` |
+| Change app skeleton/config (Application.java, \*.yml, pom)     | `generators/spring-boot-orchestrator/templates/`                                                                                             |
+| Modify Docker setup                                            | `generators/sql-docker/` or `generators/cassandra-docker/`                                                                                   |
+| Change Heroku config                                           | `generators/heroku-orchestrator/templates/`                                                                                                  |
+| Add test cases                                                 | `generators/[generator-name]/generator.spec.js`                                                                                              |
 
 ## Quick Start for Development
 
 1. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 2. **Link blueprint locally:**
+
    ```bash
    npm link
    ```
 
 3. **Test in a sample project:**
+
    ```bash
    mkdir test-app && cd test-app
    jhipster --blueprints orchestrator
    ```
 
 4. **Make changes and test:**
+
    ```bash
    npm run lint
    npm run test
@@ -558,6 +606,7 @@ const isRelationship = field.fieldType.includes('.');
 ## Summary
 
 This blueprint demonstrates advanced JHipster customization with:
+
 - Database-specific generator chains
 - Composite primary key support for Cassandra
 - DTO generation for microservices

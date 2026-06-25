@@ -1,5 +1,4 @@
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import command from './command.js';
 
 // NOTE: this sub-generator overrides `jhipster:maven`, but JHipster 8 actually runs
 // `java-simple-application:maven`, so the `maven` router (and this generator) never execute during
@@ -13,8 +12,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 

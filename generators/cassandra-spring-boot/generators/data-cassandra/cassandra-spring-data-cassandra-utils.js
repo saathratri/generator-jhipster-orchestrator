@@ -1,32 +1,26 @@
-import _ from "lodash";
+import _ from 'lodash';
 
 export const springDataCassandraSaathratriUtils = {
   /****************************************************
    * cassandra-spring-data-cassandra Helper Functions
    ****************************************************/
 
-  generatePrimaryKeyMethods(
-    entityClass,
-    entityInstance,
-    entityInstanceSnakeCase,
-    primaryKey,
-    fileType,
-  ) {
+  generatePrimaryKeyMethods(entityClass, entityInstance, entityInstanceSnakeCase, primaryKey, fileType) {
     if (!primaryKey || !Array.isArray(primaryKey.ids)) {
-      console.error("Invalid primary key details provided");
+      console.error('Invalid primary key details provided');
       return [];
     }
 
     const methodsCode = [];
     const methodComponents = {
-      name: "",
-      paramsDecl: "",
-      paramsInst: "",
-      javaDocParams: "",
-      urlSubst: "",
-      logSubst: "",
-      resourceParamsDecl: "",
-      repoQueryStr: "",
+      name: '',
+      paramsDecl: '',
+      paramsInst: '',
+      javaDocParams: '',
+      urlSubst: '',
+      logSubst: '',
+      resourceParamsDecl: '',
+      repoQueryStr: '',
     };
 
     const findLastComponents = { ...methodComponents };
@@ -35,57 +29,29 @@ export const springDataCassandraSaathratriUtils = {
     // partition key (paramCount < partitionCount) is illegal in Cassandra without ALLOW FILTERING,
     // so those repository methods get @AllowFiltering — the list search-form drives progressive
     // prefix search and would otherwise 500 on a partial-partition query.
-    const partitionCount = primaryKey.ids.filter(
-      (pk) => !pk.isClusteredKeySaathratri,
-    ).length;
+    const partitionCount = primaryKey.ids.filter(pk => !pk.isClusteredKeySaathratri).length;
 
     primaryKey.ids.forEach((id, index) => {
-      const {
-        fieldName,
-        fieldType,
-        fieldNameHumanized,
-        fieldNameUnderscored,
-        isClusteredKeySaathratri,
-        fieldTypeTimeUuidSaathratri,
-      } = id;
+      const { fieldName, fieldType, fieldNameHumanized, fieldNameUnderscored, isClusteredKeySaathratri, fieldTypeTimeUuidSaathratri } = id;
 
-      this.appendMethodComponents(
-        methodComponents,
-        primaryKey.nameCapitalized,
-        fieldName,
-        fieldType,
-        fieldNameHumanized,
-      );
+      this.appendMethodComponents(methodComponents, primaryKey.nameCapitalized, fieldName, fieldType, fieldNameHumanized);
       if (index < totalIds - 1) {
-        this.appendMethodComponents(
-          findLastComponents,
-          primaryKey.nameCapitalized,
-          fieldName,
-          fieldType,
-          fieldNameHumanized,
-        );
+        this.appendMethodComponents(findLastComponents, primaryKey.nameCapitalized, fieldName, fieldType, fieldNameHumanized);
         if (primaryKey.hasTimeUUID) {
-          const separator = findLastComponents.repoQueryStr ? " AND " : "";
+          const separator = findLastComponents.repoQueryStr ? ' AND ' : '';
           findLastComponents.repoQueryStr += `${separator}${fieldNameUnderscored} = ?${index}`;
         }
       }
 
       if (index < totalIds) {
         if (index === totalIds - 1) {
-          this.addMethodDeclarations(
-            methodsCode,
-            entityClass,
-            entityInstanceSnakeCase,
-            "findBy",
-            methodComponents,
-            fileType,
-          );
+          this.addMethodDeclarations(methodsCode, entityClass, entityInstanceSnakeCase, 'findBy', methodComponents, fileType);
         } else {
           this.addMethodDeclarations(
             methodsCode,
             entityClass,
             entityInstanceSnakeCase,
-            "findAllBy",
+            'findAllBy',
             methodComponents,
             fileType,
             // partial partition key (prefix shorter than the full partition) → ALLOW FILTERING
@@ -94,111 +60,71 @@ export const springDataCassandraSaathratriUtils = {
         }
       }
 
-      if (
-        isClusteredKeySaathratri &&
-        (fieldType === "Long" || fieldTypeTimeUuidSaathratri)
-      ) {
-        this.addComparisonMethods(
-          methodsCode,
-          entityClass,
-          entityInstanceSnakeCase,
-          methodComponents,
-          fileType,
-        );
+      if (isClusteredKeySaathratri && (fieldType === 'Long' || fieldTypeTimeUuidSaathratri)) {
+        this.addComparisonMethods(methodsCode, entityClass, entityInstanceSnakeCase, methodComponents, fileType);
       }
     });
 
     if (primaryKey.hasTimeUUID) {
-      this.addMethodDeclarations(
-        methodsCode,
-        entityClass,
-        entityInstanceSnakeCase,
-        "findLatestBy",
-        findLastComponents,
-        fileType,
-      );
+      this.addMethodDeclarations(methodsCode, entityClass, entityInstanceSnakeCase, 'findLatestBy', findLastComponents, fileType);
     }
 
     return methodsCode;
   },
 
-  appendMethodComponents(
-    components,
-    keyName,
-    fieldName,
-    fieldType,
-    fieldNameHumanized,
-  ) {
-    const prefix = components.name ? "And" : "";
+  appendMethodComponents(components, keyName, fieldName, fieldType, fieldNameHumanized) {
+    const prefix = components.name ? 'And' : '';
     components.name += `${prefix}${keyName}${_.upperFirst(fieldName)}`;
-    components.paramsDecl += components.paramsDecl ? ", " : "";
+    components.paramsDecl += components.paramsDecl ? ', ' : '';
     components.paramsDecl += `final ${fieldType} ${fieldName}`;
-    components.paramsInst += components.paramsInst ? ", " : "";
+    components.paramsInst += components.paramsInst ? ', ' : '';
     components.paramsInst += fieldName;
     components.javaDocParams += ` * @param ${fieldName} the ${fieldNameHumanized} of the entity to retrieve.\n`;
     components.urlSubst += `/:${fieldName}`;
-    components.logSubst += components.logSubst ? ", " : "";
+    components.logSubst += components.logSubst ? ', ' : '';
     components.logSubst += `${fieldName}: {}`;
-    components.resourceParamsDecl += components.resourceParamsDecl ? ", " : "";
+    components.resourceParamsDecl += components.resourceParamsDecl ? ', ' : '';
     components.resourceParamsDecl += `@RequestParam(name = "${fieldName}", required = true) final ${fieldType} ${fieldName}`;
   },
 
-  addMethodDeclarations(
-    methodsCode,
-    entityClass,
-    entityInstanceSnakeCase,
-    methodType,
-    components,
-    fileType,
-    allowFiltering = false,
-  ) {
+  addMethodDeclarations(methodsCode, entityClass, entityInstanceSnakeCase, methodType, components, fileType, allowFiltering = false) {
     // Spring Data Cassandra adds the CQL `ALLOW FILTERING` clause to a derived query method
     // annotated with @AllowFiltering — required when the method restricts only part of the
     // partition key. Use the fully-qualified name to avoid managing an import in the template.
-    const allowFilteringAnnotation = allowFiltering
-      ? "@org.springframework.data.cassandra.repository.AllowFiltering\n"
-      : "";
+    const allowFilteringAnnotation = allowFiltering ? '@org.springframework.data.cassandra.repository.AllowFiltering\n' : '';
     // EXISTING: Generate non-paginated methods
-    if (fileType === "Service") {
-      methodsCode.push(
-        `${this.getPrimaryKeyMethodSignature(
-          entityClass,
-          methodType,
-          components.name,
-          "",
-          components.paramsDecl,
-        )};`,
-      );
-    } else if (fileType === "Repository") {
+    if (fileType === 'Service') {
+      methodsCode.push(`${this.getPrimaryKeyMethodSignature(entityClass, methodType, components.name, '', components.paramsDecl)};`);
+    } else if (fileType === 'Repository') {
       methodsCode.push(
         `${allowFilteringAnnotation}${this.getPrimaryKeyRepositoryMethodSignature(
           entityClass,
           entityInstanceSnakeCase,
           methodType,
           components.name,
-          "",
+          '',
           components.paramsDecl,
           components.repoQueryStr,
         )};`,
       );
-    } else if (fileType === "ServiceImpl") {
+    } else if (fileType === 'ServiceImpl') {
       methodsCode.push(
         this.generatePrimaryKeyServiceMethodImplementation(
           entityClass,
           methodType,
           components.name,
-          "",
+          '',
           components.paramsDecl,
           components.paramsInst,
         ),
       );
-    } else if (fileType === "Resource") {
+    } else if (fileType === 'Resource') {
       methodsCode.push(
         this.generatePrimaryKeyResourceMethodImplementation(
           entityClass,
           methodType,
           components.name,
-          "",
+          '',
           components.paramsInst,
           components.urlSubst,
           components.resourceParamsDecl,
@@ -210,8 +136,8 @@ export const springDataCassandraSaathratriUtils = {
     }
 
     // NEW: Generate paginated methods for findAllBy
-    if (methodType === "findAllBy") {
-      if (fileType === "Repository") {
+    if (methodType === 'findAllBy') {
+      if (fileType === 'Repository') {
         methodsCode.push(
           `${allowFilteringAnnotation}${this.getPaginatedRepositoryMethodSignature(
             entityClass,
@@ -220,16 +146,9 @@ export const springDataCassandraSaathratriUtils = {
             components.paramsDecl,
           )};`,
         );
-      } else if (fileType === "Service") {
-        methodsCode.push(
-          `${this.getPaginatedServiceMethodSignature(
-            entityClass,
-            methodType,
-            components.name,
-            components.paramsDecl,
-          )};`,
-        );
-      } else if (fileType === "ServiceImpl") {
+      } else if (fileType === 'Service') {
+        methodsCode.push(`${this.getPaginatedServiceMethodSignature(entityClass, methodType, components.name, components.paramsDecl)};`);
+      } else if (fileType === 'ServiceImpl') {
         methodsCode.push(
           this.generatePaginatedServiceMethodImplementation(
             entityClass,
@@ -239,7 +158,7 @@ export const springDataCassandraSaathratriUtils = {
             components.paramsInst,
           ),
         );
-      } else if (fileType === "Resource") {
+      } else if (fileType === 'Resource') {
         methodsCode.push(
           this.generatePaginatedResourceMethodImplementation(
             entityClass,
@@ -256,27 +175,19 @@ export const springDataCassandraSaathratriUtils = {
     }
   },
 
-  addComparisonMethods(
-    methodsCode,
-    entityClass,
-    entityInstanceSnakeCase,
-    components,
-    fileType,
-  ) {
+  addComparisonMethods(methodsCode, entityClass, entityInstanceSnakeCase, components, fileType) {
     // Generate comparison methods for clustering keys
     // LessThan (<), LessThanEqual (<=), GreaterThan (>), GreaterThanEqual (>=)
-    ["LessThan", "LessThanEqual", "GreaterThan", "GreaterThanEqual"].forEach(
-      (op) => {
-        this.addMethodDeclarations(
-          methodsCode,
-          entityClass,
-          entityInstanceSnakeCase,
-          "findAllBy",
-          { ...components, name: components.name + op },
-          fileType,
-        );
-      },
-    );
+    ['LessThan', 'LessThanEqual', 'GreaterThan', 'GreaterThanEqual'].forEach(op => {
+      this.addMethodDeclarations(
+        methodsCode,
+        entityClass,
+        entityInstanceSnakeCase,
+        'findAllBy',
+        { ...components, name: components.name + op },
+        fileType,
+      );
+    });
   },
 
   generatePrimaryKeyServiceMethodImplementation(
@@ -297,23 +208,21 @@ export const springDataCassandraSaathratriUtils = {
     methodImplementationString += `LOG.debug("Request to ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString}) service in ${entityClass}ServiceImpl.");\n`;
     methodImplementationString += `return ${_.lowerFirst(entityClass)}Repository.${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersInstancesString})\n`;
 
-    if (methodNamePrefix === "findAllBy") {
+    if (methodNamePrefix === 'findAllBy') {
       methodImplementationString += `.stream()\n`;
     }
 
     methodImplementationString += `.map(${_.lowerFirst(entityClass)}Mapper::toDto)\n`;
 
-    if (methodNamePrefix === "findLatestBy") {
-      methodImplementationString +=
-        ".orElse(null); // Return null if no record found\n";
-    } else if (methodNamePrefix === "findBy") {
-      methodImplementationString += ";\n";
+    if (methodNamePrefix === 'findLatestBy') {
+      methodImplementationString += '.orElse(null); // Return null if no record found\n';
+    } else if (methodNamePrefix === 'findBy') {
+      methodImplementationString += ';\n';
     } else {
-      methodImplementationString +=
-        ".collect(Collectors.toCollection(LinkedList::new));\n";
+      methodImplementationString += '.collect(Collectors.toCollection(LinkedList::new));\n';
     }
 
-    methodImplementationString += "}\n";
+    methodImplementationString += '}\n';
 
     return methodImplementationString;
   },
@@ -330,7 +239,7 @@ export const springDataCassandraSaathratriUtils = {
     methodJavaDocParametersString,
     entityInstance,
   ) {
-    let methodImplementationString = "/** \n";
+    let methodImplementationString = '/** \n';
     methodImplementationString += ` * // Composite Primary Key Code \n`;
     methodImplementationString += ` * {@code GET /${this.getCompositePrimaryKeyGetMappingUrl(methodNamePrefix + methodNameString + operatorString)}${methodUrlSubstitutionParameters}}\n`;
     methodImplementationString += ` * \n`;
@@ -347,24 +256,18 @@ export const springDataCassandraSaathratriUtils = {
       operatorString,
       methodResourceParametersDeclarationsString,
     )}{ \n`;
-    methodImplementationString += "  // Composite Primary Key Code \n";
+    methodImplementationString += '  // Composite Primary Key Code \n';
     methodImplementationString += `  LOG.debug("REST request to ${methodNamePrefix + methodNameString + operatorString} method for ${entityClass}s with parameteres ${methodLogSubstitutionParameters}", ${methodParametersInstancesString}); \n`;
     methodImplementationString += `  return  ${_.lowerFirst(entityInstance)}Service.${methodNamePrefix + methodNameString + operatorString}(${methodParametersInstancesString}); \n`;
-    methodImplementationString += "}\n";
+    methodImplementationString += '}\n';
 
     return methodImplementationString;
   },
 
-  getPrimaryKeyMethodSignature(
-    entityClass,
-    methodNamePrefix,
-    methodNameString,
-    operatorString,
-    methodParametersDeclarationsString,
-  ) {
-    if (methodNamePrefix === "findBy") {
+  getPrimaryKeyMethodSignature(entityClass, methodNamePrefix, methodNameString, operatorString, methodParametersDeclarationsString) {
+    if (methodNamePrefix === 'findBy') {
       return `Optional<${entityClass}DTO> ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString})`;
-    } else if (methodNamePrefix === "findLatestBy") {
+    } else if (methodNamePrefix === 'findLatestBy') {
       return `${entityClass}DTO ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString})`;
     }
     return `List<${entityClass}DTO> ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString})`;
@@ -379,11 +282,11 @@ export const springDataCassandraSaathratriUtils = {
     methodParametersDeclarationsString,
     methodRepositoryParametersQueryString,
   ) {
-    if (methodNamePrefix === "findBy") {
+    if (methodNamePrefix === 'findBy') {
       return `Optional<${entityClass}> ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString})`;
-    } else if (methodNamePrefix === "findAllBy") {
+    } else if (methodNamePrefix === 'findAllBy') {
       return `List<${entityClass}> ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString})`;
-    } else if (methodNamePrefix === "findLatestBy") {
+    } else if (methodNamePrefix === 'findLatestBy') {
       let methodImplementationString = `@Query("SELECT * FROM ${entityInstanceSnakeCase} WHERE ${methodRepositoryParametersQueryString} LIMIT 1")\n`;
       methodImplementationString += `Optional<${entityClass}> ${methodNamePrefix}${methodNameString}${operatorString}(${methodParametersDeclarationsString});\n`;
 
@@ -394,20 +297,17 @@ export const springDataCassandraSaathratriUtils = {
   getCompositePrimaryKeyGetMappingUrl(methodName) {
     methodName = methodName.charAt(0).toLowerCase() + methodName.slice(1);
 
-    return methodName.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+    return methodName.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`);
   },
 
   getCompositePrimaryKeyLogStatement(primaryKey) {
-    return primaryKey.ids.map((pk) => `${pk.fieldName}: {}`).join(", ");
+    return primaryKey.ids.map(pk => `${pk.fieldName}: {}`).join(', ');
   },
 
   getCompositePrimaryKeyResourceClassMethodQueryParameters(primaryKey) {
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `@RequestParam(name = "${pk.fieldName}", required = true) final ${pk.fieldType} ${pk.fieldName}`,
-      )
-      .join(", \n");
+      .map(pk => `@RequestParam(name = "${pk.fieldName}", required = true) final ${pk.fieldType} ${pk.fieldName}`)
+      .join(', \n');
   },
 
   /****************************************************
@@ -422,15 +322,8 @@ export const springDataCassandraSaathratriUtils = {
    * @param {string} params - Method parameters
    * @returns {string} Repository method signature
    */
-  getPaginatedRepositoryMethodSignature(
-    entityClass,
-    methodType,
-    methodName,
-    params,
-  ) {
-    const paginatedParams = params
-      ? `${params}, Pageable pageable`
-      : "Pageable pageable";
+  getPaginatedRepositoryMethodSignature(entityClass, methodType, methodName, params) {
+    const paginatedParams = params ? `${params}, Pageable pageable` : 'Pageable pageable';
     return `Slice<${entityClass}> ${methodType}${methodName}(${paginatedParams})`;
   },
 
@@ -442,15 +335,8 @@ export const springDataCassandraSaathratriUtils = {
    * @param {string} params - Method parameters
    * @returns {string} Service method signature
    */
-  getPaginatedServiceMethodSignature(
-    entityClass,
-    methodType,
-    methodName,
-    params,
-  ) {
-    const paginatedParams = params
-      ? `${params}, Pageable pageable`
-      : "Pageable pageable";
+  getPaginatedServiceMethodSignature(entityClass, methodType, methodName, params) {
+    const paginatedParams = params ? `${params}, Pageable pageable` : 'Pageable pageable';
     return `Slice<${entityClass}DTO> ${methodType}${methodName}Pageable(${paginatedParams})`;
   },
 
@@ -463,19 +349,9 @@ export const springDataCassandraSaathratriUtils = {
    * @param {string} paramsInst - Method parameter instances
    * @returns {string} Service method implementation
    */
-  generatePaginatedServiceMethodImplementation(
-    entityClass,
-    methodType,
-    methodName,
-    params,
-    paramsInst,
-  ) {
-    const _paginatedParams = params
-      ? `${params}, Pageable pageable`
-      : "Pageable pageable";
-    const paginatedParamsInst = paramsInst
-      ? `${paramsInst}, pageable`
-      : "pageable";
+  generatePaginatedServiceMethodImplementation(entityClass, methodType, methodName, params, paramsInst) {
+    const _paginatedParams = params ? `${params}, Pageable pageable` : 'Pageable pageable';
+    const paginatedParamsInst = paramsInst ? `${paramsInst}, pageable` : 'pageable';
 
     let impl = `@Override\n`;
     impl += `public ${this.getPaginatedServiceMethodSignature(entityClass, methodType, methodName, params)} {\n`;
@@ -550,7 +426,7 @@ export const springDataCassandraSaathratriUtils = {
     impl += `        }\n`;
     impl += `    }\n`;
     impl += `    \n`;
-    impl += `    Slice<${entityClass}DTO> slice = ${_.lowerFirst(entityClass)}Service.${methodNameFull}(${paramsInst ? `${paramsInst}, ` : ""}cassandraPageRequest);\n`;
+    impl += `    Slice<${entityClass}DTO> slice = ${_.lowerFirst(entityClass)}Service.${methodNameFull}(${paramsInst ? `${paramsInst}, ` : ''}cassandraPageRequest);\n`;
     impl += `    \n`;
     impl += `    // Generate Slice pagination headers (Cassandra cursor-based pagination)\n`;
     impl += `    HttpHeaders headers = new HttpHeaders();\n`;
@@ -615,33 +491,30 @@ export const springDataCassandraSaathratriUtils = {
     transactionalAnnotation,
   ) {
     if (!primaryKey || !primaryKey.composite || !Array.isArray(primaryKey.ids)) {
-      return "";
+      return '';
     }
-    const ids = primaryKey.ids;
+    const { ids } = primaryKey;
     const totalIds = ids.length;
     const keyCap = primaryKey.nameCapitalized; // e.g. "CompositeId"
     const mockMvc = `rest${entityClass}MockMvc`;
 
     // .param("field", String.valueOf(persistInstance.getCompositeId().getField())) for the first n ids
-    const paramChain = (n) =>
+    const paramChain = n =>
       ids
         .slice(0, n)
-        .map(
-          (f) =>
-            `.param("${f.fieldName}", String.valueOf(${persistInstance}.get${keyCap}().get${f.fieldNameCapitalized}()))`,
-        )
-        .join("");
+        .map(f => `.param("${f.fieldName}", String.valueOf(${persistInstance}.get${keyCap}().get${f.fieldNameCapitalized}()))`)
+        .join('');
 
-    const performAndOk = (url, paramCount, extra = "") =>
+    const performAndOk = (url, paramCount, extra = '') =>
       `        ${mockMvc}.perform(get(ENTITY_API_URL + "/${this.getCompositePrimaryKeyGetMappingUrl(url)}")${paramChain(paramCount)}${extra}).andExpect(status().isOk());\n`;
 
     // Every search endpoint is now a valid runtime query: partial-partition-key findAllBy methods
     // carry @AllowFiltering (see generatePrimaryKeyMethods), and full-partition / clustering /
     // findBy queries are valid without it. So we assert 200 for ALL of them.
     const lines = [];
-    let name = "";
+    let name = '';
     ids.forEach((id, index) => {
-      name += `${name ? "And" : ""}${keyCap}${_.upperFirst(id.fieldName)}`;
+      name += `${name ? 'And' : ''}${keyCap}${_.upperFirst(id.fieldName)}`;
       const paramCount = index + 1;
       if (index === totalIds - 1) {
         // Full composite key: findBy<...> (returns the single entity).
@@ -649,40 +522,29 @@ export const springDataCassandraSaathratriUtils = {
       } else {
         // Partition/clustering key prefix: list + cursor-paged variants.
         lines.push(performAndOk(`findAllBy${name}`, paramCount));
-        lines.push(
-          performAndOk(`findAllBy${name}Pageable`, paramCount, '.param("size", "20")'),
-        );
+        lines.push(performAndOk(`findAllBy${name}Pageable`, paramCount, '.param("size", "20")'));
       }
       // Comparison operators are generated for clustering keys of type Long / TimeUUID (a plain and
       // a -pageable variant per operator).
-      if (
-        id.isClusteredKeySaathratri &&
-        (id.fieldType === "Long" || id.fieldTypeTimeUuidSaathratri)
-      ) {
-        ["LessThan", "LessThanEqual", "GreaterThan", "GreaterThanEqual"].forEach(
-          (op) => {
-            lines.push(performAndOk(`findAllBy${name}${op}`, paramCount));
-            lines.push(
-              performAndOk(`findAllBy${name}${op}Pageable`, paramCount, '.param("size", "20")'),
-            );
-          },
-        );
+      if (id.isClusteredKeySaathratri && (id.fieldType === 'Long' || id.fieldTypeTimeUuidSaathratri)) {
+        ['LessThan', 'LessThanEqual', 'GreaterThan', 'GreaterThanEqual'].forEach(op => {
+          lines.push(performAndOk(`findAllBy${name}${op}`, paramCount));
+          lines.push(performAndOk(`findAllBy${name}${op}Pageable`, paramCount, '.param("size", "20")'));
+        });
       }
     });
 
     // findLatestBy<all-but-last-field> exists when the key has a TimeUUID clustering column.
     if (primaryKey.hasTimeUUID && totalIds > 1) {
-      let latestName = "";
-      ids.slice(0, totalIds - 1).forEach((id) => {
-        latestName += `${latestName ? "And" : ""}${keyCap}${_.upperFirst(id.fieldName)}`;
+      let latestName = '';
+      ids.slice(0, totalIds - 1).forEach(id => {
+        latestName += `${latestName ? 'And' : ''}${keyCap}${_.upperFirst(id.fieldName)}`;
       });
       lines.push(performAndOk(`findLatestBy${latestName}`, totalIds - 1));
     }
 
     // Cursor-based /slice pagination over the whole table.
-    lines.push(
-      `        ${mockMvc}.perform(get(ENTITY_API_URL + "/slice").param("size", "20")).andExpect(status().isOk());\n`,
-    );
+    lines.push(`        ${mockMvc}.perform(get(ENTITY_API_URL + "/slice").param("size", "20")).andExpect(status().isOk());\n`);
 
     let out = `\n    @Test${transactionalAnnotation}\n`;
     out += `    void getAll${entityClass}sByCompositeKeySearches() throws Exception {\n`;
@@ -692,7 +554,7 @@ export const springDataCassandraSaathratriUtils = {
     out += `        // carry @AllowFiltering, clustering/comparison/findBy are plain valid queries), plus\n`;
     out += `        // /slice. A 200 confirms the derived CQL + parameter binding executes against real\n`;
     out += `        // Cassandra; body shape is covered by the get()/getAll() tests above.\n`;
-    out += lines.join("");
+    out += lines.join('');
     out += `    }\n`;
     return out;
   },

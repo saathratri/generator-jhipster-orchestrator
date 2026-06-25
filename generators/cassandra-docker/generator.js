@@ -1,6 +1,6 @@
-import BaseApplicationGenerator from "generator-jhipster/generators/base-application";
+import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
-import { cassandraSpringBootUtils } from "../cassandra-spring-boot/cassandra-spring-boot-utils.js";
+import { cassandraSpringBootUtils } from '../cassandra-spring-boot/cassandra-spring-boot-utils.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -96,21 +96,16 @@ export default class extends BaseApplicationGenerator {
       async writingTemplateTask({ application }) {
         await this.writeFiles({
           sections: {
-            files: [{ templates: ["template-file-cassandra-docker"] }],
+            files: [{ templates: ['template-file-cassandra-docker'] }],
           },
           context: application,
         });
 
         if (application.applicationTypeMicroservice) {
-          const portData = cassandraSpringBootUtils.getApplicationPortData(
-            this.destinationPath(),
-            this.appname,
-          );
+          const portData = cassandraSpringBootUtils.getApplicationPortData(this.destinationPath(), this.appname);
 
           // Usage of the ports in your configuration files:
-          this.log(
-            `The server ports are: ${JSON.stringify(portData[this.appname])}`,
-          );
+          this.log(`The server ports are: ${JSON.stringify(portData[this.appname])}`);
 
           await this.writeFiles({
             sections: {
@@ -118,7 +113,7 @@ export default class extends BaseApplicationGenerator {
                 {
                   templates: [
                     {
-                      file: "docker/cassandra.yml",
+                      file: 'docker/cassandra.yml',
                       renameTo: () => `src/main/docker/cassandra.yml`,
                     },
                   ],
@@ -127,16 +122,11 @@ export default class extends BaseApplicationGenerator {
             },
             context: {
               ...application,
-              interNodeCommunicationNonSslPortSaathratri:
-                portData[this.appname].interNodeCommunicationNonSslPort,
-              interNodeCommunicationSslPortSaathratri:
-                portData[this.appname].interNodeCommunicationSslPort,
-              jmxMonitoringPortSaathratri:
-                portData[this.appname].jmxMonitoringPort,
-              nativeTransportCqlPortSaathratri:
-                portData[this.appname].nativeTransportCqlPort,
-              thriftTransportPortSaathratri:
-                portData[this.appname].thriftTransportPort,
+              interNodeCommunicationNonSslPortSaathratri: portData[this.appname].interNodeCommunicationNonSslPort,
+              interNodeCommunicationSslPortSaathratri: portData[this.appname].interNodeCommunicationSslPort,
+              jmxMonitoringPortSaathratri: portData[this.appname].jmxMonitoringPort,
+              nativeTransportCqlPortSaathratri: portData[this.appname].nativeTransportCqlPort,
+              thriftTransportPortSaathratri: portData[this.appname].thriftTransportPort,
             },
           });
         }

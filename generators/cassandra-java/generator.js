@@ -1,4 +1,4 @@
-import BaseApplicationGenerator from "generator-jhipster/generators/base-application";
+import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -26,11 +26,9 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.COMPOSING]() {
     return this.asComposingTaskGroup({
       async composeTask() {
-        if (
-          ["cassandra"].includes(this.jhipsterConfigWithDefaults.databaseType)
-        ) {
+        if (['cassandra'].includes(this.jhipsterConfigWithDefaults.databaseType)) {
           // Delegate to the domain sub-generator.
-          await this.composeWith("./generators/domain/index.js");
+          await this.composeWith('./generators/domain/index.js');
         }
       },
     });
@@ -95,7 +93,7 @@ export default class extends BaseApplicationGenerator {
       async writingTemplateTask({ application }) {
         await this.writeFiles({
           sections: {
-            files: [{ templates: ["template-file-cassandra-java"] }],
+            files: [{ templates: ['template-file-cassandra-java'] }],
           },
           context: application,
         });

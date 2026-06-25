@@ -1,5 +1,4 @@
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import command from './command.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -8,8 +7,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 
@@ -103,7 +101,7 @@ export default class extends BaseApplicationGenerator {
     });
   }
 
-get [BaseApplicationGenerator.WRITING]() {
+  get [BaseApplicationGenerator.WRITING]() {
     return this.asWritingTaskGroup({
       async writingTemplateTask({ application }) {
         await this.writeFiles({

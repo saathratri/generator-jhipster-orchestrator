@@ -1,10 +1,10 @@
-import BaseApplicationGenerator from "generator-jhipster/generators/base-application";
-import { javaMainPackageTemplatesBlock } from "generator-jhipster/generators/java/support";
-import { snakeCase } from "lodash-es";
+import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
+import { javaMainPackageTemplatesBlock } from 'generator-jhipster/generators/java/support';
+import { snakeCase } from 'lodash-es';
 
-import { cassandraSpringBootUtils } from "../../cassandra-spring-boot-utils.js";
+import { cassandraSpringBootUtils } from '../../cassandra-spring-boot-utils.js';
 
-import { springDataCassandraSaathratriUtils } from "./cassandra-spring-data-cassandra-utils.js";
+import { springDataCassandraSaathratriUtils } from './cassandra-spring-data-cassandra-utils.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -62,9 +62,7 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.PREPARING_EACH_ENTITY]() {
     return this.asPreparingEachEntityTaskGroup({
       async preparingEachEntityTemplateTask({ entity }) {
-        cassandraSpringBootUtils.setSaathratriPrimaryKeyAttributesOnEntityAndFields(
-          entity,
-        );
+        cassandraSpringBootUtils.setSaathratriPrimaryKeyAttributesOnEntityAndFields(entity);
       },
     });
   }
@@ -98,9 +96,7 @@ export default class extends BaseApplicationGenerator {
       async writingTemplateTask({ application }) {
         await this.writeFiles({
           sections: {
-            files: [
-              { templates: ["template-file-cassandra-spring-data-cassandra"] },
-            ],
+            files: [{ templates: ['template-file-cassandra-spring-data-cassandra'] }],
           },
           context: application,
         });
@@ -111,27 +107,22 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.WRITING_ENTITIES]() {
     return this.asWritingEntitiesTaskGroup({
       async writingEntitiesTemplateTask({ application, entities }) {
-        for (const entity of entities.filter((e) => !e.builtIn)) {
+        for (const entity of entities.filter(e => !e.builtIn)) {
           await this.writeFiles({
             sections: {
               files: [
                 {
-                  condition: (generator) =>
-                    generator.databaseTypeCassandra && !entity.skipServer,
-                  ...javaMainPackageTemplatesBlock("_entityPackage_/"),
-                  templates: [
-                    "domain/_persistClass_.java.jhi.spring_data_cassandra",
-                    "repository/_entityClass_Repository.java",
-                  ],
+                  condition: generator => generator.databaseTypeCassandra && !entity.skipServer,
+                  ...javaMainPackageTemplatesBlock('_entityPackage_/'),
+                  templates: ['domain/_persistClass_.java.jhi.spring_data_cassandra', 'repository/_entityClass_Repository.java'],
                 },
                 {
-                  condition: (ctx) => !ctx.skipDbChangelog,
-                  path: "src/main/resources/",
+                  condition: ctx => !ctx.skipDbChangelog,
+                  path: 'src/main/resources/',
                   templates: [
                     {
-                      file: "config/cql/changelog/added_entity.cql",
-                      renameTo: (ctx) =>
-                        `config/cql/changelog/${ctx.changelogDate}_added_entity_${ctx.entityClass}.cql`,
+                      file: 'config/cql/changelog/added_entity.cql',
+                      renameTo: ctx => `config/cql/changelog/${ctx.changelogDate}_added_entity_${ctx.entityClass}.cql`,
                     },
                   ],
                 },

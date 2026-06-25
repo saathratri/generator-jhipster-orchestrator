@@ -1,5 +1,4 @@
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
-import command from './command.js';
 
 export default class extends BaseApplicationGenerator {
   // Store vector changelog files to add to master.xml
@@ -11,8 +10,7 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.INITIALIZING]() {
     return this.asInitializingTaskGroup({
-      async initializingTemplateTask() {
-      },
+      async initializingTemplateTask() {},
     });
   }
 
@@ -199,11 +197,17 @@ export default class extends BaseApplicationGenerator {
             // Track the changelog file for adding to master.xml later
             this.vectorChangelogFiles.push(changelogFileName);
 
-            this.log.info(`Generated vector column changelog for entity '${entity.entityClass}' with ${vectorFields.length} vector field(s)`);
+            this.log.info(
+              `Generated vector column changelog for entity '${entity.entityClass}' with ${vectorFields.length} vector field(s)`,
+            );
           }
 
           // Index generation from @customQueryAnnotation, @entityGraphIncludeCustomAnnotation, @entityGraphExcludeCustomAnnotation
-          const toSnakeCase = str => str.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '');
+          const toSnakeCase = str =>
+            str
+              .replace(/([A-Z])/g, '_$1')
+              .toLowerCase()
+              .replace(/^_/, '');
           const customQueryIndexes = [];
           const relationships = entity.relationships || [];
           const relationshipNames = relationships.map(r => r.propertyName || r.relationshipName);
@@ -211,10 +215,7 @@ export default class extends BaseApplicationGenerator {
           // Helper: generate FK/join table indexes for a list of eager relationship names
           const addEagerRelIndexes = (eagerRels, source) => {
             for (const relName of eagerRels) {
-              const rel = relationships.find(r =>
-                (r.propertyName || r.relationshipName) === relName ||
-                r.relationshipName === relName
-              );
+              const rel = relationships.find(r => (r.propertyName || r.relationshipName) === relName || r.relationshipName === relName);
               if (!rel) continue;
 
               if (rel.relationshipManyToMany && rel.ownerSide) {
@@ -223,13 +224,23 @@ export default class extends BaseApplicationGenerator {
                 const joinTable = rel.joinTable?.name || `rel_${entity.entityTableName}__${toSnakeCase(relName)}`;
                 const fkColumn = `${entity.entityTableName}_id`;
                 const indexName = `idx_${joinTable}_${fkColumn}`;
-                customQueryIndexes.push({ methodName: `jt-${source}-${relName}`, columnNames: [fkColumn], indexName, tableName: joinTable });
+                customQueryIndexes.push({
+                  methodName: `jt-${source}-${relName}`,
+                  columnNames: [fkColumn],
+                  indexName,
+                  tableName: joinTable,
+                });
               } else if (rel.relationshipManyToOne || (rel.relationshipOneToOne && rel.ownerSide)) {
                 // ManyToOne or owning OneToOne: FK column lives on this entity's table
                 // Skip inverse OneToOne (mappedBy) — FK is on the other table
                 const fkColumn = rel.joinColumnNames?.[0] || `${toSnakeCase(relName)}_id`;
                 const indexName = `idx_${entity.entityTableName}_${fkColumn}`;
-                customQueryIndexes.push({ methodName: `fk-${source}-${relName}`, columnNames: [fkColumn], indexName, tableName: entity.entityTableName });
+                customQueryIndexes.push({
+                  methodName: `fk-${source}-${relName}`,
+                  columnNames: [fkColumn],
+                  indexName,
+                  tableName: entity.entityTableName,
+                });
               } else if (rel.relationshipOneToMany) {
                 // OneToMany: FK is on the child table, skip (child entity should index its own FK)
               }
@@ -245,7 +256,11 @@ export default class extends BaseApplicationGenerator {
               const colonIdx = directive.indexOf(':');
               if (colonIdx < 0) continue;
               const rawAttrs = directive.substring(colonIdx + 1).trim();
-              const attrs = rawAttrs.replace(/^\s*\[\s*|\s*\]\s*$/g, '').split(',').map(a => a.trim()).filter(Boolean);
+              const attrs = rawAttrs
+                .replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+                .split(',')
+                .map(a => a.trim())
+                .filter(Boolean);
               addEagerRelIndexes(attrs, 'egIncl');
             }
           }
@@ -259,7 +274,11 @@ export default class extends BaseApplicationGenerator {
               const colonIdx = directive.indexOf(':');
               if (colonIdx < 0) continue;
               const rawAttrs = directive.substring(colonIdx + 1).trim();
-              const excluded = rawAttrs.replace(/^\s*\[\s*|\s*\]\s*$/g, '').split(',').map(a => a.trim()).filter(Boolean);
+              const excluded = rawAttrs
+                .replace(/^\s*\[\s*|\s*\]\s*$/g, '')
+                .split(',')
+                .map(a => a.trim())
+                .filter(Boolean);
               const included = relationshipNames.filter(name => !excluded.includes(name));
               addEagerRelIndexes(included, 'egExcl');
             }
@@ -269,7 +288,14 @@ export default class extends BaseApplicationGenerator {
           const customQueryAnnotation = entity.customQueryAnnotation ?? entity.annotations?.customQueryAnnotation;
           if (customQueryAnnotation) {
             const rawDirectives = Array.isArray(customQueryAnnotation) ? customQueryAnnotation : [customQueryAnnotation];
-            const directives = rawDirectives.flatMap(d => typeof d === 'string' ? d.split('|').map(s => s.trim()).filter(Boolean) : [d]);
+            const directives = rawDirectives.flatMap(d =>
+              typeof d === 'string'
+                ? d
+                    .split('|')
+                    .map(s => s.trim())
+                    .filter(Boolean)
+                : [d],
+            );
 
             for (const directive of directives) {
               if (typeof directive !== 'string') continue;
@@ -281,17 +307,27 @@ export default class extends BaseApplicationGenerator {
               // Parse params for 'index' flag
               if (/\bindex\b/.test(rest)) {
                 const paramsMatch = rest.match(/params\s*\[\s*([^\]]*)\s*\]/);
-                const params = paramsMatch ? paramsMatch[1].split(',').map(p => p.trim()).filter(Boolean) : [];
+                const params = paramsMatch
+                  ? paramsMatch[1]
+                      .split(',')
+                      .map(p => p.trim())
+                      .filter(Boolean)
+                  : [];
                 if (params.length > 0) {
                   const columnNames = params.map(paramName => {
                     const field = entity.fields.find(f => f.fieldName === paramName);
-                    return field ? (field.fieldNameAsDatabaseColumn || field.columnName || toSnakeCase(paramName)) : toSnakeCase(paramName);
+                    return field ? field.fieldNameAsDatabaseColumn || field.columnName || toSnakeCase(paramName) : toSnakeCase(paramName);
                   });
                   // Skip index on primary key (already indexed)
                   const isPkOnly = columnNames.length === 1 && columnNames[0] === 'id';
                   if (!isPkOnly) {
                     const indexName = `idx_${entity.entityTableName}_${columnNames.join('_')}`;
-                    customQueryIndexes.push({ methodName: `param-${methodName}`, columnNames, indexName, tableName: entity.entityTableName });
+                    customQueryIndexes.push({
+                      methodName: `param-${methodName}`,
+                      columnNames,
+                      indexName,
+                      tableName: entity.entityTableName,
+                    });
                   }
                 }
               }
@@ -299,7 +335,10 @@ export default class extends BaseApplicationGenerator {
               // Parse eager[] for FK/join table indexes
               const eagerMatch = rest.match(/eager\s*\[\s*([^\]]*)\s*\]/);
               if (eagerMatch) {
-                const eagerRels = eagerMatch[1].split(',').map(e => e.trim()).filter(Boolean);
+                const eagerRels = eagerMatch[1]
+                  .split(',')
+                  .map(e => e.trim())
+                  .filter(Boolean);
                 addEagerRelIndexes(eagerRels, `cq-${methodName}`);
               }
             }
@@ -314,35 +353,37 @@ export default class extends BaseApplicationGenerator {
           });
 
           if (dedupedIndexes.length > 0) {
-              const now = new Date();
-              const pad = (n, len = 2) => String(n).padStart(len, '0');
-              const indexChangelogDate = `${pad(now.getFullYear(), 4)}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-              const indexChangelogFileName = `${indexChangelogDate}_added_custom_query_indexes_${entity.entityClass}.xml`;
+            const now = new Date();
+            const pad = (n, len = 2) => String(n).padStart(len, '0');
+            const indexChangelogDate = `${pad(now.getFullYear(), 4)}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+            const indexChangelogFileName = `${indexChangelogDate}_added_custom_query_indexes_${entity.entityClass}.xml`;
 
-              await this.writeFiles({
-                sections: {
-                  files: [
-                    {
-                      path: 'src/main/resources/',
-                      templates: [
-                        {
-                          file: 'config/liquibase/changelog/added_custom_query_indexes.xml',
-                          renameTo: () => `config/liquibase/changelog/${indexChangelogFileName}`,
-                        },
-                      ],
-                    },
-                  ],
-                },
-                context: {
-                  ...application,
-                  ...entity,
-                  customQueryIndexes: dedupedIndexes,
-                  changelogDate: indexChangelogDate,
-                },
-              });
+            await this.writeFiles({
+              sections: {
+                files: [
+                  {
+                    path: 'src/main/resources/',
+                    templates: [
+                      {
+                        file: 'config/liquibase/changelog/added_custom_query_indexes.xml',
+                        renameTo: () => `config/liquibase/changelog/${indexChangelogFileName}`,
+                      },
+                    ],
+                  },
+                ],
+              },
+              context: {
+                ...application,
+                ...entity,
+                customQueryIndexes: dedupedIndexes,
+                changelogDate: indexChangelogDate,
+              },
+            });
 
-              this.vectorChangelogFiles.push(indexChangelogFileName);
-              this.log.info(`Generated custom query index changelog for entity '${entity.entityClass}' with ${dedupedIndexes.length} index(es)`);
+            this.vectorChangelogFiles.push(indexChangelogFileName);
+            this.log.info(
+              `Generated custom query index changelog for entity '${entity.entityClass}' with ${dedupedIndexes.length} index(es)`,
+            );
           }
         }
       },
@@ -377,9 +418,8 @@ export default class extends BaseApplicationGenerator {
             const needle = '<!-- saathratri-needle-liquibase-add-vector-changelog - Saathratri will add vector column changelogs here -->';
             if (content.includes(needle)) {
               return content.replace(needle, `${includes}\n    ${needle}`);
-            } else {
-              return content.replace('</databaseChangeLog>', `${includes}\n</databaseChangeLog>`);
             }
+            return content.replace('</databaseChangeLog>', `${includes}\n</databaseChangeLog>`);
           });
 
           this.log.info(`Added ${this.vectorChangelogFiles.length} changelog(s) to master.xml`);

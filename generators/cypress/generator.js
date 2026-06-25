@@ -1,10 +1,10 @@
-import BaseApplicationGenerator from "generator-jhipster/generators/base-application";
+import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
-import { cassandraSpringBootUtils } from "../cassandra-spring-boot/cassandra-spring-boot-utils.js";
+import { cassandraSpringBootUtils } from '../cassandra-spring-boot/cassandra-spring-boot-utils.js';
 
 // Escape a string for safe literal use inside a RegExp.
 function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Build the composite-key URL suffix used by the REST endpoint / Angular service, e.g.
@@ -12,11 +12,7 @@ function escapeRegExp(value) {
 // The Cypress test deletes from the raw POST response body (numeric dates already), so,
 // unlike the Angular service, no dayjs/`copy` conversion is needed.
 function buildCompositeKeyUrlSuffix(instanceVar, primaryKeySaathratri) {
-  return primaryKeySaathratri.ids
-    .map(
-      (pk) => `\${${instanceVar}.${primaryKeySaathratri.name}.${pk.fieldName}}`,
-    )
-    .join("/");
+  return primaryKeySaathratri.ids.map(pk => `\${${instanceVar}.${primaryKeySaathratri.name}.${pk.fieldName}}`).join('/');
 }
 
 // A static v4-like UUID used as the sample value for UUID/TIMEUUID-typed fields. Jackson
@@ -25,7 +21,7 @@ function buildCompositeKeyUrlSuffix(instanceVar, primaryKeySaathratri) {
 // fail the backend's `UUID.fromString()` with "Failed to read request" on the POST body.
 // TIMEUUID fields are server-overwritten via `Uuids.timeBased()` so the value here is
 // disposable; v4 vs v1 doesn't matter as long as it parses.
-const SAMPLE_UUID = "00000000-0000-4000-8000-000000000001";
+const SAMPLE_UUID = '00000000-0000-4000-8000-000000000001';
 
 // Sample value for an entity field, used inside a TypeScript object literal — numbers stay
 // numeric, UUIDs use a valid hex format, everything else is a `'sample-<fieldName>-1'`
@@ -33,34 +29,22 @@ const SAMPLE_UUID = "00000000-0000-4000-8000-000000000001";
 // needed for Cypress's real HTTP POSTs.
 function sampleObjValue(field) {
   const t = field.fieldType;
-  if (
-    t === "Long" ||
-    t === "Integer" ||
-    t === "Double" ||
-    t === "Float" ||
-    t === "BigDecimal"
-  ) {
-    return "1001";
+  if (t === 'Long' || t === 'Integer' || t === 'Double' || t === 'Float' || t === 'BigDecimal') {
+    return '1001';
   }
-  if (t === "Boolean") return "true";
-  if (t === "UUID") return `'${SAMPLE_UUID}'`;
+  if (t === 'Boolean') return 'true';
+  if (t === 'UUID') return `'${SAMPLE_UUID}'`;
   return `'sample-${field.fieldName}-1'`;
 }
 
 // Sample value as a quoted string suitable for cy.type() (which only accepts strings).
 function sampleTypeArg(field) {
   const t = field.fieldType;
-  if (
-    t === "Long" ||
-    t === "Integer" ||
-    t === "Double" ||
-    t === "Float" ||
-    t === "BigDecimal"
-  ) {
+  if (t === 'Long' || t === 'Integer' || t === 'Double' || t === 'Float' || t === 'BigDecimal') {
     return "'1001'";
   }
-  if (t === "Boolean") return "'true'";
-  if (t === "UUID") return `'${SAMPLE_UUID}'`;
+  if (t === 'Boolean') return "'true'";
+  if (t === 'UUID') return `'${SAMPLE_UUID}'`;
   return `'sample-${field.fieldName}-1'`;
 }
 
@@ -123,9 +107,7 @@ export default class extends BaseApplicationGenerator {
         // Ensure entity.primaryKeySaathratri (composite-key metadata) is populated even if
         // this generator's task runs before the cassandra-spring-boot/-angular ones.
         // Idempotent: the util no-ops when the attribute is already set.
-        cassandraSpringBootUtils.setSaathratriPrimaryKeyAttributesOnEntityAndFields(
-          entity,
-        );
+        cassandraSpringBootUtils.setSaathratriPrimaryKeyAttributesOnEntityAndFields(entity);
       },
     });
   }
@@ -180,14 +162,14 @@ export default class extends BaseApplicationGenerator {
         // Patch this microservice's commands.ts to point entityItemSelector at its own
         // microfrontend dropdown. Each microservice's Cypress suite runs against the
         // gateway, so it needs to open *its own* named dropdown to see its entities.
-        const cypressDir = application.cypressDir;
+        const { cypressDir } = application;
         if (!cypressDir) return;
         if (!application.applicationTypeMicroservice) return;
 
         const commandsPath = `${cypressDir}support/commands.ts`;
         if (!this.existsDestination(commandsPath)) return;
 
-        this.editFile(commandsPath, (content) => {
+        this.editFile(commandsPath, content => {
           if (content.includes(`"${application.baseName}Menu"`)) return content;
           return content.replace(
             `export const entityItemSelector = '[data-cy="entity"]';`,
@@ -212,8 +194,8 @@ export default class extends BaseApplicationGenerator {
         //    Extend to 30s.
         const navbarPath = `${cypressDir}support/navbar.ts`;
         if (this.existsDestination(navbarPath)) {
-          this.editFile(navbarPath, (content) => {
-            if (content.includes("/* SAATHRATRI mf nav */")) return content;
+          this.editFile(navbarPath, content => {
+            if (content.includes('/* SAATHRATRI mf nav */')) return content;
             return content.replace(
               /cy\s*\.get\(navbarSelector\)\s*\.find\(entityItemSelector\)\s*\.find\(`\.dropdown-item\[href="\/\$\{entityName\}"\]`(?:,\s*\/\*\s*SAATHRATRI mf timeout\s*\*\/\s*\{\s*timeout:\s*\d+\s*\})?\)\s*\.click\(\)/,
               'cy\n    .get(navbarSelector)\n    .find(`.dropdown-item[href="/${entityName}"]`, /* SAATHRATRI mf nav */ { timeout: 30000 })\n    .click()',
@@ -233,7 +215,7 @@ export default class extends BaseApplicationGenerator {
         // the Angular service use one path segment per key field
         // (e.g. /{entityTypeId}/{yearOfDateAdded}/{arrivalDate}/{blogId}). Without this patch
         // the cleanup hits /.../undefined and the DELETE intercept glob never matches.
-        const cypressDir = application.cypressDir;
+        const { cypressDir } = application;
         if (!cypressDir) return;
 
         // Map every composite-key entity's REST url -> its composite-key metadata, so we can
@@ -241,10 +223,7 @@ export default class extends BaseApplicationGenerator {
         const compositeByApiUrl = new Map();
         for (const entity of entities) {
           if (entity.primaryKeySaathratri?.composite) {
-            compositeByApiUrl.set(
-              entity.entityApiUrl,
-              entity.primaryKeySaathratri,
-            );
+            compositeByApiUrl.set(entity.entityApiUrl, entity.primaryKeySaathratri);
           }
         }
         // NOTE: do NOT early-return when there are no composite-key entities. Single-key-only
@@ -259,34 +238,22 @@ export default class extends BaseApplicationGenerator {
           const specPath = `${cypressDir}e2e/entity/${entity.entityFileName}.cy.ts`;
           if (!this.existsDestination(specPath)) continue;
 
-          this.editFile(specPath, (content) => {
+          this.editFile(specPath, content => {
             // 1. Fix every DELETE-cleanup template-literal URL (self + required relations):
             //    `.../<apiUrl>/${someVar.<singleKey>}` -> `.../<apiUrl>/${someVar.compositeId.k1}/...`
             for (const [apiUrl, primaryKeySaathratri] of compositeByApiUrl) {
-              const cleanupRe = new RegExp(
-                `(${escapeRegExp(apiUrl)}/)\\$\\{(\\w+)\\.[^\`]*?\\}\``,
-                "g",
-              );
+              const cleanupRe = new RegExp(`(${escapeRegExp(apiUrl)}/)\\$\\{(\\w+)\\.[^\`]*?\\}\``, 'g');
               content = content.replace(
                 cleanupRe,
-                (match, prefix, instanceVar) =>
-                  `${prefix}${buildCompositeKeyUrlSuffix(instanceVar, primaryKeySaathratri)}\``,
+                (match, prefix, instanceVar) => `${prefix}${buildCompositeKeyUrlSuffix(instanceVar, primaryKeySaathratri)}\``,
               );
             }
 
             // 2. Widen this entity's DELETE intercept glob so it matches the multi-segment
             //    URL: '/.../<apiUrl>/*' -> '/.../<apiUrl>/*/*/*/*' (one '*' per key field).
-            const stars = entity.primaryKeySaathratri.ids
-              .map(() => "*")
-              .join("/");
-            const interceptRe = new RegExp(
-              `${escapeRegExp(entity.entityApiUrl)}/\\*'`,
-              "g",
-            );
-            content = content.replace(
-              interceptRe,
-              `${entity.entityApiUrl}/${stars}'`,
-            );
+            const stars = entity.primaryKeySaathratri.ids.map(() => '*').join('/');
+            const interceptRe = new RegExp(`${escapeRegExp(entity.entityApiUrl)}/\\*'`, 'g');
+            content = content.replace(interceptRe, `${entity.entityApiUrl}/${stars}'`);
 
             return content;
           });
@@ -306,32 +273,25 @@ export default class extends BaseApplicationGenerator {
           const specPath = `${cypressDir}e2e/entity/${entity.entityFileName}.cy.ts`;
           if (!this.existsDestination(specPath)) continue;
 
-          const idField = entity.fields?.find((f) => f.id);
+          const idField = entity.fields?.find(f => f.id);
           // NOTE: do NOT `continue` when idField is missing. Single-key Cassandra entities
           // whose PK is not an @Id-annotated entity field (e.g. Product, Report) have no
           // idField, but they still need the (c) timeout bump + (d) intercept-widen patches
           // below to survive microfrontend cold-load. Only the id-dependent (a)/(b) blocks
           // are guarded on idField.
 
-          this.editFile(specPath, (content) => {
+          this.editFile(specPath, content => {
             const sampleVar = `${entity.entityInstance}Sample`;
 
             // (a) Sample body: inject `compositeId: {...}` (composite) or the id field
             // (single-key). Idempotent — skip if already present.
             if (entity.primaryKeySaathratri?.composite) {
               if (!content.includes(`${sampleVar} = { compositeId:`)) {
-                const compositeIdLit = entity.primaryKeySaathratri.ids
-                  .map((f) => `${f.fieldName}: ${sampleObjValue(f)}`)
-                  .join(", ");
-                content = content.replace(
-                  `const ${sampleVar} = {`,
-                  `const ${sampleVar} = { compositeId: { ${compositeIdLit} },`,
-                );
+                const compositeIdLit = entity.primaryKeySaathratri.ids.map(f => `${f.fieldName}: ${sampleObjValue(f)}`).join(', ');
+                content = content.replace(`const ${sampleVar} = {`, `const ${sampleVar} = { compositeId: { ${compositeIdLit} },`);
               }
             } else if (idField) {
-              const idPropRe = new RegExp(
-                `${escapeRegExp(sampleVar)}\\s*=\\s*\\{\\s*${escapeRegExp(idField.fieldName)}\\b`,
-              );
+              const idPropRe = new RegExp(`${escapeRegExp(sampleVar)}\\s*=\\s*\\{\\s*${escapeRegExp(idField.fieldName)}\\b`);
               if (!idPropRe.test(content)) {
                 content = content.replace(
                   `const ${sampleVar} = {`,
@@ -348,24 +308,15 @@ export default class extends BaseApplicationGenerator {
             const formFillStart = `it('should create an instance of ${entity.entityAngularName}', () => {`;
             const blockStart = idField ? content.indexOf(formFillStart) : -1;
             if (blockStart !== -1) {
-              const saveClickIdx = content.indexOf(
-                "cy.get(entityCreateSaveButtonSelector)",
-                blockStart,
-              );
-              const block =
-                saveClickIdx > -1
-                  ? content.slice(blockStart, saveClickIdx)
-                  : "";
+              const saveClickIdx = content.indexOf('cy.get(entityCreateSaveButtonSelector)', blockStart);
+              const block = saveClickIdx > -1 ? content.slice(blockStart, saveClickIdx) : '';
               const idSelectorMarker = `[data-cy="${idField.fieldName}"]`;
 
               if (!block.includes(idSelectorMarker)) {
                 const injection =
                   `\n      cy.get(\`[data-cy="${idField.fieldName}"]\`).type(${sampleTypeArg(idField)});\n` +
                   `      cy.get(\`[data-cy="${idField.fieldName}"]\`).should('have.value', ${sampleTypeArg(idField)});\n`;
-                content = content.replace(
-                  formFillStart,
-                  formFillStart + injection,
-                );
+                content = content.replace(formFillStart, formFillStart + injection);
               }
             }
 
@@ -374,14 +325,8 @@ export default class extends BaseApplicationGenerator {
             // microfrontend route only fires its GET after module federation registers the
             // remote — in Cypress's cold-load this can exceed 5s and the wait times out
             // "No request ever occurred." Works fine in a normal browser.
-            content = content.replace(
-              /cy\.wait\('@entitiesRequest'\)/g,
-              "cy.wait('@entitiesRequest', { timeout: 30000 })",
-            );
-            content = content.replace(
-              /cy\.wait\('@entitiesRequestInternal'\)/g,
-              "cy.wait('@entitiesRequestInternal', { timeout: 30000 })",
-            );
+            content = content.replace(/cy\.wait\('@entitiesRequest'\)/g, "cy.wait('@entitiesRequest', { timeout: 30000 })");
+            content = content.replace(/cy\.wait\('@entitiesRequestInternal'\)/g, "cy.wait('@entitiesRequestInternal', { timeout: 30000 })");
 
             // (c.5) Strip form-fill lines for MAP/SET fields. The cassandra blueprint
             // generates custom Angular widgets for MAP<TEXT, TEXT/DECIMAL/BOOLEAN/BIGINT>
@@ -392,21 +337,15 @@ export default class extends BaseApplicationGenerator {
             // MAP/SET columns aren't required in the JDL, so removing the fill lines
             // entirely leaves the form valid for submit. Detection: first element of
             // `customAnnotation` is `CassandraType.Name.MAP` or `CassandraType.Name.SET`.
-            const mapSetFields = (entity.fields ?? []).filter((f) => {
+            const mapSetFields = (entity.fields ?? []).filter(f => {
               const ann = f.options?.customAnnotation?.[0];
-              return (
-                ann === "CassandraType.Name.MAP" ||
-                ann === "CassandraType.Name.SET"
-              );
+              return ann === 'CassandraType.Name.MAP' || ann === 'CassandraType.Name.SET';
             });
             for (const f of mapSetFields) {
               // Remove any whole line that does `cy.get(`[data-cy="<fieldName>"]`).<anything>;`
               // — covers .type/.should/.click/.invoke chains regardless of arguments.
-              const lineRe = new RegExp(
-                `^\\s*cy\\.get\\(\`\\[data-cy="${escapeRegExp(f.fieldName)}"\\]\`\\)[^;]+;\\s*\\n`,
-                "gm",
-              );
-              content = content.replace(lineRe, "");
+              const lineRe = new RegExp(`^\\s*cy\\.get\\(\`\\[data-cy="${escapeRegExp(f.fieldName)}"\\]\`\\)[^;]+;\\s*\\n`, 'gm');
+              content = content.replace(lineRe, '');
             }
 
             // (c.6) UTC_DATETIME fields use a custom `<app-date-time>` component with a
@@ -417,24 +356,17 @@ export default class extends BaseApplicationGenerator {
             // fields (e.g. Post.addedDateTime) this is REQUIRED so the form passes
             // validation; for optional UTC_DATETIME fields it's harmless. Detection:
             // `customAnnotation` array contains "UTC_DATETIME".
-            const dateTimeFields = (entity.fields ?? []).filter((f) => {
+            const dateTimeFields = (entity.fields ?? []).filter(f => {
               const ann = f.options?.customAnnotation;
-              if (!Array.isArray(ann) || !ann.includes("UTC_DATETIME"))
-                return false;
+              if (!Array.isArray(ann) || !ann.includes('UTC_DATETIME')) return false;
               // Exclude MAP<DAYJS> / SET<DAYJS> — those wrap the datetime inside a
               // widget component, so there's no top-level <app-date-time> to drive
               // and no `<fieldName>-{date,hours,minutes,ampm}` scalar data-cy.
-              return (
-                ann[0] !== "CassandraType.Name.MAP" &&
-                ann[0] !== "CassandraType.Name.SET"
-              );
+              return ann[0] !== 'CassandraType.Name.MAP' && ann[0] !== 'CassandraType.Name.SET';
             });
             for (const f of dateTimeFields) {
-              const lineRe = new RegExp(
-                `^\\s*cy\\.get\\(\`\\[data-cy="${escapeRegExp(f.fieldName)}"\\]\`\\)[^;]+;\\s*\\n`,
-                "gm",
-              );
-              content = content.replace(lineRe, "");
+              const lineRe = new RegExp(`^\\s*cy\\.get\\(\`\\[data-cy="${escapeRegExp(f.fieldName)}"\\]\`\\)[^;]+;\\s*\\n`, 'gm');
+              content = content.replace(lineRe, '');
             }
             if (dateTimeFields.length > 0) {
               // Inject Generate-button clicks immediately before the Save button click
@@ -443,15 +375,14 @@ export default class extends BaseApplicationGenerator {
               const formFillStart = `it('should create an instance of ${entity.entityAngularName}', () => {`;
               const blockStart = content.indexOf(formFillStart);
               if (blockStart !== -1) {
-                const saveClickRe =
-                  /^([ \t]+)cy\.get\(entityCreateSaveButtonSelector\)\.click\(\);/m;
+                const saveClickRe = /^([ \t]+)cy\.get\(entityCreateSaveButtonSelector\)\.click\(\);/m;
                 const block = content.slice(blockStart);
                 const saveMatch = block.match(saveClickRe);
                 if (saveMatch) {
                   const indent = saveMatch[1];
                   const generateLines = dateTimeFields
                     .map(
-                      (f) =>
+                      f =>
                         // The <app-date-time> component now hosts its own Generate
                         // button (data-cy="<field>-generate") that fills date / hours
                         // / minutes / amPm with the current timestamp via the
@@ -459,11 +390,9 @@ export default class extends BaseApplicationGenerator {
                         // — no need to walk the DOM up to the parent.
                         `${indent}cy.get(\`[data-cy="${f.fieldName}-generate"]\`).click({ force: true });`,
                     )
-                    .join("\n");
+                    .join('\n');
                   const saveClickIdx = blockStart + block.indexOf(saveMatch[0]);
-                  content = `${
-                    content.slice(0, saveClickIdx) + generateLines
-                  }\n\n${content.slice(saveClickIdx)}`;
+                  content = `${content.slice(0, saveClickIdx) + generateLines}\n\n${content.slice(saveClickIdx)}`;
                 }
               }
 
@@ -474,10 +403,10 @@ export default class extends BaseApplicationGenerator {
               // fails, the Generate button regressed. Together they cover both code
               // paths users actually hit. Smoke test doesn't Save — scalar field fills
               // would be duplicated noise; we only assert the widget itself behaves.
-              const firstTestEnd = content.indexOf("\n    });\n", blockStart);
+              const firstTestEnd = content.indexOf('\n    });\n', blockStart);
               if (firstTestEnd !== -1) {
                 const widgetTests = dateTimeFields
-                  .map((f) => {
+                  .map(f => {
                     const fn = f.fieldName;
                     return [
                       `    it('should accept input on the ${fn} date-time widget sub-inputs', () => {`,
@@ -507,13 +436,11 @@ export default class extends BaseApplicationGenerator {
                       `      cy.get('mat-option').contains('AM').click({ force: true });`,
                       `      cy.get(\`[data-cy="${fn}-ampm"]\`).should('contain', 'AM');`,
                       `    });`,
-                    ].join("\n");
+                    ].join('\n');
                   })
-                  .join("\n\n");
-                const insertAt = firstTestEnd + "\n    });".length;
-                content = `${content.slice(0, insertAt)}\n\n${
-                  widgetTests
-                }${content.slice(insertAt)}`;
+                  .join('\n\n');
+                const insertAt = firstTestEnd + '\n    });'.length;
+                content = `${content.slice(0, insertAt)}\n\n${widgetTests}${content.slice(insertAt)}`;
               }
             }
 
@@ -528,8 +455,8 @@ export default class extends BaseApplicationGenerator {
               const fn = f.fieldName;
               const ann = f.options?.customAnnotation || [];
               const mapInner = ann[1]; // CassandraType.Name.TEXT/DECIMAL/BOOLEAN/BIGINT
-              const isSet = ann[0] === "CassandraType.Name.SET";
-              const isMap = ann[0] === "CassandraType.Name.MAP";
+              const isSet = ann[0] === 'CassandraType.Name.SET';
+              const isMap = ann[0] === 'CassandraType.Name.MAP';
 
               if (isSet) {
                 widgetTestsForEntity.push(
@@ -539,9 +466,9 @@ export default class extends BaseApplicationGenerator {
                     `      cy.get(\`[data-cy="${fn}-add-value"]\`).should('have.value', 'sample-${fn}-1');`,
                     `      cy.get(\`[data-cy="${fn}-add-button"]\`).should('not.be.disabled');`,
                     `    });`,
-                  ].join("\n"),
+                  ].join('\n'),
                 );
-              } else if (isMap && mapInner === "CassandraType.Name.BOOLEAN") {
+              } else if (isMap && mapInner === 'CassandraType.Name.BOOLEAN') {
                 // The MAP<BOOLEAN> Add-row's `newValue` formControl starts at `null`
                 // with `Validators.required`. The mat-slide-toggle's interactive
                 // element is a `<button role="switch">` INSIDE the host — Cypress
@@ -561,9 +488,9 @@ export default class extends BaseApplicationGenerator {
                     `      cy.get(\`[data-cy="${fn}-add-toggle"] button\`).click({ force: true });`,
                     `      cy.get(\`[data-cy="${fn}-add-button"]\`).should('not.be.disabled');`,
                     `    });`,
-                  ].join("\n"),
+                  ].join('\n'),
                 );
-              } else if (isMap && mapInner === "CassandraType.Name.BIGINT") {
+              } else if (isMap && mapInner === 'CassandraType.Name.BIGINT') {
                 // MAP<TEXT, BIGINT> with UTC_DATETIME uses a nested <app-date-time>
                 // for the value. We can verify the add-key + add-button hooks here;
                 // the nested date-time has its own smoke test pattern (c.7) if used
@@ -575,14 +502,11 @@ export default class extends BaseApplicationGenerator {
                     `      cy.get(\`[data-cy="${fn}-add-key"]\`).should('have.value', 'sample-key');`,
                     `      cy.get(\`[data-cy="${fn}-add-button"]\`).should('exist');`,
                     `    });`,
-                  ].join("\n"),
+                  ].join('\n'),
                 );
               } else if (isMap) {
                 // MAP<TEXT, TEXT> and MAP<TEXT, DECIMAL>
-                const sampleValue =
-                  mapInner === "CassandraType.Name.DECIMAL"
-                    ? "1001"
-                    : "sample-value";
+                const sampleValue = mapInner === 'CassandraType.Name.DECIMAL' ? '1001' : 'sample-value';
                 widgetTestsForEntity.push(
                   [
                     `    it('should accept input on the ${fn} MAP widget add row', () => {`,
@@ -592,25 +516,17 @@ export default class extends BaseApplicationGenerator {
                     `      cy.get(\`[data-cy="${fn}-add-value"]\`).should('have.value', '${sampleValue}');`,
                     `      cy.get(\`[data-cy="${fn}-add-button"]\`).should('not.be.disabled');`,
                     `    });`,
-                  ].join("\n"),
+                  ].join('\n'),
                 );
               }
             }
             if (widgetTestsForEntity.length > 0) {
               const formFillStartForMap = `it('should create an instance of ${entity.entityAngularName}', () => {`;
               const blockStartForMap = content.indexOf(formFillStartForMap);
-              const firstTestEndForMap = content.indexOf(
-                "\n    });\n",
-                blockStartForMap,
-              );
+              const firstTestEndForMap = content.indexOf('\n    });\n', blockStartForMap);
               if (firstTestEndForMap !== -1) {
-                const insertAt = firstTestEndForMap + "\n    });".length;
-                content = `${content.slice(
-                  0,
-                  insertAt,
-                )}\n\n${widgetTestsForEntity.join(
-                  "\n\n",
-                )}${content.slice(insertAt)}`;
+                const insertAt = firstTestEndForMap + '\n    });'.length;
+                content = `${content.slice(0, insertAt)}\n\n${widgetTestsForEntity.join('\n\n')}${content.slice(insertAt)}`;
               }
             }
 
@@ -631,8 +547,7 @@ export default class extends BaseApplicationGenerator {
             if (roundTripWidgets.length > 0) {
               const createTestStart = `it('should create an instance of ${entity.entityAngularName}', () => {`;
               const createIdx = content.indexOf(createTestStart);
-              const saveClickStr =
-                "cy.get(entityCreateSaveButtonSelector).click();";
+              const saveClickStr = 'cy.get(entityCreateSaveButtonSelector).click();';
               const saveClickIdx = content.indexOf(saveClickStr, createIdx);
               if (createIdx !== -1 && saveClickIdx !== -1) {
                 // Body = everything from after the opening `() => {` up to (but
@@ -641,24 +556,24 @@ export default class extends BaseApplicationGenerator {
                 const bodyStart = createIdx + createTestStart.length;
                 const scalarFills = content.slice(bodyStart, saveClickIdx);
                 // Build per-widget Add-row interaction blocks and assertions.
-                const widgetAddLines = (f) => {
+                const widgetAddLines = f => {
                   const fn = f.fieldName;
                   const ann = f.options?.customAnnotation || [];
-                  if (ann[0] === "CassandraType.Name.SET") {
+                  if (ann[0] === 'CassandraType.Name.SET') {
                     return [
                       `      cy.get(\`[data-cy="${fn}-add-value"]\`).type('rt-${fn}-value');`,
                       `      cy.get(\`[data-cy="${fn}-add-button"]\`).click();`,
-                    ].join("\n");
+                    ].join('\n');
                   }
-                  if (ann[1] === "CassandraType.Name.BOOLEAN") {
+                  if (ann[1] === 'CassandraType.Name.BOOLEAN') {
                     return [
                       `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('rt-${fn}-key');`,
                       `      cy.get(\`[data-cy="${fn}-add-toggle"] button\`).click({ force: true });`,
                       `      cy.get(\`[data-cy="${fn}-add-toggle"] button\`).click({ force: true });`,
                       `      cy.get(\`[data-cy="${fn}-add-button"]\`).click();`,
-                    ].join("\n");
+                    ].join('\n');
                   }
-                  if (ann[1] === "CassandraType.Name.BIGINT") {
+                  if (ann[1] === 'CassandraType.Name.BIGINT') {
                     // MAP<DAYJS> — type a key and click the nested <app-date-time>'s
                     // own Generate button (data-cy "<fn>-add-datetime-generate") so
                     // date / hours / minutes / amPm are populated atomically by the
@@ -668,53 +583,44 @@ export default class extends BaseApplicationGenerator {
                       `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('rt-${fn}-key');`,
                       `      cy.get(\`[data-cy="${fn}-add-datetime-generate"]\`).click({ force: true });`,
                       `      cy.get(\`[data-cy="${fn}-add-button"]\`).click();`,
-                    ].join("\n");
+                    ].join('\n');
                   }
                   // MAP<TEXT> and MAP<DECIMAL>
-                  const value =
-                    ann[1] === "CassandraType.Name.DECIMAL"
-                      ? "99.99"
-                      : `rt-${fn}-value`;
+                  const value = ann[1] === 'CassandraType.Name.DECIMAL' ? '99.99' : `rt-${fn}-value`;
                   return [
                     `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('rt-${fn}-key');`,
                     `      cy.get(\`[data-cy="${fn}-add-value"]\`).type('${value}');`,
                     `      cy.get(\`[data-cy="${fn}-add-button"]\`).click();`,
-                  ].join("\n");
+                  ].join('\n');
                 };
-                const widgetAssertion = (f) => {
+                const widgetAssertion = f => {
                   const fn = f.fieldName;
                   const ann = f.options?.customAnnotation || [];
-                  if (ann[0] === "CassandraType.Name.SET") {
+                  if (ann[0] === 'CassandraType.Name.SET') {
                     return `        expect(response.body.${fn}, 'SET round-trip: ${fn}').to.include('rt-${fn}-value');`;
                   }
-                  if (ann[1] === "CassandraType.Name.BOOLEAN") {
+                  if (ann[1] === 'CassandraType.Name.BOOLEAN') {
                     // The (c.9) Add-row interaction clicks the slide-toggle TWICE
                     // (null → on → off) to commit a non-null value to the form; the
                     // committed value is `false`, not `true`. Assertion must match.
                     return `        expect(response.body.${fn}, 'MAP<BOOLEAN> round-trip: ${fn}').to.have.property('rt-${fn}-key', false);`;
                   }
-                  if (ann[1] === "CassandraType.Name.DECIMAL") {
+                  if (ann[1] === 'CassandraType.Name.DECIMAL') {
                     // backend may return string vs number depending on
                     // serialization; just check key exists.
                     return `        expect(response.body.${fn}, 'MAP<DECIMAL> round-trip: ${fn}').to.have.property('rt-${fn}-key');`;
                   }
-                  if (ann[1] === "CassandraType.Name.BIGINT") {
+                  if (ann[1] === 'CassandraType.Name.BIGINT') {
                     // MAP<DAYJS>: backend serializes the dayjs value as ISO
                     // string or epoch ms; key presence is the round-trip signal.
                     return `        expect(response.body.${fn}, 'MAP<DAYJS> round-trip: ${fn}').to.have.property('rt-${fn}-key');`;
                   }
                   return `        expect(response.body.${fn}, 'MAP<TEXT> round-trip: ${fn}').to.have.property('rt-${fn}-key', 'rt-${fn}-value');`;
                 };
-                const interactions = roundTripWidgets
-                  .map(widgetAddLines)
-                  .join("\n\n");
-                const assertions = roundTripWidgets
-                  .map(widgetAssertion)
-                  .join("\n");
+                const interactions = roundTripWidgets.map(widgetAddLines).join('\n\n');
+                const assertions = roundTripWidgets.map(widgetAssertion).join('\n');
                 const roundTripTest =
-                  `    it('should round-trip MAP/SET widget entries through POST', () => {${
-                    scalarFills
-                  }\n${interactions}\n\n` +
+                  `    it('should round-trip MAP/SET widget entries through POST', () => {${scalarFills}\n${interactions}\n\n` +
                   `      cy.get(entityCreateSaveButtonSelector).click();\n\n` +
                   `      cy.wait('@postEntityRequest').then(({ response }) => {\n` +
                   `        expect(response?.statusCode).to.equal(201);\n` +
@@ -727,12 +633,10 @@ export default class extends BaseApplicationGenerator {
                 // create-instance test we just read from.
                 const insertAt = saveClickIdx; // We'll find the actual insertion point next
                 // Re-locate the create-instance test's closing `});` boundary.
-                const closing = content.indexOf("\n    });\n", saveClickIdx);
+                const closing = content.indexOf('\n    });\n', saveClickIdx);
                 if (closing !== -1) {
-                  const realInsertAt = closing + "\n    });".length;
-                  content = `${content.slice(0, realInsertAt)}\n\n${
-                    roundTripTest
-                  }${content.slice(realInsertAt)}`;
+                  const realInsertAt = closing + '\n    });'.length;
+                  content = `${content.slice(0, realInsertAt)}\n\n${roundTripTest}${content.slice(realInsertAt)}`;
                 }
               }
             }
@@ -744,21 +648,16 @@ export default class extends BaseApplicationGenerator {
             // dialog dismissed. Validates the dialog open/save/close lifecycle
             // and the row-keyed data-cy hooks. MAP<DAYJS> is skipped because
             // its dialog wraps an <app-date-time> with no scalar value input.
-            const editableWidgets = mapSetFields.filter((f) => {
+            const editableWidgets = mapSetFields.filter(f => {
               const ann = f.options?.customAnnotation || [];
-              return !(
-                ann[0] === "CassandraType.Name.MAP" &&
-                ann[1] === "CassandraType.Name.BIGINT"
-              );
+              return !(ann[0] === 'CassandraType.Name.MAP' && ann[1] === 'CassandraType.Name.BIGINT');
             });
-            const editTests = editableWidgets.map((f) => {
+            const editTests = editableWidgets.map(f => {
               const fn = f.fieldName;
               const ann = f.options?.customAnnotation || [];
-              const safe = fn.replace(/[^a-zA-Z0-9]/g, "");
-              const lines = [
-                `    it('should edit a row in the ${fn} widget via dialog', () => {`,
-              ];
-              if (ann[0] === "CassandraType.Name.SET") {
+              const safe = fn.replace(/[^a-zA-Z0-9]/g, '');
+              const lines = [`    it('should edit a row in the ${fn} widget via dialog', () => {`];
+              if (ann[0] === 'CassandraType.Name.SET') {
                 lines.push(
                   `      cy.get(\`[data-cy="${fn}-add-value"]\`).type('edit-orig');`,
                   `      cy.get(\`[data-cy="${fn}-add-button"]\`).click();`,
@@ -769,7 +668,7 @@ export default class extends BaseApplicationGenerator {
                   `      cy.get('[data-cy="dialog-save-button"]').click();`,
                   `      cy.get('mat-dialog-container').should('not.exist');`,
                 );
-              } else if (ann[1] === "CassandraType.Name.BOOLEAN") {
+              } else if (ann[1] === 'CassandraType.Name.BOOLEAN') {
                 lines.push(
                   `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('edit-${safe}-key');`,
                   `      cy.get(\`[data-cy="${fn}-add-toggle"] button\`).click({ force: true });`,
@@ -784,14 +683,8 @@ export default class extends BaseApplicationGenerator {
               } else {
                 // MAP<TEXT> / MAP<DECIMAL>
                 const editKey = `edit-${safe}-key`;
-                const orig =
-                  ann[1] === "CassandraType.Name.DECIMAL"
-                    ? "77.77"
-                    : "edit-orig";
-                const nw =
-                  ann[1] === "CassandraType.Name.DECIMAL"
-                    ? "88.88"
-                    : "edit-new";
+                const orig = ann[1] === 'CassandraType.Name.DECIMAL' ? '77.77' : 'edit-orig';
+                const nw = ann[1] === 'CassandraType.Name.DECIMAL' ? '88.88' : 'edit-new';
                 lines.push(
                   `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('${editKey}');`,
                   `      cy.get(\`[data-cy="${fn}-add-value"]\`).type('${orig}');`,
@@ -805,7 +698,7 @@ export default class extends BaseApplicationGenerator {
                 );
               }
               lines.push(`    });`);
-              return lines.join("\n");
+              return lines.join('\n');
             });
 
             // (c.11) Per-widget Delete-row tests. Same shape as (c.10) but
@@ -813,14 +706,12 @@ export default class extends BaseApplicationGenerator {
             // longer exists. Index-based for SET/MAP<BOOLEAN>, key-based for
             // MAP<TEXT>/MAP<DECIMAL>. MAP<DAYJS> uses key-based row hooks
             // (entry.key) so it can be tested even though edit can't.
-            const deleteTests = mapSetFields.map((f) => {
+            const deleteTests = mapSetFields.map(f => {
               const fn = f.fieldName;
               const ann = f.options?.customAnnotation || [];
-              const safe = fn.replace(/[^a-zA-Z0-9]/g, "");
-              const lines = [
-                `    it('should delete a row in the ${fn} widget', () => {`,
-              ];
-              if (ann[0] === "CassandraType.Name.SET") {
+              const safe = fn.replace(/[^a-zA-Z0-9]/g, '');
+              const lines = [`    it('should delete a row in the ${fn} widget', () => {`];
+              if (ann[0] === 'CassandraType.Name.SET') {
                 lines.push(
                   `      cy.get(\`[data-cy="${fn}-add-value"]\`).type('delete-target');`,
                   `      cy.get(\`[data-cy="${fn}-add-button"]\`).click();`,
@@ -828,7 +719,7 @@ export default class extends BaseApplicationGenerator {
                   `      cy.get(\`[data-cy="${fn}-row-0-delete"]\`).click();`,
                   `      cy.get(\`[data-cy="${fn}-row-0-edit"]\`).should('not.exist');`,
                 );
-              } else if (ann[1] === "CassandraType.Name.BOOLEAN") {
+              } else if (ann[1] === 'CassandraType.Name.BOOLEAN') {
                 lines.push(
                   `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('del-${safe}-key');`,
                   `      cy.get(\`[data-cy="${fn}-add-toggle"] button\`).click({ force: true });`,
@@ -838,7 +729,7 @@ export default class extends BaseApplicationGenerator {
                   `      cy.get(\`[data-cy="${fn}-row-0-delete"]\`).click();`,
                   `      cy.get(\`[data-cy="${fn}-row-0-edit"]\`).should('not.exist');`,
                 );
-              } else if (ann[1] === "CassandraType.Name.BIGINT") {
+              } else if (ann[1] === 'CassandraType.Name.BIGINT') {
                 // MAP<DAYJS> — type the key, click the nested <app-date-time>'s
                 // own Generate button to fill the datetime atomically, then add
                 // the row and verify the delete cycle.
@@ -853,10 +744,7 @@ export default class extends BaseApplicationGenerator {
                 );
               } else {
                 const delKey = `del-${safe}-key`;
-                const val =
-                  ann[1] === "CassandraType.Name.DECIMAL"
-                    ? "66.66"
-                    : "delete-val";
+                const val = ann[1] === 'CassandraType.Name.DECIMAL' ? '66.66' : 'delete-val';
                 lines.push(
                   `      cy.get(\`[data-cy="${fn}-add-key"]\`).type('${delKey}');`,
                   `      cy.get(\`[data-cy="${fn}-add-value"]\`).type('${val}');`,
@@ -867,7 +755,7 @@ export default class extends BaseApplicationGenerator {
                 );
               }
               lines.push(`    });`);
-              return lines.join("\n");
+              return lines.join('\n');
             });
 
             const editDeleteTests = [...editTests, ...deleteTests];
@@ -884,26 +772,17 @@ export default class extends BaseApplicationGenerator {
                 let cursor = createIdx2;
                 let lastEnd = -1;
                 while (true) {
-                  const next = content.indexOf("\n    });\n", cursor);
+                  const next = content.indexOf('\n    });\n', cursor);
                   if (next === -1) break;
-                  lastEnd = next + "\n    });".length;
+                  lastEnd = next + '\n    });'.length;
                   cursor = next + 1;
                   // Stop when the next test opener moves into a different scope
-                  const nextIt = content.indexOf("\n    it(", cursor);
-                  const nextDescribe = content.indexOf("\n  describe(", cursor);
-                  if (
-                    nextIt === -1 ||
-                    (nextDescribe !== -1 && nextDescribe < nextIt)
-                  )
-                    break;
+                  const nextIt = content.indexOf('\n    it(', cursor);
+                  const nextDescribe = content.indexOf('\n  describe(', cursor);
+                  if (nextIt === -1 || (nextDescribe !== -1 && nextDescribe < nextIt)) break;
                 }
                 if (lastEnd !== -1) {
-                  content = `${content.slice(
-                    0,
-                    lastEnd,
-                  )}\n\n${editDeleteTests.join(
-                    "\n\n",
-                  )}${content.slice(lastEnd)}`;
+                  content = `${content.slice(0, lastEnd)}\n\n${editDeleteTests.join('\n\n')}${content.slice(lastEnd)}`;
                 }
               }
             }
@@ -918,13 +797,10 @@ export default class extends BaseApplicationGenerator {
             // anchored with `\b` (word boundary) so it matches `/<entity>`, `/<entity>?...`,
             // `/<entity>/slice`, and `/<entity>/slice?...` uniformly. Forward slashes are
             // escaped because they're the regex delimiter in the emitted source.
-            content = content.replace(
-              /'((?:\/services\/)?[^']*)(?:\+\(\?\*\|\)|\*\*)'/g,
-              (_, urlPath) => {
-                const escaped = urlPath.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
-                return `/^${escaped}\\b/`;
-              },
-            );
+            content = content.replace(/'((?:\/services\/)?[^']*)(?:\+\(\?\*\|\)|\*\*)'/g, (_, urlPath) => {
+              const escaped = urlPath.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+              return `/^${escaped}\\b/`;
+            });
 
             return content;
           });
@@ -944,12 +820,8 @@ export default class extends BaseApplicationGenerator {
           const specPath = `${cypressDir}e2e/entity/${entity.entityFileName}.cy.ts`;
           if (!this.existsDestination(specPath)) continue;
 
-          this.editFile(specPath, (content) => {
-            if (
-              typeof content !== "string" ||
-              content.includes("should toggle the Cassandra search form")
-            )
-              return content;
+          this.editFile(specPath, content => {
+            if (typeof content !== 'string' || content.includes('should toggle the Cassandra search form')) return content;
             // Drive the navbar entity dropdown (clickOnEntityMenuItem opens the
             // <baseName>Menu dropdown, then clicks the entity link). Pass the spec's own
             // *PageUrl minus its leading slash so the href matches the gateway's actual
@@ -964,13 +836,11 @@ export default class extends BaseApplicationGenerator {
     cy.get('[data-cy="searchButton"]').should('be.visible');
   });
 `;
-            const idx = content.lastIndexOf("});");
+            const idx = content.lastIndexOf('});');
             if (idx === -1) return content;
             return content.slice(0, idx) + searchTest + content.slice(idx);
           });
-          this.log.info(
-            `[cypress] Added Cassandra search-form e2e smoke test to ${specPath}`,
-          );
+          this.log.info(`[cypress] Added Cassandra search-form e2e smoke test to ${specPath}`);
         }
 
         // ---------------------------------------------------------------------------
@@ -982,20 +852,14 @@ export default class extends BaseApplicationGenerator {
         // ---------------------------------------------------------------------------
         for (const entity of entities) {
           if (entity.builtIn || !entity.entityFileName) continue;
-          const uuidField = (entity.fields ?? []).find(
-            (f) => f.fieldTypeUuidSaathratri || f.fieldTypeTimeUuidSaathratri,
-          );
+          const uuidField = (entity.fields ?? []).find(f => f.fieldTypeUuidSaathratri || f.fieldTypeTimeUuidSaathratri);
           if (!uuidField) continue;
 
           const specPath = `${cypressDir}e2e/entity/${entity.entityFileName}.cy.ts`;
           if (!this.existsDestination(specPath)) continue;
 
-          this.editFile(specPath, (content) => {
-            if (
-              typeof content !== "string" ||
-              content.includes("should generate and reset a UUID")
-            )
-              return content;
+          this.editFile(specPath, content => {
+            if (typeof content !== 'string' || content.includes('should generate and reset a UUID')) return content;
             const fn = uuidField.fieldName;
             const uuidTest = `
   it('should generate and reset a UUID via the form buttons', () => {
@@ -1012,13 +876,11 @@ export default class extends BaseApplicationGenerator {
     cy.get(\`[data-cy="${fn}"]\`).should('have.value', '');
   });
 `;
-            const idx = content.lastIndexOf("});");
+            const idx = content.lastIndexOf('});');
             if (idx === -1) return content;
             return content.slice(0, idx) + uuidTest + content.slice(idx);
           });
-          this.log.info(
-            `[cypress] Added UUID generate/reset e2e test to ${specPath}`,
-          );
+          this.log.info(`[cypress] Added UUID generate/reset e2e test to ${specPath}`);
         }
       },
     });

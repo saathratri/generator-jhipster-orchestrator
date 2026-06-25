@@ -1,9 +1,9 @@
-import fs from "fs";
-import path from "path";
+import fs from 'fs';
+import path from 'path';
 
-import _ from "lodash";
+import _ from 'lodash';
 
-const LAST_USED_PORT_FILE = "last-used-ports.json";
+const LAST_USED_PORT_FILE = 'last-used-ports.json';
 
 export const cassandraSpringBootUtils = {
   /*******************************************
@@ -11,55 +11,55 @@ export const cassandraSpringBootUtils = {
    *******************************************/
   getFieldPrimitiveType(field) {
     switch (field.fieldType) {
-      case "String":
-        return ".toString()";
-      case "Integer":
-        return ".intValue()";
-      case "Long":
-        return ".intValue()";
-      case "Float":
-        return ".intValue()";
-      case "Double":
-        return ".intValue()";
-      case "UUID":
-        return ".toString()";
+      case 'String':
+        return '.toString()';
+      case 'Integer':
+        return '.intValue()';
+      case 'Long':
+        return '.intValue()';
+      case 'Float':
+        return '.intValue()';
+      case 'Double':
+        return '.intValue()';
+      case 'UUID':
+        return '.toString()';
       default:
-        return ".toString()";
+        return '.toString()';
     }
   },
 
   setSaathratriNonPrimaryKeySampleValues(entity) {
     if (!entity.fields) return;
-    entity.fields.forEach((field) => {
+    entity.fields.forEach(field => {
       if (field.fieldTypeSetSaathratri) {
         field.javaValueSample1 = `new java.util.TreeSet<${field.fieldType}>() {{ add("${field.fieldName}1"); }}`;
         field.javaValueSample2 = `new java.util.TreeSet<${field.fieldType}>() {{ add("${field.fieldName}2"); }}`;
       } else if (field.fieldTypeMapSaathratri) {
-        if (field.fieldType === "String") {
+        if (field.fieldType === 'String') {
           field.javaValueSample1 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}1", "${field.fieldName}1"); }}`;
           field.javaValueSample2 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}2", "${field.fieldName}2"); }}`;
-        } else if (field.fieldType === "Integer") {
+        } else if (field.fieldType === 'Integer') {
           field.javaValueSample1 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}1", 1); }}`;
           field.javaValueSample2 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}2", 2); }}`;
-        } else if (field.fieldType === "Long") {
+        } else if (field.fieldType === 'Long') {
           field.javaValueSample1 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}1", 1L); }}`;
           field.javaValueSample2 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}2", 2L); }}`;
-        } else if (field.fieldType === "Boolean") {
+        } else if (field.fieldType === 'Boolean') {
           field.javaValueSample1 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}1", false); }}`;
           field.javaValueSample2 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}2", true); }}`;
         } else if (field.fieldTypeBigDecimalSaathratri) {
           field.javaValueSample1 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}1", new BigDecimal(1)); }}`;
           field.javaValueSample2 = `new java.util.HashMap<String, ${field.fieldType}>() {{ put("${field.fieldName}2", new BigDecimal(2)); }}`;
         }
-      } else if (field.fieldType === "Boolean") {
-        field.javaValueSample1 = "false";
-        field.javaValueSample2 = "true";
-      } else if (field.fieldType === "LocalDate") {
-        field.javaValueSample1 = "java.time.LocalDate.now()";
-        field.javaValueSample2 = "java.time.LocalDate.now()";
+      } else if (field.fieldType === 'Boolean') {
+        field.javaValueSample1 = 'false';
+        field.javaValueSample2 = 'true';
+      } else if (field.fieldType === 'LocalDate') {
+        field.javaValueSample1 = 'java.time.LocalDate.now()';
+        field.javaValueSample2 = 'java.time.LocalDate.now()';
       } else if (field.fieldTypeBigDecimalSaathratri) {
-        field.javaValueSample1 = "new BigDecimal(1)";
-        field.javaValueSample2 = "new BigDecimal(2)";
+        field.javaValueSample1 = 'new BigDecimal(1)';
+        field.javaValueSample2 = 'new BigDecimal(2)';
       }
 
       if (!field.isCompositePrimaryKeyField) {
@@ -73,67 +73,47 @@ export const cassandraSpringBootUtils = {
    **************************************/
   getCompositePrimaryKeyInstanceVariableInitializationsFromDTOTest(primaryKey) {
     return primaryKey.ids
-      .map((pk) => {
+      .map(pk => {
         return `${this.getPrimaryKeyValue(pk.fieldType)}`;
       })
-      .join(", \n");
+      .join(', \n');
   },
 
   /*********************************
    * entity-spri Helper Functions
    *********************************/
 
-  getCompositePrimaryKeyInstanceVariablesFromDTOId(
-    entityInstanceName,
-    primaryKey,
-  ) {
+  getCompositePrimaryKeyInstanceVariablesFromDTOId(entityInstanceName, primaryKey) {
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `${entityInstanceName}DTO.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`,
-      )
-      .join(", \n");
+      .map(pk => `${entityInstanceName}DTO.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`)
+      .join(', \n');
   },
 
-  getCompositePrimaryKeyNullCheck(
-    entityInstanceName,
-    primaryKey,
-    dtoMapstruct,
-  ) {
+  getCompositePrimaryKeyNullCheck(entityInstanceName, primaryKey, dtoMapstruct) {
     if (dtoMapstruct) {
       return primaryKey.ids
-        .map(
-          (pk) =>
-            `${entityInstanceName}DTO.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}() == null`,
-        )
-        .join(" || \n");
+        .map(pk => `${entityInstanceName}DTO.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}() == null`)
+        .join(' || \n');
     }
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}() == null`,
-      )
-      .join(" || \n");
+      .map(pk => `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}() == null`)
+      .join(' || \n');
   },
 
   getCompositePrimaryKeyTimeUuidInitializations(entityInstance, primaryKey) {
     return primaryKey.ids
-      .map((pk) => {
+      .map(pk => {
         if (pk.fieldTypeTimeUuidSaathratri) {
           return `${entityInstance}DTO.get${_.upperFirst(primaryKey.name)}().set${_.upperFirst(pk.fieldName)}(Uuids.timeBased());`;
         }
       })
-      .join("\n");
+      .join('\n');
   },
 
-  getCompositePrimaryKeyResponseEntityUri(
-    entityInstanceName,
-    primaryKey,
-    dtoMapstruct,
-  ) {
+  getCompositePrimaryKeyResponseEntityUri(entityInstanceName, primaryKey, dtoMapstruct) {
     if (dtoMapstruct) {
       return primaryKey.ids
-        .map((pk) =>
+        .map(pk =>
           pk.fieldTypeString
             ? `getUrlEncodedParameterValue(${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}())`
             : `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`,
@@ -141,96 +121,64 @@ export const cassandraSpringBootUtils = {
         .join(' + "/" + \n');
     }
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`,
-      )
+      .map(pk => `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`)
       .join(' + "/" + \n');
   },
 
-  getCompositePrimaryKeyEquivalenceCheck(
-    entityInstanceName,
-    primaryKey,
-    dtoMapstruct,
-  ) {
+  getCompositePrimaryKeyEquivalenceCheck(entityInstanceName, primaryKey, dtoMapstruct) {
     if (dtoMapstruct) {
       return primaryKey.ids
         .map(
-          (pk) =>
+          pk =>
             `!Objects.equals(${pk.fieldName}, ${entityInstanceName}DTO.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}())`,
         )
-        .join(" || \n");
+        .join(' || \n');
     }
     return primaryKey.ids
       .map(
-        (pk) =>
+        pk =>
           `!Objects.equals(${pk.fieldName}, ${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}())`,
       )
-      .join(" || \n");
+      .join(' || \n');
   },
 
   getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocUrl(primaryKey) {
-    return primaryKey.ids.map((pk) => `:${pk.fieldName}`).join("/");
+    return primaryKey.ids.map(pk => `:${pk.fieldName}`).join('/');
   },
 
-  getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocMethodParameters(
-    entityInstanceName,
-    primaryKey,
-    operation,
-  ) {
+  getCompositePrimaryKeyPutPatchGetDeleteMappingJavaDocMethodParameters(entityInstanceName, primaryKey, operation) {
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `      * @param ${pk.fieldName} the ${pk.fieldNameHumanized} of the ${entityInstanceName} to ${operation}.`,
-      )
-      .join("\n");
+      .map(pk => `      * @param ${pk.fieldName} the ${pk.fieldNameHumanized} of the ${entityInstanceName} to ${operation}.`)
+      .join('\n');
   },
 
   getCompositePrimaryKeyPutPatchGetDeleteMappingUrl(primaryKey) {
-    return primaryKey.ids.map((pk) => `{${pk.fieldName}}`).join("/");
+    return primaryKey.ids.map(pk => `{${pk.fieldName}}`).join('/');
   },
 
   getCompositePrimaryKeyInstanceVariables(primaryKey) {
-    return primaryKey.ids.map((pk) => pk.fieldName).join(", \n");
+    return primaryKey.ids.map(pk => pk.fieldName).join(', \n');
   },
 
-  getCompositePrimaryKeyPutPatchMappingMethodPathVariableParameters(
-    primaryKey,
-  ) {
+  getCompositePrimaryKeyPutPatchMappingMethodPathVariableParameters(primaryKey) {
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `@PathVariable(value = "${pk.fieldName}", required = true) final ${pk.fieldType} ${pk.fieldName}`,
-      )
-      .join(", \n");
+      .map(pk => `@PathVariable(value = "${pk.fieldName}", required = true) final ${pk.fieldType} ${pk.fieldName}`)
+      .join(', \n');
   },
 
   getCompositePrimaryKeyGetDeleteMappingSetStatements(primaryKey) {
-    return primaryKey.ids
-      .map(
-        (pk) =>
-          `${primaryKey.name}.set${_.upperFirst(pk.fieldName)}(${pk.fieldName});`,
-      )
-      .join("\n");
+    return primaryKey.ids.map(pk => `${primaryKey.name}.set${_.upperFirst(pk.fieldName)}(${pk.fieldName});`).join('\n');
   },
 
-  getCompositePrimaryKeyTestSetIdStatement(
-    fieldStatus,
-    entityInstanceName,
-    entityClassName,
-    primaryKey,
-  ) {
+  getCompositePrimaryKeyTestSetIdStatement(fieldStatus, entityInstanceName, entityClassName, primaryKey) {
     return `${entityInstanceName}.set${_.upperFirst(primaryKey.name)}(new ${entityClassName}Id(${primaryKey.ids
-      .map((pk) => `${fieldStatus}${pk.fieldNameUnderscored.toUpperCase()}`)
-      .join(", ")}));`;
+      .map(pk => `${fieldStatus}${pk.fieldNameUnderscored.toUpperCase()}`)
+      .join(', ')}));`;
   },
 
   getCompositePrimaryKeyServerUrl(entityInstanceName, primaryKey) {
     return primaryKey.ids
-      .map(
-        (pk) =>
-          `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`,
-      )
+      .map(pk => `${entityInstanceName}.get${_.upperFirst(primaryKey.name)}().get${_.upperFirst(pk.fieldName)}()`)
       .join(' + "/" + ');
   },
 
@@ -239,10 +187,9 @@ export const cassandraSpringBootUtils = {
       return false;
     }
 
-    const primaryKeyFieldNames = primaryKey.ids.map((pk) => pk.fieldName);
+    const primaryKeyFieldNames = primaryKey.ids.map(pk => pk.fieldName);
     /* Saathratri change: support both JHipster 8 (reference.name) and JHipster 9 (reference.propertyName/fieldName) */
-    const refName =
-      reference.name || reference.propertyName || reference.fieldName;
+    const refName = reference.name || reference.propertyName || reference.fieldName;
     return primaryKeyFieldNames.includes(refName);
   },
 
@@ -251,7 +198,7 @@ export const cassandraSpringBootUtils = {
       return false;
     }
 
-    const primaryKeyFieldNames = primaryKey.ids.map((pk) => pk.fieldName);
+    const primaryKeyFieldNames = primaryKey.ids.map(pk => pk.fieldName);
     return primaryKeyFieldNames.includes(property.propertyName);
   },
 
@@ -270,9 +217,7 @@ export const cassandraSpringBootUtils = {
   sortIdsByOrdinal(entity) {
     // Sort the ids array by fieldOrdinalSaathratri
     if (entity.primaryKeySaathratri.ids.length > 1) {
-      entity.primaryKeySaathratri.ids.sort(
-        (a, b) => a.fieldOrdinalSaathratri - b.fieldOrdinalSaathratri,
-      );
+      entity.primaryKeySaathratri.ids.sort((a, b) => a.fieldOrdinalSaathratri - b.fieldOrdinalSaathratri);
     }
   },
 
@@ -281,11 +226,9 @@ export const cassandraSpringBootUtils = {
       entity.primaryKeySaathratri = { composite: false, ids: [] };
       if (!entity.fields) return;
 
-      entity.fields.forEach((field) => {
+      entity.fields.forEach(field => {
         this.processFieldForPrimaryKey(entity, field);
-        field.fieldJavaValueGenerator = this.getJavaValueGeneratorForType(
-          field.fieldType,
-        );
+        field.fieldJavaValueGenerator = this.getJavaValueGeneratorForType(field.fieldType);
       });
     }
   },
@@ -293,9 +236,9 @@ export const cassandraSpringBootUtils = {
   processFieldForPrimaryKey(entity, field) {
     const primaryKeyType = field.options?.customAnnotation[0];
 
-    if (primaryKeyType === "PrimaryKeyType.PARTITIONED") {
+    if (primaryKeyType === 'PrimaryKeyType.PARTITIONED') {
       this.handlePartitionedKey(entity, field);
-    } else if (primaryKeyType === "PrimaryKeyType.CLUSTERED") {
+    } else if (primaryKeyType === 'PrimaryKeyType.CLUSTERED') {
       this.handleClusteredKey(entity, field);
     }
 
@@ -319,14 +262,14 @@ export const cassandraSpringBootUtils = {
 
   handleClusteredKey(entity, field) {
     entity.primaryKeySaathratri.composite = true;
-    entity.primaryKeySaathratri.nameCapitalized = "CompositeId";
-    entity.primaryKeySaathratri.name = "compositeId";
+    entity.primaryKeySaathratri.nameCapitalized = 'CompositeId';
+    entity.primaryKeySaathratri.name = 'compositeId';
     entity.primaryKeySaathratri.type = `${entity.name}Id`;
     entity.primaryKeySaathratri.typeString = false;
 
-    if (field.fieldType === "Long") {
+    if (field.fieldType === 'Long') {
       entity.primaryKeySaathratri.hasLong = true;
-    } else if (field.fieldType === "Integer") {
+    } else if (field.fieldType === 'Integer') {
       entity.primaryKeySaathratri.hasInteger = true;
     } else if (this.isTimeUuidField(field)) {
       entity.primaryKeySaathratri.hasTimeUUID = true;
@@ -418,7 +361,7 @@ export const cassandraSpringBootUtils = {
     }
 
     if (entity?.anyFieldHasImageContentType !== true) {
-      if (this.isBlobFieldContentType(field, "image")) {
+      if (this.isBlobFieldContentType(field, 'image')) {
         entity.anyFieldHasImageContentType = true;
         entity.anyFieldHasFileBasedContentType = true;
         entity.anyFieldIsBlobDerived = true;
@@ -428,7 +371,7 @@ export const cassandraSpringBootUtils = {
     }
 
     if (entity?.anyFieldHasTextContentType !== true) {
-      if (this.isBlobFieldContentType(field, "text")) {
+      if (this.isBlobFieldContentType(field, 'text')) {
         entity.anyFieldHasTextContentType = true;
         entity.anyFieldIsBlobDerived = true;
       } else {
@@ -437,7 +380,7 @@ export const cassandraSpringBootUtils = {
     }
 
     if (entity?.anyFieldHasAnyContentType !== true) {
-      if (this.isBlobFieldContentType(field, "any")) {
+      if (this.isBlobFieldContentType(field, 'any')) {
         entity.anyFieldHasAnyContentType = true;
         entity.anyFieldHasFileBasedContentType = true;
         entity.anyFieldIsBlobDerived = true;
@@ -465,80 +408,64 @@ export const cassandraSpringBootUtils = {
 
   isDateField(field) {
     const annotation = field.options?.customAnnotation[2];
-    return annotation === "UTC_DATE";
+    return annotation === 'UTC_DATE';
   },
 
   isTimeField(field) {
     const annotation = field.options?.customAnnotation[2];
-    return annotation === "UTC_DATETIME";
+    return annotation === 'UTC_DATETIME';
   },
 
   isBlobFieldContentType(field, contentType) {
     const cassandraNameAnnotation = field.options?.customAnnotation[1];
     const contentTypeAnnotation = field.options?.customAnnotation[2];
 
-    return (
-      cassandraNameAnnotation === "CassandraType.Name.BLOB" &&
-      contentTypeAnnotation === contentType
-    );
+    return cassandraNameAnnotation === 'CassandraType.Name.BLOB' && contentTypeAnnotation === contentType;
   },
 
   isTimeUuidField(field) {
     const annotation = field.options?.customAnnotation[1];
-    return annotation === "CassandraType.Name.TIMEUUID";
+    return annotation === 'CassandraType.Name.TIMEUUID';
   },
 
   isUuidField(field) {
     const annotation = field.options?.customAnnotation[1];
-    return annotation === "CassandraType.Name.UUID";
+    return annotation === 'CassandraType.Name.UUID';
   },
 
   isSetField(field) {
     const annotation = field.options?.customAnnotation[0];
-    return annotation === "CassandraType.Name.SET";
+    return annotation === 'CassandraType.Name.SET';
   },
 
   isMapField(field) {
     const annotation = field.options?.customAnnotation[0];
-    return annotation === "CassandraType.Name.MAP";
+    return annotation === 'CassandraType.Name.MAP';
   },
 
   isMapBooleanField(field) {
     const annotation = field.options?.customAnnotation[0];
     const annotation2 = field.options?.customAnnotation[1];
-    return (
-      annotation === "CassandraType.Name.MAP" &&
-      annotation2 === "CassandraType.Name.BOOLEAN"
-    );
+    return annotation === 'CassandraType.Name.MAP' && annotation2 === 'CassandraType.Name.BOOLEAN';
   },
 
   isMapNumberField(field) {
     const annotation = field.options?.customAnnotation[0];
     const annotation2 = field.options?.customAnnotation[1];
-    return (
-      annotation === "CassandraType.Name.MAP" &&
-      annotation2 === "CassandraType.Name.DECIMAL"
-    );
+    return annotation === 'CassandraType.Name.MAP' && annotation2 === 'CassandraType.Name.DECIMAL';
   },
 
   isMapDayjsField(field) {
     const annotation = field.options?.customAnnotation[0];
     const annotation2 = field.options?.customAnnotation[1];
     const annotation3 = field.options?.customAnnotation[2];
-    return (
-      annotation === "CassandraType.Name.MAP" &&
-      annotation2 === "CassandraType.Name.BIGINT" &&
-      annotation3 === "UTC_DATETIME"
-    );
+    return annotation === 'CassandraType.Name.MAP' && annotation2 === 'CassandraType.Name.BIGINT' && annotation3 === 'UTC_DATETIME';
   },
 
   isMapStringField(field) {
     const annotation = field.options?.customAnnotation[0];
     const annotation2 = field.options?.customAnnotation[1];
-    return (
-      annotation === "CassandraType.Name.MAP" &&
-      annotation2 === "CassandraType.Name.TEXT"
-    );
+    return annotation === 'CassandraType.Name.MAP' && annotation2 === 'CassandraType.Name.TEXT';
   },
 
   processFieldTypeAttributes(field) {
@@ -571,24 +498,24 @@ export const cassandraSpringBootUtils = {
     } else if (this.isTimeUuidField(field)) {
       field.fieldTypeTemporal = true;
       field.fieldTypeTimeUuidSaathratri = true;
-    } else if (field.fieldType === "BigDecimal") {
+    } else if (field.fieldType === 'BigDecimal') {
       field.fieldTypeBigDecimalSaathratri = true;
-    } else if (this.isBlobFieldContentType(field, "image")) {
-      field.fieldTypeBlobContent = "image";
+    } else if (this.isBlobFieldContentType(field, 'image')) {
+      field.fieldTypeBlobContent = 'image';
       field.fieldTypeByteBuffer = true;
       field.fieldWithContentType = true;
       field.fieldTypeBinarySaathratri = true;
       field.blobContentTypeTextSaathratri = false;
       field.blobContentTypeImage = true;
-    } else if (this.isBlobFieldContentType(field, "text")) {
-      field.fieldTypeBlobContent = "text";
+    } else if (this.isBlobFieldContentType(field, 'text')) {
+      field.fieldTypeBlobContent = 'text';
       field.fieldTypeByteBuffer = true;
       field.fieldWithContentType = true;
       field.fieldTypeBinarySaathratri = true;
       field.blobContentTypeTextSaathratri = true;
       field.javaValueSample1 = `"${field.fieldName}1"`;
-    } else if (this.isBlobFieldContentType(field, "any")) {
-      field.fieldTypeBlobContent = "any";
+    } else if (this.isBlobFieldContentType(field, 'any')) {
+      field.fieldTypeBlobContent = 'any';
       field.fieldTypeByteBuffer = true;
       field.fieldWithContentType = true;
       field.fieldTypeBinarySaathratri = true;
@@ -603,23 +530,23 @@ export const cassandraSpringBootUtils = {
 
   getJavaValueGeneratorForType(type) {
     // Check for specific types and return their respective value generation expressions
-    if (type === "String") {
-      return "UUID.randomUUID().toString()";
-    } else if (type === "UUID") {
-      return "UUID.randomUUID()";
-    } else if (type === "Integer") {
-      return "intCount.incrementAndGet()";
-    } else if (type === "Long") {
-      return "longCount.incrementAndGet()";
-    } else if (type === "Boolean") {
-      return "false";
+    if (type === 'String') {
+      return 'UUID.randomUUID().toString()';
+    } else if (type === 'UUID') {
+      return 'UUID.randomUUID()';
+    } else if (type === 'Integer') {
+      return 'intCount.incrementAndGet()';
+    } else if (type === 'Long') {
+      return 'longCount.incrementAndGet()';
+    } else if (type === 'Boolean') {
+      return 'false';
     }
     // Optionally, handle unknown or unsupported types
-    return "UnsupportedType";
+    return 'UnsupportedType';
   },
 
   getLastUsedPortsFile(destinationPath) {
-    return path.join(destinationPath, "..", LAST_USED_PORT_FILE);
+    return path.join(destinationPath, '..', LAST_USED_PORT_FILE);
   },
 
   getApplicationPortData(destinationPath, _appName) {
@@ -629,7 +556,7 @@ export const cassandraSpringBootUtils = {
     // Read the last used port
     let portData;
     try {
-      portData = JSON.parse(fs.readFileSync(portFilePath, "utf8"));
+      portData = JSON.parse(fs.readFileSync(portFilePath, 'utf8'));
     } catch {
       portData = {};
     }
@@ -662,15 +589,13 @@ export const cassandraSpringBootUtils = {
     // Read the last used port
     let portData;
     try {
-      portData = JSON.parse(fs.readFileSync(portFilePath, "utf8"));
+      portData = JSON.parse(fs.readFileSync(portFilePath, 'utf8'));
 
       // Check if the appName exists in portData
       if (!portData[appName]) {
         portData[appName] = {
-          interNodeCommunicationNonSslPort:
-            portData.lastUsedInterNodeCommunicationNonSslPort,
-          interNodeCommunicationSslPort:
-            portData.lastUsedInterNodeCommunicationSslPort,
+          interNodeCommunicationNonSslPort: portData.lastUsedInterNodeCommunicationNonSslPort,
+          interNodeCommunicationSslPort: portData.lastUsedInterNodeCommunicationSslPort,
           jmxMonitoringPort: portData.lastUsedJmxMonitoringPort,
           nativeTransportCqlPort: portData.lastUsedNativeTransportCqlPort,
           thriftTransportPort: portData.lastUsedThriftTransportPort,
@@ -721,19 +646,15 @@ export const cassandraSpringBootUtils = {
    */
   buildJavaGet(reference) {
     let refPath;
-    if (typeof reference === "string") {
+    if (typeof reference === 'string') {
       refPath = [reference];
     } else if (Array.isArray(reference)) {
       refPath = reference;
     } else {
       /* Saathratri change: support both JHipster 8 (reference.name) and JHipster 9 (reference.propertyName/fieldName) */
-      refPath = [
-        reference.name || reference.propertyName || reference.fieldName,
-      ];
+      refPath = [reference.name || reference.propertyName || reference.fieldName];
     }
-    return refPath
-      .map((partialPath) => `get${this.javaBeanCase(partialPath)}()`)
-      .join(".");
+    return refPath.map(partialPath => `get${this.javaBeanCase(partialPath)}()`).join('.');
   },
 
   /**
@@ -744,15 +665,9 @@ export const cassandraSpringBootUtils = {
    * @param {string} type
    * @return {string}
    */
-  buildJavaGetter(
-    reference,
-    type = reference.type ||
-      reference.propertyDtoJavaType ||
-      reference.fieldType,
-  ) {
+  buildJavaGetter(reference, type = reference.type || reference.propertyDtoJavaType || reference.fieldType) {
     /* Saathratri change: support both JHipster 8 and 9 property names */
-    const refName =
-      reference.name || reference.propertyName || reference.fieldName;
+    const refName = reference.name || reference.propertyName || reference.fieldName;
     return `${type} get${this.javaBeanCase(refName)}()`;
   },
 
@@ -766,10 +681,8 @@ export const cassandraSpringBootUtils = {
    */
   buildJavaSetter(reference, valueDefinition) {
     /* Saathratri change: support both JHipster 8 and 9 property names */
-    const refName =
-      reference.name || reference.propertyName || reference.fieldName;
-    const refType =
-      reference.type || reference.propertyDtoJavaType || reference.fieldType;
+    const refName = reference.name || reference.propertyName || reference.fieldName;
+    const refType = reference.type || reference.propertyDtoJavaType || reference.fieldType;
     if (!valueDefinition) {
       valueDefinition = `${refType} ${refName}`;
     }
@@ -786,14 +699,13 @@ export const cassandraSpringBootUtils = {
    * @returns {string} java primary key value
    */
   getPrimaryKeyValue(primaryKey, databaseType, defaultValue = 1) {
-    if (typeof primaryKey === "object" && primaryKey.composite) {
+    if (typeof primaryKey === 'object' && primaryKey.composite) {
       return `new ${primaryKey.type}(${primaryKey.references
-        .map((ref) => this.getPrimaryKeyValue(ref, databaseType, defaultValue))
-        .join(", ")})`;
+        .map(ref => this.getPrimaryKeyValue(ref, databaseType, defaultValue))
+        .join(', ')})`;
     }
 
-    const primaryKeyType =
-      typeof primaryKey === "string" ? primaryKey : primaryKey.type;
+    const primaryKeyType = typeof primaryKey === 'string' ? primaryKey : primaryKey.type;
     return this.getJavaValueGeneratorForType(primaryKeyType);
   },
 };

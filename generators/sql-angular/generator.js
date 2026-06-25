@@ -402,7 +402,7 @@ export default class extends BaseApplicationGenerator {
 
             // Build per-microfrontend dropdown HTML
             const jhiPrefix = application.jhiPrefix || 'jhi';
-            const enableTranslation = application.enableTranslation;
+            const { enableTranslation } = application;
             let microfrontendMenus = '';
             for (const remote of sortedMicrofrontends) {
               const translationAttr = enableTranslation
@@ -1198,7 +1198,7 @@ export class LazyRelationshipEditModalComponent implements OnInit {
           const listTsFile = `${clientSrcDir}app/entities/${entity.entityFolderName}/list/${entity.entityFileName}.ts`;
           const listHtmlFile = `${clientSrcDir}app/entities/${entity.entityFolderName}/list/${entity.entityFileName}.html`;
           const detailTsFile = `${clientSrcDir}app/entities/${entity.entityFolderName}/detail/${entity.entityFileName}-detail.ts`;
-          const entityInstancePlural = entity.entityInstancePlural;
+          const { entityInstancePlural } = entity;
           const entityAngularName = entity.entityAngularName || entity.entityClass || entity.name;
 
           // --- Patch list component ---
