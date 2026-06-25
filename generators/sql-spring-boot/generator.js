@@ -514,15 +514,33 @@ export default class extends BaseApplicationGenerator {
               // Spring AI 2.0.0 GA's spring-ai-openai brings only openai-java-core; the okhttp
               // transport (com.openai.client.okhttp.OpenAIOkHttpClient, used by EmbeddingConfiguration)
               // must be declared explicitly. Pin to the 4.39.1 line spring-ai-openai:2.0.0 manages.
+              // openai-java-core (pulled in via both deps below) drags in the legacy
+              // io.swagger.core.v3:swagger-annotations jar, whose io.swagger.v3.oas.annotations.media.Schema
+              // collides with (and is older than) springdoc's swagger-annotations-jakarta. The stale Schema
+              // shadows the jakarta one, so springdoc's Schema.$dynamicRef() call throws NoSuchMethodError and
+              // GET /v3/api-docs returns 500. Exclude the legacy jar from both paths; the jakarta variant
+              // provides the same annotation classes.
               const openAiDeps =
                 '        <dependency>\n' +
                 '            <groupId>org.springframework.ai</groupId>\n' +
                 '            <artifactId>spring-ai-openai</artifactId>\n' +
+                '            <exclusions>\n' +
+                '                <exclusion>\n' +
+                '                    <groupId>io.swagger.core.v3</groupId>\n' +
+                '                    <artifactId>swagger-annotations</artifactId>\n' +
+                '                </exclusion>\n' +
+                '            </exclusions>\n' +
                 '        </dependency>\n' +
                 '        <dependency>\n' +
                 '            <groupId>com.openai</groupId>\n' +
                 '            <artifactId>openai-java-client-okhttp</artifactId>\n' +
                 '            <version>4.39.1</version>\n' +
+                '            <exclusions>\n' +
+                '                <exclusion>\n' +
+                '                    <groupId>io.swagger.core.v3</groupId>\n' +
+                '                    <artifactId>swagger-annotations</artifactId>\n' +
+                '                </exclusion>\n' +
+                '            </exclusions>\n' +
                 '        </dependency>\n';
               if (content.includes(depMgmtPattern)) {
                 content = content.replace(depMgmtPattern, `</dependencyManagement>\n\n    <dependencies>\n${openAiDeps}`);

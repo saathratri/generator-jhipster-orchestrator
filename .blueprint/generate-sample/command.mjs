@@ -26,7 +26,6 @@ const command = {
       type: String,
     },
   },
-  options: {},
   import: [GENERATOR_APP],
 };
 

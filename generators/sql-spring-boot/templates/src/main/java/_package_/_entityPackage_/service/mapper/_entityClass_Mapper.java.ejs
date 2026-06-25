@@ -181,6 +181,11 @@ public interface <%= entityClass %>Mapper extends EntityMapper<<%= dtoClass %>, 
       <%_ } else { _%>
     @Mapping(target = "<%= field.propertyName %>", source = "<%= field.propertyName %>")
       <%_ } _%>
+      <%_ /* Saathratri modification - blob fields have a companion <field>ContentType property that
+            is not a separate entry in `fields`; with ignoreByDefault it would map to null, so map it. */ _%>
+      <%_ if (field.fieldWithContentType) { _%>
+    @Mapping(target = "<%= field.propertyName %>ContentType", source = "<%= field.propertyName %>ContentType")
+      <%_ } _%>
   <%_ } _%>
   <%_ for (relationship of manyToOneRelationships) {
       let qualifiedByName = relationship.otherEntity.entityInstance + this._.upperFirst(relationship.otherEntityField);
@@ -271,6 +276,9 @@ public interface <%= entityClass %>Mapper extends EntityMapper<<%= dtoClass %>, 
       @Mapping(target = "<%= field.propertyName %>", expression = "<%- field.mapstructExpression %>")
       <%_ } else { _%>
       @Mapping(target = "<%= field.propertyName %>", source = "<%= field.propertyName %>")
+      <%_ } _%>
+      <%_ if (field.fieldWithContentType) { _%>
+      @Mapping(target = "<%= field.propertyName %>ContentType", source = "<%= field.propertyName %>ContentType")
       <%_ } _%>
     <%_ } _%>
     <%_ for (const relationship of dtoRelationships) { _%>

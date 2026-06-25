@@ -1272,11 +1272,20 @@ _%>
 
     @Test<%= transactionalAnnotation %>
     void getAll<%= entityClassPlural %>By<%= relationship.relationshipNameCapitalized %>IsEqualToSomething() <% if (!reactive) { %>throws Exception <% } %>{
+    <%_ /* Saathratri modification - for a self-referential relationship the relationship-target local
+          would otherwise share its name with the entity-under-test (persistInstance), shadowing it so
+          the entity-under-test is never persisted (getId() null). Use a distinct target variable name
+          for self relationships; for all others this is exactly relationshipFieldName (no change). */ _%>
+    <%_ const relTargetVar = relationship.otherEntity.entityClass === entityClass ? relationship.relationshipFieldName + 'RelationshipTarget' : relationship.relationshipFieldName; _%>
     <%_ if ((relationship.relationshipValidate && relationship.relationshipOneToOne) || relationship.id) { _%>
         // Get already existing entity
-        <%= relationship.otherEntity.persistClass %> <%= relationship.relationshipFieldName %> = <%= persistInstance %>.<%= relationship.propertySupplierName %>();
+        <%= relationship.otherEntity.persistClass %> <%= relTargetVar %> = <%= persistInstance %>.<%= relationship.propertySupplierName %>();
     <%_ } else { _%>
-      <%_ if (databaseTypeSql && !reactive) { _%>
+      <%_ /* Saathratri modification - the "reuse existing entity" path below assumes the
+            relationship-target variable and the entity-under-test are different variables. For a
+            self-referential relationship they share a name, so it would saveAndFlush(null); fall
+            back to the standard create-entity path for self relationships. */ _%>
+      <%_ if (databaseTypeSql && !reactive && relationship.otherEntity.entityClass !== entityClass) { _%>
         // Saathratri commented out - modification.
         <%= relationship.otherEntity.persistClass %> <%= relationship.relationshipFieldName %> = null; // Initialize the variable;
         if (TestUtil.findAll(em, <%= relationship.otherEntity.persistClass %>.class).isEmpty()) {
@@ -1286,30 +1295,30 @@ _%>
             <%= relationship.relationshipFieldName %> = TestUtil.findAll(em, <%= relationship.otherEntity.persistClass %>.class).get(0);
         }
       <%_ } else { _%>
-        <%= relationship.otherEntity.persistClass %> <%= relationship.relationshipFieldName %> = <%= relationship.otherEntity.entityNameCapitalized %>ResourceIT.createEntity(<% if (relationship.otherEntity.anyRelationshipIsRequired) { %>em<% } %>);
+        <%= relationship.otherEntity.persistClass %> <%= relTargetVar %> = <%= relationship.otherEntity.entityNameCapitalized %>ResourceIT.createEntity(<% if (relationship.otherEntity.anyRelationshipIsRequired) { %>em<% } %>);
       <%_ } _%>
       <%_ if(reactive) { _%>
-        <%= relationship.otherEntity.persistInstance %>Repository.<%= saveMethod %>(<%= relationship.relationshipFieldName %>)<%= callBlock %>;
+        <%= relationship.otherEntity.persistInstance %>Repository.<%= saveMethod %>(<%= relTargetVar %>)<%= callBlock %>;
       <%_ } else { _%>
-        em.persist(<%= relationship.relationshipFieldName %>);
+        em.persist(<%= relTargetVar %>);
         em.flush();
       <%_ } _%>
       <%_ if (!reactive && (relationship.relationshipManyToMany || relationship.relationshipOneToMany)) { _%>
-        <%= persistInstance %>.add<%= relationship.relationshipNameCapitalized %>(<%= relationship.relationshipFieldName %>);
+        <%= persistInstance %>.add<%= relationship.relationshipNameCapitalized %>(<%= relTargetVar %>);
       <%_ } else if (!reactive) { _%>
-        <%= persistInstance %>.<%= relationship.propertyConsumerName %>(<%= relationship.relationshipFieldName %>);
+        <%= persistInstance %>.<%= relationship.propertyConsumerName %>(<%= relTargetVar %>);
         <%_ if (!relationship.ownerSide) { _%>
-        <%= relationship.relationshipFieldName %>.<%= relationship.otherRelationship.propertyConsumerName %>(<%= persistInstance %>);
+        <%= relTargetVar %>.<%= relationship.otherRelationship.propertyConsumerName %>(<%= persistInstance %>);
         <%_ } _%>
       <%_ } else { _%>
-        <%= relationship.otherEntity.primaryKey.type %> <%= relationship.relationshipFieldName %>Id = <%= relationship.relationshipFieldName %>.<%- relationship.otherEntity.primaryKey.propertySupplierName %>();
+        <%= relationship.otherEntity.primaryKey.type %> <%= relationship.relationshipFieldName %>Id = <%= relTargetVar %>.<%- relationship.otherEntity.primaryKey.propertySupplierName %>();
         <%= persistInstance %>.<%- relationship.propertyConsumerName %>Id(<%= relationship.relationshipFieldName %>Id);
         inserted<%= persistClass %> = <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
       <%_ } _%>
     <%_ } _%>
     <%_ if(!reactive) { _%>
         <%= entityInstance %>Repository.saveAndFlush(<%= persistInstance %>);
-        <%= relationship.otherEntity.primaryKey.type %> <%= relationship.relationshipFieldName %>Id = <%= relationship.relationshipFieldName %>.<%- relationship.otherEntity.primaryKey.propertySupplierName %>();
+        <%= relationship.otherEntity.primaryKey.type %> <%= relationship.relationshipFieldName %>Id = <%= relTargetVar %>.<%- relationship.otherEntity.primaryKey.propertySupplierName %>();
     <%_ } _%>
         // Get all the <%= entityInstance %>List where <%= relationship.relationshipFieldName %> equals to <%= relationship.relationshipFieldName %>Id
         default<%= entityClass %>ShouldBeFound("<%= relationship.relationshipFieldName %>Id.equals=" + <%= relationship.relationshipFieldName %>Id);
