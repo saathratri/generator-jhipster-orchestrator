@@ -2,7 +2,6 @@
  * @type {import('generator-jhipster').JHipsterCommandDefinition}
  */
 const command = {
-  options: {},
   configs: {},
   arguments: {},
 };
