@@ -1012,7 +1012,7 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
         @RequestBody Set<${idType}> peerIds
     ) {
         LOG.debug("REST request to bulk-replace ${fld} of ${entityClass} {} with {} peer ids", id, peerIds == null ? 0 : peerIds.size());
-        ${entityInstance}Service.set${entityClass}${suffix}(id, peerIds == null ? java.util.Collections.emptySet() : peerIds);
+        ${entityInstance}Service.set${entityClass}${suffix}(id, peerIds == null ? java.util.Set.of() : peerIds);
         return ResponseEntity.noContent().build();
     }`;
               })
