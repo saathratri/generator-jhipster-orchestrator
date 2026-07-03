@@ -1,6 +1,6 @@
 {
   "name": "generator-jhipster-orchestrator",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Master JHipster blueprint that orchestrates SQL/pgvector and Cassandra blueprints into a multi-database microservices platform",
   "keywords": [
     "yeoman-generator",
