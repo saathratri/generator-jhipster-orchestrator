@@ -792,9 +792,15 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
         }
         // End Saathratri modification
 
-        // NOTE: @Type(PgVectorType.class) for vector fields is handled by the fragment template:
-        // templates/src/main/java/_package_/_entityPackage_/domain/_persistClass_.java.jhi.pgvector_type.ejs
-        // JHipster's fragment merging automatically includes it in the entity domain class.
+        // NOTE: @Type(PgVectorType.class) for vector fields is NOT emitted by this blueprint.
+        // Fragment templates and SBS overrides don't reach composed generators, so the
+        // .jhi.pgvector_type.ejs / .jhi.jakarta_persistence.ejs copies under templates/ are
+        // reference-only. The AUTHORITATIVE fix patches the base generator-jhipster
+        // jakarta_persistence template during the prepare phase — see
+        // saathratri-generator-patch-jakarta-persistence.js in the saathratri repo, called by
+        // saathratri-generator-code-prepare.{sh,bat}. (The 2026-06-27 regen ran a .bat that
+        // lacked the patch and shipped entities without @Type to prod — reads of populated
+        // vector columns then crash with "PSQLException: No results were returned by the query".)
 
         // Patch ExceptionTranslator to log stacktraces at ERROR level
         const exceptionTranslatorFile = `src/main/java/${packageFolder}/web/rest/errors/ExceptionTranslator.java`;
