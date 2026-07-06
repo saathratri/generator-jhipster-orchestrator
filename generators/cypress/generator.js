@@ -883,6 +883,156 @@ export default class extends BaseApplicationGenerator {
           this.log.info(`[cypress] Added UUID generate/reset e2e test to ${specPath}`);
         }
       },
+
+      // ---------------------------------------------------------------------------
+      // AI-search e2e tests for entities with vector fields. A SEPARATE task on
+      // purpose: the orchestrator blueprint's prepare step guards
+      // postWritingEntitiesTemplateTask to Cassandra apps only, while this task must
+      // also run for the orchestrator's SQL apps — it is dual-mode, keyed on
+      // application.databaseTypeCassandra (selectors and lifecycle assertions differ
+      // per stack).
+      //
+      // (1) Smoke test: drives the AI search bar, asserts /ai-search returns 200
+      //     (empty list without a key — still 200, verifies UI wiring).
+      // (2) Lifecycle test: proves embeddings are CREATED on insert and REGENERATED
+      //     on update, end-to-end. Needs the deterministic fake embedding model
+      //     (backend: OPENAI_EMBEDDING_FAKE=true; cypress: CYPRESS_fakeEmbeddings=true)
+      //     — skips itself otherwise.
+      //     - Cassandra: ANN is top-k with no distance threshold, so instead of a
+      //       stale-text negative assertion the test reads the vector back through
+      //       the DTO (Cassandra exposes it) and asserts it CHANGED after update.
+      //     - SQL: vectors are excluded from the DTO, but the pgvector search has a
+      //       distance threshold, so the stale-text negative assertion is
+      //       deterministic with the fake model's near-orthogonal vectors.
+      //     Composite-PK entities are skipped (single-segment id URL/cleanup only).
+      // ---------------------------------------------------------------------------
+      async aiSearchE2eEntitiesTemplateTask({ application, entities }) {
+        const { cypressDir } = application;
+        if (!cypressDir) return;
+
+        for (const entity of entities) {
+          if (entity.builtIn || !entity.entityFileName) continue;
+          if (entity.primaryKeySaathratri?.composite) continue;
+          const vectorField = (entity.fields ?? []).find(
+            f => f.fieldTypeVectorSaathratri || f.options?.customAnnotation?.[0] === 'VECTOR',
+          );
+          if (!vectorField) continue;
+
+          const specPath = `${cypressDir}e2e/entity/${entity.entityFileName}.cy.ts`;
+          if (!this.existsDestination(specPath)) continue;
+
+          const sourceField = vectorField.fieldName.replace(/Embedding$/, '');
+          const pkName = entity.primaryKey?.name ?? 'id';
+          const inst = entity.entityInstance;
+          const isCassandra = application.databaseTypeCassandra;
+          // Per-stack UI selectors: the cassandra blueprint's search bar has no data-cy
+          // hooks (#aiSearchQuery + .btn-warning), the ai-postgresql blueprint's does.
+          const inputSel = isCassandra ? "'#aiSearchQuery'" : '\'[data-cy="aiSearchInput"]\'';
+          const buttonSel = isCassandra ? '\'form[name="aiSearchForm"] button.btn-warning\'' : '\'[data-cy="aiSearchButton"]\'';
+
+          this.editFile(specPath, content => {
+            if (typeof content !== 'string' || content.includes('should run an AI semantic search')) return content;
+            const menuMatch = content.match(/cy\.clickOnEntityMenuItem\('([^']+)'\)/);
+            const menuArg = menuMatch ? menuMatch[1] : entity.entityFileName;
+            const apiUrlMatch = content.match(/cy\.intercept\('POST', '([^']+)'\)/);
+            const apiUrl = apiUrlMatch ? apiUrlMatch[1] : `/api/${entity.entityApiUrl}`;
+            const aiTest = `
+  it('should run an AI semantic search', () => {
+    cy.intercept('GET', /\\/api\\/${entity.entityApiUrl}\\/ai-search/).as('aiSearchRequest');
+    cy.visit('/');
+    cy.clickOnEntityMenuItem('${menuArg}');
+    cy.wait('@entitiesRequest', { timeout: 30000 });
+    cy.get(${inputSel}).type('semantic query');
+    cy.get(${buttonSel}).click();
+    cy.wait('@aiSearchRequest', { timeout: 30000 }).its('response.statusCode').should('eq', 200);
+  });
+`;
+            const cassandraLifecycle = `
+  it('should generate embeddings on create and regenerate on update (fake embedding model)', function () {
+    cy.env(['fakeEmbeddings']).then(({ fakeEmbeddings }) => {
+      if (!fakeEmbeddings) this.skip();
+    });
+    const createdText = 'cypress embed ' + Date.now();
+    const updatedText = 'cypress reembed ' + Date.now();
+    cy.authenticatedRequest({ method: 'POST', url: '${apiUrl}', body: { ...${inst}Sample, ${sourceField}: createdText } }).then(
+      ({ body }) => {
+        ${inst} = body;
+        // Embedding created on insert: the vector column is populated (exposed via the DTO).
+        cy.authenticatedRequest({ method: 'GET', url: '${apiUrl}/' + ${inst}.${pkName} }).then(({ body: created }) => {
+          expect(created.${vectorField.fieldName}, 'embedding generated on create').to.exist;
+          const embeddingBefore = JSON.stringify(created.${vectorField.fieldName});
+          // The ANN search finds the new row for its exact text.
+          cy.visit('/');
+          cy.clickOnEntityMenuItem('${menuArg}');
+          cy.wait('@entitiesRequest', { timeout: 30000 });
+          cy.intercept('GET', /\\/api\\/${entity.entityApiUrl}\\/ai-search/).as('aiSearchCreated');
+          cy.get(${inputSel}).clear().type(createdText);
+          cy.get(${buttonSel}).click();
+          cy.wait('@aiSearchCreated', { timeout: 30000 }).then(({ response }) => {
+            expect(response.statusCode).to.eq(200);
+            expect(response.body.map(row => row.${pkName})).to.include(${inst}.${pkName});
+          });
+          // Update the source text; the stored vector must be REGENERATED (value changes).
+          cy.authenticatedRequest({ method: 'PUT', url: '${apiUrl}/' + ${inst}.${pkName}, body: { ...created, ${sourceField}: updatedText } });
+          cy.authenticatedRequest({ method: 'GET', url: '${apiUrl}/' + ${inst}.${pkName} }).then(({ body: updated }) => {
+            expect(updated.${vectorField.fieldName}, 'embedding regenerated on update').to.exist;
+            expect(JSON.stringify(updated.${vectorField.fieldName})).to.not.eq(embeddingBefore);
+          });
+        });
+      },
+    );
+  });
+`;
+            const sqlLifecycle = `
+  it('should generate embeddings on create and regenerate on update (fake embedding model)', function () {
+    cy.env(['fakeEmbeddings']).then(({ fakeEmbeddings }) => {
+      if (!fakeEmbeddings) this.skip();
+    });
+    const createdText = 'cypress embed ' + Date.now();
+    const updatedText = 'cypress reembed ' + Date.now();
+    cy.authenticatedRequest({ method: 'POST', url: '${apiUrl}', body: { ...${inst}Sample, ${sourceField}: createdText } }).then(
+      ({ body }) => {
+        ${inst} = body;
+        cy.visit('/');
+        cy.clickOnEntityMenuItem('${menuArg}');
+        cy.wait('@entitiesRequest', { timeout: 30000 });
+        // Embedding created on insert: AI search finds the new row by its exact text.
+        cy.intercept('GET', /\\/api\\/${entity.entityApiUrl}\\/ai-search/).as('aiSearchCreated');
+        cy.get(${inputSel}).clear().type(createdText);
+        cy.get(${buttonSel}).click();
+        cy.wait('@aiSearchCreated', { timeout: 30000 }).then(({ response }) => {
+          expect(response.statusCode).to.eq(200);
+          expect(response.body.map(row => row.${pkName})).to.include(${inst}.${pkName});
+        });
+        // Update the source text through the API; the stored vector must be regenerated.
+        cy.authenticatedRequest({ method: 'PUT', url: '${apiUrl}/' + ${inst}.${pkName}, body: { ...${inst}, ${sourceField}: updatedText } });
+        cy.intercept('GET', /\\/api\\/${entity.entityApiUrl}\\/ai-search/).as('aiSearchUpdated');
+        cy.get(${inputSel}).clear().type(updatedText);
+        cy.get(${buttonSel}).click();
+        cy.wait('@aiSearchUpdated', { timeout: 30000 }).then(({ response }) => {
+          expect(response.statusCode).to.eq(200);
+          expect(response.body.map(row => row.${pkName})).to.include(${inst}.${pkName});
+        });
+        // The OLD text must no longer match: proves the vector was replaced, not kept.
+        cy.intercept('GET', /\\/api\\/${entity.entityApiUrl}\\/ai-search/).as('aiSearchStale');
+        cy.get(${inputSel}).clear().type(createdText);
+        cy.get(${buttonSel}).click();
+        cy.wait('@aiSearchStale', { timeout: 30000 }).then(({ response }) => {
+          expect(response.statusCode).to.eq(200);
+          expect(response.body.map(row => row.${pkName})).to.not.include(${inst}.${pkName});
+        });
+      },
+    );
+  });
+`;
+            const lifecycleTest = isCassandra ? cassandraLifecycle : sqlLifecycle;
+            const idx = content.lastIndexOf('});');
+            if (idx === -1) return content;
+            return content.slice(0, idx) + aiTest + lifecycleTest + content.slice(idx);
+          });
+          this.log.info(`[cypress] Added AI-search smoke + embedding-lifecycle e2e tests to ${specPath}`);
+        }
+      },
     });
   }
 

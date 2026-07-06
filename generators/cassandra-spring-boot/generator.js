@@ -193,6 +193,10 @@ export default class extends BaseApplicationGenerator {
                   ...javaTestPackageTemplatesBlock(),
                   templates: ['service/embedding/EmbeddingServiceTest.java'],
                 },
+                {
+                  // Checked-in template for the git-ignored .env (OpenAI API key); read by EmbeddingConfiguration
+                  templates: [{ sourceFile: 'env.example', destinationFile: '.env.example' }],
+                },
               ],
             },
             context: application,
@@ -228,7 +232,12 @@ export default class extends BaseApplicationGenerator {
                   ...javaMainPackageTemplatesBlock('_entityPackage_/'),
                   templates: [
                     'service/dto/_dtoClass_Id.java',
-                    /* saathratri-needle-cassandra-copy-dto-id-class */
+                    
+                    {
+                        file: "service/dto/_dtoClass_Id.java",
+                        renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}Id.java`,
+                    }
+
                   ],
                 },
                 {
@@ -236,7 +245,12 @@ export default class extends BaseApplicationGenerator {
                   ...javaMainPackageTemplatesBlock('_entityPackage_/'),
                   templates: [
                     'service/dto/_dtoClass_.java',
-                    /* saathratri-needle-cassandra-copy-dto-class */
+                    
+                    {
+                        file: "service/dto/_dtoClass_.java",
+                        renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}.java`,
+                    },
+
                     'service/mapper/_entityClass_Mapper.java',
                   ],
                 },
@@ -283,6 +297,13 @@ export default class extends BaseApplicationGenerator {
         }
 
         if (!application.hasVectorFieldsSaathratri) return;
+
+        // Keep the local .env (OpenAI API key; see .env.example) out of version control.
+        this.editFile('.gitignore', content =>
+          /^\.env$/m.test(content)
+            ? content
+            : content + '\n# Local secrets (OpenAI API key) — see .env.example; never commit\n.env\n'
+        );
 
         // Add Spring AI BOM and OpenAI dependency to pom.xml
         if (application.buildToolMaven) {

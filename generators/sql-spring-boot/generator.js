@@ -313,6 +313,11 @@ export default class extends BaseApplicationGenerator {
                       sourceFile: 'src/test/java/_package_/service/embedding/EmbeddingServiceTest.java.ejs',
                       destinationFile: ctx => `src/test/java/${ctx.packageFolder}/service/embedding/EmbeddingServiceTest.java`,
                     },
+                    {
+                      // Checked-in template for the git-ignored .env (OpenAI API key); read by EmbeddingConfiguration
+                      sourceFile: 'env.example',
+                      destinationFile: '.env.example',
+                    },
                   ],
                 },
               ],
@@ -373,6 +378,15 @@ export default class extends BaseApplicationGenerator {
     return this.asPostWritingTaskGroup({
       async postWritingTemplateTask({ application }) {
         const pomFile = 'pom.xml';
+
+        // Keep the local .env (OpenAI API key; see .env.example) out of version control.
+        if (application.hasVectorFieldsSaathratri) {
+          this.editFile('.gitignore', content =>
+            /^\.env$/m.test(content)
+              ? content
+              : content + '\n# Local secrets (OpenAI API key) — see .env.example; never commit\n.env\n'
+          );
+        }
 
         // Patch maven-compiler-plugin with fork mode and increased memory for MapStruct
         this.editFile(pomFile, content => {

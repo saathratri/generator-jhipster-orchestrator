@@ -125,6 +125,9 @@ import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+  <%_ if (!serviceNo && !implementsEagerLoadApis) { _%>
+import <%= entityAbsolutePackage %>.service.<%= entityClass %>Service;
+  <%_ } _%>
 <%_ } _%>
 import com.fasterxml.jackson.databind.ObjectMapper;
 <%_ if (searchEngineElasticsearch) { _%>
@@ -2122,5 +2125,83 @@ _%>
         assertThat(vectorText.substring(1, vectorText.length() - 1).split(","))
             .hasSize(DEFAULT_<%= vectorFieldsSaathratri[0].fieldNameUnderscored.toUpperCase() %>.length);
     }
+<%_ /* Embedding lifecycle: the service must generate embeddings on save and regenerate them on
+     update and partialUpdate. Tested at the service layer (where generation lives) with the
+     EmbeddingModel mocked, so the suite stays offline. */ _%>
+  <%_ if (!serviceNo) {
+        const vf0Saathratri = vectorFieldsSaathratri[0];
+        const vf0ConstSaathratri = 'DEFAULT_' + vf0Saathratri.fieldNameUnderscored.toUpperCase();
+        const serviceFieldSaathratri = entityInstance + 'ServiceSaathratri';
+        const mapperFieldSaathratri = entityInstance + 'Mapper';
+  _%>
+
+    // ---- Embedding lifecycle: generated on create, regenerated on update / partial update ----
+
+    @Autowired
+    private <%= entityClass %>Service <%= serviceFieldSaathratri %>;
+
+    @Test<%- transactionalAnnotation %>
+    void serviceSaveGeneratesEmbeddingsFromSourceFields() {
+        // The embedding model is stubbed, so save() must populate every vector field from its source text.
+        when(embeddingModelSaathratriMock.embedForResponse(any()))
+            .thenReturn(new EmbeddingResponse(List.of(new Embedding(<%= vf0ConstSaathratri %>, 0))));
+
+    <%_ if (dtoMapstruct) { _%>
+        <%= dtoClass %> saved = <%= serviceFieldSaathratri %>.save(<%= mapperFieldSaathratri %>.toDto(<%= persistInstance %>));
+    <%_ } else { _%>
+        <%= persistClass %> saved = <%= serviceFieldSaathratri %>.save(<%= persistInstance %>);
+    <%_ } _%>
+        inserted<%= persistClass %> = <%= entityInstance %>Repository.findById(saved.<%= primaryKey.propertySupplierName %>()).orElseThrow();
+
+    <%_ for (const vectorField of vectorFieldsSaathratri) { _%>
+        assertThat(inserted<%= persistClass %>.get<%= vectorField.fieldNameCapitalized %>()).containsExactly(<%= vf0ConstSaathratri %>);
+    <%_ } _%>
+    }
+    <%_ if (updatableEntity) { _%>
+
+    @Test<%- transactionalAnnotation %>
+    void serviceUpdateRegeneratesEmbeddings() {
+        <%= persistInstance %>.set<%= vf0Saathratri.fieldNameCapitalized %>(<%= vf0ConstSaathratri %>);
+        inserted<%= persistClass %> = <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>);
+        // The model now embeds to a DIFFERENT vector; update() must overwrite the stored one.
+        float[] regenerated = sampleVectorSaathratri(<%= vf0Saathratri.vectorDimensionSaathratri %>, 0.20f);
+        when(embeddingModelSaathratriMock.embedForResponse(any()))
+            .thenReturn(new EmbeddingResponse(List.of(new Embedding(regenerated, 0))));
+
+    <%_ if (dtoMapstruct) { _%>
+        <%= serviceFieldSaathratri %>.update(<%= mapperFieldSaathratri %>.toDto(inserted<%= persistClass %>));
+    <%_ } else { _%>
+        <%= serviceFieldSaathratri %>.update(inserted<%= persistClass %>);
+    <%_ } _%>
+
+        <%= persistClass %> persisted = <%= entityInstance %>Repository
+            .findById(inserted<%= persistClass %>.<%= primaryKey.propertySupplierName %>())
+            .orElseThrow();
+        assertThat(persisted.get<%= vf0Saathratri.fieldNameCapitalized %>()).containsExactly(regenerated);
+    }
+
+    @Test<%- transactionalAnnotation %>
+    void servicePartialUpdateRegeneratesEmbeddings() {
+        // Guards the PATCH staleness fix: without regeneration in partialUpdate, the previously
+        // stored vector would survive a patch that changes its source text.
+        <%= persistInstance %>.set<%= vf0Saathratri.fieldNameCapitalized %>(<%= vf0ConstSaathratri %>);
+        inserted<%= persistClass %> = <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>);
+        float[] regenerated = sampleVectorSaathratri(<%= vf0Saathratri.vectorDimensionSaathratri %>, 0.20f);
+        when(embeddingModelSaathratriMock.embedForResponse(any()))
+            .thenReturn(new EmbeddingResponse(List.of(new Embedding(regenerated, 0))));
+
+    <%_ if (dtoMapstruct) { _%>
+        <%= serviceFieldSaathratri %>.partialUpdate(<%= mapperFieldSaathratri %>.toDto(inserted<%= persistClass %>)).orElseThrow();
+    <%_ } else { _%>
+        <%= serviceFieldSaathratri %>.partialUpdate(inserted<%= persistClass %>).orElseThrow();
+    <%_ } _%>
+
+        <%= persistClass %> persisted = <%= entityInstance %>Repository
+            .findById(inserted<%= persistClass %>.<%= primaryKey.propertySupplierName %>())
+            .orElseThrow();
+        assertThat(persisted.get<%= vf0Saathratri.fieldNameCapitalized %>()).containsExactly(regenerated);
+    }
+    <%_ } _%>
+  <%_ } _%>
 <%_ } _%>
 }

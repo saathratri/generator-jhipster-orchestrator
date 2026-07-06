@@ -245,6 +245,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import com.datastax.oss.driver.api.core.data.CqlVector;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+  <%_ if (!implementsEagerLoadApis) { _%>
+import <%= entityAbsolutePackage %>.service.<%= entityClass %>Service;
+  <%_ } _%>
 <%_ } _%>
 <%_ if (!reactive) { _%>
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -2143,5 +2146,89 @@ _%>
         <%= persistClass %> persisted = getPersisted<%= persistClass %>(<%= persistInstance %>);
         assertThat(persisted.get<%= vf.fieldNameCapitalized %>()).isEqualTo(embedding);
     }
+<%_ /* Embedding lifecycle: the service must generate embeddings on save and regenerate them on
+     update and partialUpdate. Tested at the service layer (where generation lives) with the
+     EmbeddingModel mocked, so the suite stays offline. Note: the single stub vector uses the
+     first vector field's dimension, so assertions cover the fields sharing that dimension. */ _%>
+  <%_ const serviceFieldSaathratri = entityInstance + 'ServiceSaathratri';
+      const mapperFieldSaathratri = entityInstance + 'Mapper';
+      const sameDimVectorFieldsSaathratri = vectorFieldsSaathratri.filter(v => v.vectorDimensionSaathratri === vf.vectorDimensionSaathratri);
+  _%>
+
+    // ---- Embedding lifecycle: generated on create, regenerated on update / partial update ----
+
+    @Autowired
+    private <%= entityClass %>Service <%= serviceFieldSaathratri %>;
+
+    private static CqlVector<Float> toCqlVectorSaathratri(float[] floats) {
+        java.util.List<Float> values = new java.util.ArrayList<>(floats.length);
+        for (float f : floats) {
+            values.add(f);
+        }
+        return CqlVector.newInstance(values);
+    }
+
+    @Test
+    void serviceSaveGeneratesEmbeddingsFromSourceFields() {
+        // The embedding model is stubbed, so save() must populate the vector field(s) from their source text.
+        float[] generated = sampleFloatsSaathratri(<%= vf.vectorDimensionSaathratri %>);
+        when(embeddingModelSaathratriMock.embed(anyString())).thenReturn(generated);
+
+  <%_ if (dtoMapstruct) { _%>
+        <%= serviceFieldSaathratri %>.save(<%= mapperFieldSaathratri %>.toDto(<%= persistInstance %>));
+  <%_ } else { _%>
+        <%= serviceFieldSaathratri %>.save(<%= persistInstance %>);
+  <%_ } _%>
+
+        <%= persistClass %> persisted = getPersisted<%= persistClass %>(<%= persistInstance %>);
+  <%_ for (const vf2 of sameDimVectorFieldsSaathratri) { _%>
+        assertThat(persisted.get<%= vf2.fieldNameCapitalized %>()).isEqualTo(toCqlVectorSaathratri(generated));
+  <%_ } _%>
+    }
+  <%_ if (updatableEntity) { _%>
+
+    @Test
+    void serviceUpdateRegeneratesEmbeddings() {
+        <%= persistInstance %>.set<%= vf.fieldNameCapitalized %>(sampleCqlVectorSaathratri(<%= vf.vectorDimensionSaathratri %>));
+        <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+        // The model now embeds to a DIFFERENT vector; update() must overwrite the stored one.
+        float[] regenerated = new float[<%= vf.vectorDimensionSaathratri %>];
+        for (int i = 0; i < regenerated.length; i++) {
+            regenerated[i] = 0.20f + ((i % 8) * 0.01f);
+        }
+        when(embeddingModelSaathratriMock.embed(anyString())).thenReturn(regenerated);
+
+  <%_ if (dtoMapstruct) { _%>
+        <%= serviceFieldSaathratri %>.update(<%= mapperFieldSaathratri %>.toDto(<%= persistInstance %>));
+  <%_ } else { _%>
+        <%= serviceFieldSaathratri %>.update(<%= persistInstance %>);
+  <%_ } _%>
+
+        <%= persistClass %> persisted = getPersisted<%= persistClass %>(<%= persistInstance %>);
+        assertThat(persisted.get<%= vf.fieldNameCapitalized %>()).isEqualTo(toCqlVectorSaathratri(regenerated));
+    }
+
+    @Test
+    void servicePartialUpdateRegeneratesEmbeddings() {
+        // Guards the PATCH staleness fix: without regeneration in partialUpdate, the previously
+        // stored vector would survive a patch that changes its source text.
+        <%= persistInstance %>.set<%= vf.fieldNameCapitalized %>(sampleCqlVectorSaathratri(<%= vf.vectorDimensionSaathratri %>));
+        <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+        float[] regenerated = new float[<%= vf.vectorDimensionSaathratri %>];
+        for (int i = 0; i < regenerated.length; i++) {
+            regenerated[i] = 0.20f + ((i % 8) * 0.01f);
+        }
+        when(embeddingModelSaathratriMock.embed(anyString())).thenReturn(regenerated);
+
+  <%_ if (dtoMapstruct) { _%>
+        <%= serviceFieldSaathratri %>.partialUpdate(<%= mapperFieldSaathratri %>.toDto(<%= persistInstance %>)).orElseThrow();
+  <%_ } else { _%>
+        <%= serviceFieldSaathratri %>.partialUpdate(<%= persistInstance %>).orElseThrow();
+  <%_ } _%>
+
+        <%= persistClass %> persisted = getPersisted<%= persistClass %>(<%= persistInstance %>);
+        assertThat(persisted.get<%= vf.fieldNameCapitalized %>()).isEqualTo(toCqlVectorSaathratri(regenerated));
+    }
+  <%_ } _%>
 <%_ } _%>
 }

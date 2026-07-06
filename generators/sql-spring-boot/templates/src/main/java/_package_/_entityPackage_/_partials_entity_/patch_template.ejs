@@ -44,6 +44,15 @@ _%>
       <%_ } _%>
     <%_ } %>
   <% } %>
+<%_ /* Saathratri: Regenerate vector embeddings on partial update — without this, a PATCH that
+     changes a source text field (e.g. name/description) leaves the previously stored vector
+     stale. Regenerate from the merged entity state, mirroring save()/update(). */ _%>
+<%_
+const vectorFieldsForPatch = typeof fields !== 'undefined' ? fields.filter(f => f.fieldTypeVectorSaathratri === true) : [];
+if (vectorFieldsForPatch.length > 0 && !reactive && isService) { _%>
+    generateEmbeddings(existing<%= entityClass %>);
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
     return existing<%= entityClass %>;
     })
   <%_ } %>

@@ -3,12 +3,23 @@
 -%>
 package <%= packageName %>.config;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.openai.client.OpenAIClient;
 import com.openai.client.okhttp.OpenAIOkHttpClient;
-import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.document.MetadataMode;
+import org.springframework.ai.embedding.Embedding;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.openai.OpenAiEmbeddingModel;
 import org.springframework.ai.openai.OpenAiEmbeddingOptions;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +30,18 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuration for the AI embedding service.
  * Manually creates the EmbeddingModel bean to gracefully handle missing API keys.
+ *
+ * The OpenAI API key is resolved from, in order:
+ * <ol>
+ *   <li>the {@code spring.ai.openai.api-key} property (application yml)</li>
+ *   <li>the {@code OPENAI_API_KEY} environment variable</li>
+ *   <li>a git-ignored {@code .env} file in the working directory (copy {@code .env.example})</li>
+ * </ol>
+ *
+ * For e2e tests and local development without a key, set {@code openai.embedding.fake=true}
+ * (or the {@code OPENAI_EMBEDDING_FAKE} environment variable) to use a deterministic offline
+ * embedding model: the same text always embeds to the same unit vector, different texts to
+ * near-orthogonal ones, so semantic search finds exact-text matches without calling OpenAI.
  */
 @Configuration
 public class EmbeddingConfiguration {
@@ -28,20 +51,120 @@ public class EmbeddingConfiguration {
     @Value("${spring.ai.openai.api-key:${OPENAI_API_KEY:}}")
     private String openaiApiKey;
 
+    @Value("${openai.embedding.dimensions:1536}")
+    private Integer dimensions;
+
+    @Value("${openai.embedding.fake:${OPENAI_EMBEDDING_FAKE:false}}")
+    private boolean fakeEmbeddings;
+
     @Bean
     @ConditionalOnMissingBean(EmbeddingModel.class)
     public EmbeddingModel embeddingModel() {
-        if (openaiApiKey == null || openaiApiKey.isBlank()) {
+        if (fakeEmbeddings) {
+            LOG.warn(
+                "Using FAKE deterministic embedding model ({} dimensions) — openai.embedding.fake is enabled. " +
+                "Intended for e2e tests and offline development only.",
+                dimensions
+            );
+            return fakeEmbeddingModel();
+        }
+        String apiKey = openaiApiKey;
+        if (apiKey == null || apiKey.isBlank()) {
+            apiKey = readApiKeyFromDotEnv();
+            if (apiKey != null) {
+                LOG.info("Loaded OpenAI API key from .env file");
+            }
+        }
+        if (apiKey == null || apiKey.isBlank()) {
             LOG.warn("OpenAI API key not configured. AI search features will be unavailable. " +
-                     "Set the spring.ai.openai.api-key property or SPRING_AI_OPENAI_API_KEY environment variable.");
+                     "Set the OPENAI_API_KEY environment variable, add spring.ai.openai.api-key to application-dev.yml, " +
+                     "or copy .env.example to .env (git-ignored) and set OPENAI_API_KEY there.");
             return null;
         }
 
         LOG.info("Configuring OpenAI embedding model for AI search features.");
-        OpenAIClient openAiClient = OpenAIOkHttpClient.builder().apiKey(openaiApiKey).build();
+        OpenAIClient openAiClient = OpenAIOkHttpClient.builder().apiKey(apiKey).build();
         OpenAiEmbeddingOptions options = OpenAiEmbeddingOptions.builder()
             .model("text-embedding-3-small")
             .build();
         return new OpenAiEmbeddingModel(openAiClient, MetadataMode.EMBED, options);
+    }
+
+    /**
+     * Deterministic offline stand-in for the OpenAI model: seeds a PRNG with the normalized
+     * text and emits a unit vector. Same text → same vector (cosine distance 0); different
+     * texts → near-orthogonal vectors in high dimensions (cosine distance ≈ 1).
+     */
+    private EmbeddingModel fakeEmbeddingModel() {
+        final int dimension = dimensions;
+        return new EmbeddingModel() {
+            @Override
+            public EmbeddingResponse call(EmbeddingRequest request) {
+                List<Embedding> embeddings = new ArrayList<>();
+                List<String> instructions = request.getInstructions();
+                for (int i = 0; i < instructions.size(); i++) {
+                    embeddings.add(new Embedding(deterministicEmbedding(instructions.get(i), dimension), i));
+                }
+                return new EmbeddingResponse(embeddings);
+            }
+
+            @Override
+            public float[] embed(Document document) {
+                return deterministicEmbedding(document.getText(), dimension);
+            }
+        };
+    }
+
+    /**
+     * Build the deterministic unit vector for the given text. Public and static so tests can
+     * assert the determinism contract directly.
+     */
+    public static float[] deterministicEmbedding(String text, int dimension) {
+        String normalized = text == null ? "" : text.trim().toLowerCase(Locale.ROOT);
+        Random random = new Random(normalized.hashCode());
+        float[] vector = new float[dimension];
+        double norm = 0;
+        for (int i = 0; i < dimension; i++) {
+            vector[i] = (float) random.nextGaussian();
+            norm += vector[i] * vector[i];
+        }
+        norm = Math.sqrt(norm);
+        for (int i = 0; i < dimension; i++) {
+            vector[i] /= (float) norm;
+        }
+        return vector;
+    }
+
+    /**
+     * Fallback: read OPENAI_API_KEY from a git-ignored .env file in the working directory.
+     * Supports an optional {@code export } prefix and single- or double-quoted values.
+     */
+    private String readApiKeyFromDotEnv() {
+        Path envFile = Path.of(".env");
+        if (!Files.isReadable(envFile)) {
+            return null;
+        }
+        try {
+            for (String line : Files.readAllLines(envFile)) {
+                String trimmed = line.trim();
+                if (trimmed.startsWith("export ")) {
+                    trimmed = trimmed.substring("export ".length()).trim();
+                }
+                if (!trimmed.startsWith("OPENAI_API_KEY=")) {
+                    continue;
+                }
+                String value = trimmed.substring("OPENAI_API_KEY=".length()).trim();
+                if (
+                    value.length() >= 2 &&
+                    ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'")))
+                ) {
+                    value = value.substring(1, value.length() - 1);
+                }
+                return value.isBlank() ? null : value;
+            }
+        } catch (IOException e) {
+            LOG.warn("Could not read .env file: {}", e.getMessage());
+        }
+        return null;
     }
 }
