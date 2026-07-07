@@ -207,9 +207,16 @@ The real exercise is the example workspace's `saathratri-apps-orchestrator-mf.jd
 master script from the project root:
 
 ```bash
-sh saathratri-generate-code-dev-main.sh       # macOS/Linux
-.\saathratri-generate-code-dev-main.bat       # Windows (PowerShell — leading `.\` required)
+sh saathratri-generate-code-dev-orchestrator.sh       # macOS/Linux
+.\saathratri-generate-code-dev-orchestrator.bat       # Windows (PowerShell — leading `.\` required)
 ```
+
+Each generated service (every microservice plus the gateway) also receives `start.sh` / `start.bat`
+dev launchers, written by the `spring-boot-orchestrator` sub-generator (`writeDevStartScripts` in
+`generators/spring-boot-orchestrator/generator.js`). They run `./mvnw spring-boot:run` with the
+Spring Boot `dev` profile and remote debugging enabled on port `serverPort + 10000` (e.g. HTTP 8081
+→ debug 18081), so each service gets a unique, predictable debug address. Infra (Keycloak, JHipster
+Registry, databases) must already be running.
 
 The generated SQL services (gateway, organizations, maintenance) and Cassandra services (cassandrablog,
 cassandrastore) are the **same output** the two base blueprints produce. So their backend
@@ -241,7 +248,7 @@ the orchestrator's copies** — they're overwritten next regen.
 
 If a generated-app cypress spec needs a new patch, decide first whether it's a Cassandra-specific
 (widgets, composite keys, UTC_DATETIME) or SQL-specific (FK labels, microfrontend navbar) concern, then
-edit the matching base repo's cypress generator and re-run `saathratri-generate-code-dev-main.sh`.
+edit the matching base repo's cypress generator and re-run `saathratri-generate-code-dev-orchestrator.sh`.
 
 ---
 
@@ -256,7 +263,8 @@ npx vitest                                         # watch mode while iterating 
 
 # ----- re-assemble the blueprint (refreshes sql-*/cassandra-* + renames spec namespaces) -----
 # run from the project root, as part of the master regen:
-sh saathratri-generate-code-dev-main.sh
+sh saathratri-generate-code-dev-orchestrator.sh       # macOS/Linux
+.\saathratri-generate-code-dev-orchestrator.bat       # Windows
 
 # ----- generated-app layers: see the companion guides -----
 #   generator-jhipster-cassandra/TESTING.md     (Cassandra services)
