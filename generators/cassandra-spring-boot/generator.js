@@ -232,12 +232,11 @@ export default class extends BaseApplicationGenerator {
                   ...javaMainPackageTemplatesBlock('_entityPackage_/'),
                   templates: [
                     'service/dto/_dtoClass_Id.java',
-                    
-                    {
-                        file: "service/dto/_dtoClass_Id.java",
-                        renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}Id.java`,
-                    }
 
+                    {
+                      file: 'service/dto/_dtoClass_Id.java',
+                      renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}Id.java`,
+                    },
                   ],
                 },
                 {
@@ -245,10 +244,10 @@ export default class extends BaseApplicationGenerator {
                   ...javaMainPackageTemplatesBlock('_entityPackage_/'),
                   templates: [
                     'service/dto/_dtoClass_.java',
-                    
+
                     {
-                        file: "service/dto/_dtoClass_.java",
-                        renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}.java`,
+                      file: 'service/dto/_dtoClass_.java',
+                      renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}.java`,
                     },
 
                     'service/mapper/_entityClass_Mapper.java',
@@ -300,9 +299,7 @@ export default class extends BaseApplicationGenerator {
 
         // Keep the local .env (OpenAI API key; see .env.example) out of version control.
         this.editFile('.gitignore', content =>
-          /^\.env$/m.test(content)
-            ? content
-            : content + '\n# Local secrets (OpenAI API key) — see .env.example; never commit\n.env\n'
+          /^\.env$/m.test(content) ? content : `${content}\n# Local secrets (OpenAI API key) — see .env.example; never commit\n.env\n`,
         );
 
         // Add Spring AI BOM and OpenAI dependency to pom.xml

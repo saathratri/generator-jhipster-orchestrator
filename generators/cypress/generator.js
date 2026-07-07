@@ -913,9 +913,7 @@ export default class extends BaseApplicationGenerator {
         for (const entity of entities) {
           if (entity.builtIn || !entity.entityFileName) continue;
           if (entity.primaryKeySaathratri?.composite) continue;
-          const vectorField = (entity.fields ?? []).find(
-            f => f.fieldTypeVectorSaathratri || f.options?.customAnnotation?.[0] === 'VECTOR',
-          );
+          const vectorField = (entity.fields ?? []).find(f => f.fieldTypeVectorSaathratri || f.options?.customAnnotation?.[0] === 'VECTOR');
           if (!vectorField) continue;
 
           const specPath = `${cypressDir}e2e/entity/${entity.entityFileName}.cy.ts`;
