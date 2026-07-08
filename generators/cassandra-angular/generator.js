@@ -496,6 +496,32 @@ Infinite Scroll Styles
             return content;
           });
 
+          // Patch core/microfrontend/index.ts - cache-bust remoteEntry.js fetches.
+          // remoteEntry.js has a stable URL but new content on every deploy, and the prod
+          // CachingHttpHeadersFilter serves it with a multi-year max-age — so CDN edges and
+          // browsers keep executing a stale copy whose hashed chunk names no longer exist
+          // (ChunkLoadError → the microfrontend silently vanishes from the navbar).
+          // A per-page-load query param forces a fresh fetch on every load.
+          if (isMicrofrontendGateway) {
+            const microfrontendIndexFile = `${clientSrcDir}app/core/microfrontend/index.ts`;
+            this.editFile(microfrontendIndexFile, content => {
+              if (!content.includes('remoteEntryCacheBust')) {
+                content = content.replace(
+                  "import NavbarItem from 'app/layouts/navbar/navbar-item.model';",
+                  "import NavbarItem from 'app/layouts/navbar/navbar-item.model';\n\n" +
+                    '// Saathratri modification - remoteEntry.js is mutable content at a stable URL;\n' +
+                    '// bust CDN/browser caches once per page load so deploys are picked up immediately.\n' +
+                    'const remoteEntryCacheBust = Date.now();',
+                );
+                content = content.replace(
+                  /remoteEntry: `\.\/services\/\$\{service\}\/remoteEntry\.js`/g,
+                  'remoteEntry: `./services/${service}/remoteEntry.js?ts=${remoteEntryCacheBust}`',
+                );
+              }
+              return content;
+            });
+          }
+
           // Patch navbar.html - restructure entity menu into per-microfrontend grouped dropdowns
           if (isMicrofrontendGateway && application.microfrontends) {
             this.editFile(navbarHtmlFile, content => {
