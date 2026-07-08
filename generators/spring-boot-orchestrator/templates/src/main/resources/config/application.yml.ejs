@@ -441,9 +441,9 @@ jhipster:
   security:
 <%_ if(!skipClient) { _%>
     <%_ if (clientTheme !== 'none') { _%>
-    content-security-policy: "default-src 'self'; frame-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://storage.googleapis.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https://s.gravatar.com https://cdn.auth0.com; font-src 'self' https://fonts.gstatic.com data:"
+    content-security-policy: "default-src 'self'; frame-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://storage.googleapis.com https://static.cloudflareinsights.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data: https://s.gravatar.com https://cdn.auth0.com https://*.googleusercontent.com; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://cloudflareinsights.com"
     <%_ } else { _%>
-    content-security-policy: "default-src 'self'; frame-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://storage.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://s.gravatar.com https://cdn.auth0.com; font-src 'self' data:"
+    content-security-policy: "default-src 'self'; frame-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://storage.googleapis.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://s.gravatar.com https://cdn.auth0.com https://*.googleusercontent.com; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com"
     <%_ } _%>
 <%_ } _%>
 <%_ if (authenticationTypeOauth2) { _%>
