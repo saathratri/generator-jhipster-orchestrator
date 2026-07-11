@@ -439,6 +439,30 @@ Infinite Scroll Styles
           });
         }
 
+        // Many top-level menus (one dropdown per microservice + admin + account): Bootstrap's
+        // navbar-nav never wraps, so overflowing items were CLIPPED at the viewport edge (and the
+        // bar's dark background ended mid-menu when scrolling right). Let the menu flow onto
+        // additional rows instead. Seen live on admin.example.com 2026-07-11.
+        if (!application.skipClient) {
+          const navbarScssFile = `${srcMainWebapp}app/layouts/navbar/navbar.scss`;
+          this.editFile(navbarScssFile, content => {
+            if (!content.includes('flex-wrap: wrap')) {
+              content = content.replace(
+                '.navbar {\n  padding: 0.2rem 1rem;',
+                '.navbar {\n  padding: 0.2rem 1rem;\n\n' +
+                  '  // Saathratri modification - many top-level menus (one dropdown per microservice +\n' +
+                  "  // admin + account): Bootstrap's navbar-nav never wraps, so overflowing items were\n" +
+                  '  // clipped at the viewport edge. Let the menu flow onto extra rows instead.\n' +
+                  '  .navbar-collapse,\n' +
+                  '  .navbar-nav {\n' +
+                  '    flex-wrap: wrap;\n' +
+                  '  }',
+              );
+            }
+            return content;
+          });
+        }
+
         // Patch navbar.ts - add EntityNavbarItems import, property, and alphabetical sorting
         if (!application.skipClient) {
           const clientSrcDir = application.clientSrcDir || 'src/main/webapp/';

@@ -328,6 +328,31 @@ export default class extends BaseApplicationGenerator {
           return content.replace(/display="dynamic"/g, 'display="static"');
         });
       },
+      async fixNavbarOverflowWrap({ application }) {
+        // The gateway stacks one dropdown per microservice + admin + account in the top navbar;
+        // Bootstrap's navbar-nav never wraps, so items past the viewport edge were CLIPPED (and
+        // the bar's dark background ended mid-menu when scrolling right). Let the menu flow onto
+        // additional rows instead. Seen live on admin.example.com 2026-07-11.
+        if (application.skipClient) return;
+        const clientSrcDir = application.clientSrcDir || 'src/main/webapp/';
+        const navbarScssFile = `${clientSrcDir}app/layouts/navbar/navbar.scss`;
+        this.editFile(navbarScssFile, content => {
+          if (!content.includes('flex-wrap: wrap')) {
+            content = content.replace(
+              '.navbar {\n  padding: 0.2rem 1rem;',
+              '.navbar {\n  padding: 0.2rem 1rem;\n\n' +
+                '  // Saathratri modification - many top-level menus (one dropdown per microservice +\n' +
+                "  // admin + account): Bootstrap's navbar-nav never wraps, so overflowing items were\n" +
+                '  // clipped at the viewport edge. Let the menu flow onto extra rows instead.\n' +
+                '  .navbar-collapse,\n' +
+                '  .navbar-nav {\n' +
+                '    flex-wrap: wrap;\n' +
+                '  }',
+            );
+          }
+          return content;
+        });
+      },
       async postWritingTemplateTask({ application }) {
         // Only patch navbar for applications that have a client
         if (application.skipClient) return;
