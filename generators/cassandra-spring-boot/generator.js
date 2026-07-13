@@ -232,11 +232,7 @@ export default class extends BaseApplicationGenerator {
                   ...javaMainPackageTemplatesBlock('_entityPackage_/'),
                   templates: [
                     'service/dto/_dtoClass_Id.java',
-
-                    {
-                      file: 'service/dto/_dtoClass_Id.java',
-                      renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}Id.java`,
-                    },
+                    /* saathratri-needle-cassandra-copy-dto-id-class */
                   ],
                 },
                 {
@@ -244,12 +240,7 @@ export default class extends BaseApplicationGenerator {
                   ...javaMainPackageTemplatesBlock('_entityPackage_/'),
                   templates: [
                     'service/dto/_dtoClass_.java',
-
-                    {
-                      file: 'service/dto/_dtoClass_.java',
-                      renameTo: `../../../../../../${this.appname}dto/src/main/java/${this.jhipsterConfig.packageFolder}/service/dto/${entity.dtoClass}.java`,
-                    },
-
+                    /* saathratri-needle-cassandra-copy-dto-class */
                     'service/mapper/_entityClass_Mapper.java',
                   ],
                 },

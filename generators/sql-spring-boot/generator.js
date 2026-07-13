@@ -823,6 +823,16 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
           );
         });
 
+        // Saathratri modification - SpaWebFilter deep links: the upstream filter refuses to
+        // forward any path containing a dot to index.html (its static-asset heuristic), so a
+        // UI route with a dotted path PARAM (e.g. a version segment like /2.0.0/) falls through
+        // to the security rules and dies with an empty 403 on refresh/deep-link. Only the LAST
+        // segment can be a file name, so restrict the dot check to it.
+        const spaWebFilterFile = `src/main/java/${packageFolder}/web/filter/SpaWebFilter.java`;
+        this.editFile(spaWebFilterFile, content => {
+          return content.replace('!path.contains(".") &&', `!path.substring(path.lastIndexOf('/') + 1).contains(".") &&`);
+        });
+
         // Saathratri modification - honor @entityGraphIncludeNestedCustomAnnotation.
         // Format: "methodA: [ a.b, c.d ] | methodB: [ x.y ]"
         // For each directive, append the nested dot-paths to the matching
