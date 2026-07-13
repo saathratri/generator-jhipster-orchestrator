@@ -2744,9 +2744,12 @@
       },
       "notBefore": 0,
       "groups": ["/Admins", "/Users"],
-      <%# --- SAATHRATRI CHANGE: Organization IDs for admin user --- %>
+      <%# --- SAATHRATRI CHANGE: the tenantIds user attribute feeds the tenant_access
+          token claim (see the protocol mapper above). It ships EMPTY on purpose — populate it
+          with your application's organization UUIDs by overlaying this generated file
+          post-generation (e.g. copied in from a private data repo). --- %>
       "attributes": {
-        "tenantIds": "[ \"6c1a58ab-4a2c-4e40-a8e0-dc29a5f68f65\", \"7520dc12-09f5-4e87-853c-ad2dfac8441b\", \"5e115f55-88e7-4d83-abf6-425593e3354d\", \"c8c1855b-218f-4a8d-9783-a3d5786e0ca7\", \"d18402b6-6a32-481f-ba06-8718b63a3ff7\" ]"
+        "tenantIds": "[ ]"
       }
       <%# --- END SAATHRATRI CHANGE --- %>
     },
@@ -2777,9 +2780,11 @@
       },
       "notBefore": 0,
       "groups": ["/Users"],
-      <%# --- SAATHRATRI CHANGE: Organization IDs for regular user --- %>
+      <%# --- SAATHRATRI CHANGE: tenant_access claim for the regular user — ships EMPTY;
+          overlay the generated file with your application's organization UUIDs (see the
+          admin user note above). --- %>
       "attributes": {
-        "tenantIds": "[ \"7520dc12-09f5-4e87-853c-ad2dfac8441b\", \"c8c1855b-218f-4a8d-9783-a3d5786e0ca7\", \"d18402b6-6a32-481f-ba06-8718b63a3ff7\" ]"
+        "tenantIds": "[ ]"
       }
       <%# --- END SAATHRATRI CHANGE --- %>
     }
