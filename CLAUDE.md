@@ -1,10 +1,10 @@
-# JHipster Orchestrator Blueprint - Development Guide for Claude
+﻿# JHipster Orchestrator Blueprint - Development Guide for Claude
 
 ## Project Overview
 
 **generator-jhipster-orchestrator** is a custom JHipster 9 blueprint designed for the Saathratri project. It extends JHipster's default generation capabilities to support microservices architecture with specialized handling for both SQL (PostgreSQL) and Cassandra databases.
 
-**Version:** 1.0.6
+**Version:** 1.0.7
 **JHipster Version:** 9.1.0
 **Blueprint Type:** Side-by-Side (works alongside default JHipster generators)
 
@@ -21,12 +21,12 @@
 The blueprint uses a delegation pattern where base generators delegate to database-specific implementations:
 
 ```
-server → sql-spring-boot → heroku-orchestrator (for SQL)
-server → cassandra-spring-boot → heroku-orchestrator (for Cassandra)
-client → sql-angular (for SQL)
-client → cassandra-angular (for Cassandra)
-docker → sql-docker (for SQL)
-docker → cassandra-docker (for Cassandra)
+server â†’ sql-spring-boot â†’ heroku-orchestrator (for SQL)
+server â†’ cassandra-spring-boot â†’ heroku-orchestrator (for Cassandra)
+client â†’ sql-angular (for SQL)
+client â†’ cassandra-angular (for Cassandra)
+docker â†’ sql-docker (for SQL)
+docker â†’ cassandra-docker (for Cassandra)
 ```
 
 ### 3. JHipster Generator Lifecycle
@@ -51,46 +51,46 @@ All generators follow this priority/phase sequence:
 
 ```
 generator-jhipster-orchestrator/
-├── cli/
-│   └── cli.cjs                          # CLI entry point with custom logo
-├── generators/
-│   ├── app/                             # Main application generator
-│   ├── server/                          # Server entry point (delegates to DB-specific)
-│   ├── client/                          # Client entry point (delegates to framework-specific)
-│   ├── spring-boot/                     # Base Spring Boot configuration
-│   ├── java/                            # Java domain customizations
-│   │
-│   ├── sql-spring-boot/                 # SQL-specific backend logic
-│   │   ├── generator.js
-│   │   ├── templates/
-│   │   └── utils/
-│   │       ├── dto-utils.js             # DTO generation utilities
-│   │       └── sql-utils.js             # SQL-specific utilities
-│   │
-│   ├── sql-angular/                     # SQL-specific Angular UI
-│   ├── sql-docker/                      # PostgreSQL with pgvector
-│   │
-│   ├── cassandra-spring-boot/           # Cassandra backend logic
-│   │   ├── templates/
-│   │   └── utils/
-│   │       ├── cassandra-composite-key-utils.js  # Composite key handling
-│   │       └── cassandra-utils.js                # Cassandra-specific utilities
-│   │
-│   ├── cassandra-spring-data-cassandra/ # Repository layer
-│   ├── cassandra-java-domain/           # Domain entity customizations
-│   ├── cassandra-angular/               # Angular Material components
-│   ├── cassandra-docker/                # Cassandra Docker config
-│   ├── cassandra-languages/             # i18n for Cassandra
-│   │
-│   ├── docker/                          # Docker + Keycloak
-│   ├── cypress/                         # E2E testing
-│   ├── heroku-orchestrator/              # Heroku deployment
-│   └── spring-boot-orchestrator/         # App skeleton + config (Application.java, *.yml, pom.xml)
-│
-├── .yo-rc.json                          # Blueprint configuration
-├── package.json                         # Dependencies and scripts
-├── tsconfig.json                        # TypeScript configuration
-└── vitest.config.ts                     # Test configuration
+â”œâ”€â”€ cli/
+â”‚   â””â”€â”€ cli.cjs                          # CLI entry point with custom logo
+â”œâ”€â”€ generators/
+â”‚   â”œâ”€â”€ app/                             # Main application generator
+â”‚   â”œâ”€â”€ server/                          # Server entry point (delegates to DB-specific)
+â”‚   â”œâ”€â”€ client/                          # Client entry point (delegates to framework-specific)
+â”‚   â”œâ”€â”€ spring-boot/                     # Base Spring Boot configuration
+â”‚   â”œâ”€â”€ java/                            # Java domain customizations
+â”‚   â”‚
+â”‚   â”œâ”€â”€ sql-spring-boot/                 # SQL-specific backend logic
+â”‚   â”‚   â”œâ”€â”€ generator.js
+â”‚   â”‚   â”œâ”€â”€ templates/
+â”‚   â”‚   â””â”€â”€ utils/
+â”‚   â”‚       â”œâ”€â”€ dto-utils.js             # DTO generation utilities
+â”‚   â”‚       â””â”€â”€ sql-utils.js             # SQL-specific utilities
+â”‚   â”‚
+â”‚   â”œâ”€â”€ sql-angular/                     # SQL-specific Angular UI
+â”‚   â”œâ”€â”€ sql-docker/                      # PostgreSQL with pgvector
+â”‚   â”‚
+â”‚   â”œâ”€â”€ cassandra-spring-boot/           # Cassandra backend logic
+â”‚   â”‚   â”œâ”€â”€ templates/
+â”‚   â”‚   â””â”€â”€ utils/
+â”‚   â”‚       â”œâ”€â”€ cassandra-composite-key-utils.js  # Composite key handling
+â”‚   â”‚       â””â”€â”€ cassandra-utils.js                # Cassandra-specific utilities
+â”‚   â”‚
+â”‚   â”œâ”€â”€ cassandra-spring-data-cassandra/ # Repository layer
+â”‚   â”œâ”€â”€ cassandra-java-domain/           # Domain entity customizations
+â”‚   â”œâ”€â”€ cassandra-angular/               # Angular Material components
+â”‚   â”œâ”€â”€ cassandra-docker/                # Cassandra Docker config
+â”‚   â”œâ”€â”€ cassandra-languages/             # i18n for Cassandra
+â”‚   â”‚
+â”‚   â”œâ”€â”€ docker/                          # Docker + Keycloak
+â”‚   â”œâ”€â”€ cypress/                         # E2E testing
+â”‚   â”œâ”€â”€ heroku-orchestrator/              # Heroku deployment
+â”‚   â””â”€â”€ spring-boot-orchestrator/         # App skeleton + config (Application.java, *.yml, pom.xml)
+â”‚
+â”œâ”€â”€ .yo-rc.json                          # Blueprint configuration
+â”œâ”€â”€ package.json                         # Dependencies and scripts
+â”œâ”€â”€ tsconfig.json                        # TypeScript configuration
+â””â”€â”€ vitest.config.ts                     # Test configuration
 ```
 
 ## Key Customizations and Features
@@ -133,7 +133,7 @@ getClusteredKeyFields(fields); // Get clustering key fields
 
 - Composite key classes (e.g., `EntityId.java`)
 - Custom equals/hashCode for composite keys
-- Proper field ordering (partitioned → clustered → regular)
+- Proper field ordering (partitioned â†’ clustered â†’ regular)
 
 ### 3. Advanced Date/Time Handling (Cassandra)
 
@@ -147,7 +147,7 @@ getClusteredKeyFields(fields); // Get clustering key fields
 
 **Frontend (Angular):**
 
-- `ConvertFromDateLongToDayjs` pipe - Convert Long → Dayjs
+- `ConvertFromDateLongToDayjs` pipe - Convert Long â†’ Dayjs
 - `FormatMediumDatetime` pipe - Format for display
 - Angular Material date pickers integrated
 - Custom validators for date ranges
@@ -249,11 +249,11 @@ getClusteredKeyFields(fields); // Get clustering key fields
 
    ```
    generators/my-new-generator/
-   ├── generator.js      # Main generator logic
-   ├── command.js        # CLI command definition
-   ├── index.js          # Module export
-   ├── templates/        # EJS templates
-   └── utils/            # Utility functions
+   â”œâ”€â”€ generator.js      # Main generator logic
+   â”œâ”€â”€ command.js        # CLI command definition
+   â”œâ”€â”€ index.js          # Module export
+   â”œâ”€â”€ templates/        # EJS templates
+   â””â”€â”€ utils/            # Utility functions
    ```
 
 2. **Basic generator.js structure:**
@@ -319,7 +319,7 @@ getClusteredKeyFields(fields); // Get clustering key fields
 ### Adding Custom Annotations
 
 1. **Define in entity JSON:**
-   `.jhipster/Entity.json` → add to `customAnnotations` array
+   `.jhipster/Entity.json` â†’ add to `customAnnotations` array
 
 2. **Process in generator:**
 
@@ -549,19 +549,19 @@ const isRelationship = field.fieldType.includes('.');
 
 ## File References for Common Tasks
 
-| Task                                                           | Primary Files                                                                                                                                |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Add SQL entity template                                        | `generators/sql-spring-boot/templates/src/main/java/_package_/_entityPackage_/domain/`                                                       |
-| Add Cassandra entity template                                  | `generators/cassandra-java-domain/templates/src/main/java/_package_/_entityPackage_/domain/`                                                 |
-| Modify DTO generation                                          | `generators/sql-spring-boot/utils/dto-utils.js`                                                                                              |
-| Change composite key logic                                     | `generators/cassandra-spring-boot/utils/cassandra-composite-key-utils.js`                                                                    |
-| Update Angular UI (SQL)                                        | `generators/sql-angular/templates/src/main/webapp/app/entities/`                                                                             |
-| Update Angular UI (Cassandra)                                  | `generators/cassandra-angular/templates/src/main/webapp/app/entities/`                                                                       |
-| Modify entity service layer (Service/ServiceImpl/QueryService) | `generators/sql-spring-boot/templates/.../service/` or `generators/cassandra-spring-boot/templates/.../service/` (copied — fix in base repo) |
-| Change app skeleton/config (Application.java, \*.yml, pom)     | `generators/spring-boot-orchestrator/templates/`                                                                                             |
-| Modify Docker setup                                            | `generators/sql-docker/` or `generators/cassandra-docker/`                                                                                   |
-| Change Heroku config                                           | `generators/heroku-orchestrator/templates/`                                                                                                  |
-| Add test cases                                                 | `generators/[generator-name]/generator.spec.js`                                                                                              |
+| Task                                                           | Primary Files                                                                                                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Add SQL entity template                                        | `generators/sql-spring-boot/templates/src/main/java/_package_/_entityPackage_/domain/`                                                         |
+| Add Cassandra entity template                                  | `generators/cassandra-java-domain/templates/src/main/java/_package_/_entityPackage_/domain/`                                                   |
+| Modify DTO generation                                          | `generators/sql-spring-boot/utils/dto-utils.js`                                                                                                |
+| Change composite key logic                                     | `generators/cassandra-spring-boot/utils/cassandra-composite-key-utils.js`                                                                      |
+| Update Angular UI (SQL)                                        | `generators/sql-angular/templates/src/main/webapp/app/entities/`                                                                               |
+| Update Angular UI (Cassandra)                                  | `generators/cassandra-angular/templates/src/main/webapp/app/entities/`                                                                         |
+| Modify entity service layer (Service/ServiceImpl/QueryService) | `generators/sql-spring-boot/templates/.../service/` or `generators/cassandra-spring-boot/templates/.../service/` (copied â€” fix in base repo) |
+| Change app skeleton/config (Application.java, \*.yml, pom)     | `generators/spring-boot-orchestrator/templates/`                                                                                               |
+| Modify Docker setup                                            | `generators/sql-docker/` or `generators/cassandra-docker/`                                                                                     |
+| Change Heroku config                                           | `generators/heroku-orchestrator/templates/`                                                                                                    |
+| Add test cases                                                 | `generators/[generator-name]/generator.spec.js`                                                                                                |
 
 ## Quick Start for Development
 
