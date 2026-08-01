@@ -11,7 +11,11 @@
     "pgvector",
     "jhipster"
   ],
-  "author": "Amar Premsaran Patel",
+  "author": {
+    "name": "Amar P. Patel",
+    "email": "amarppatel1@gmail.com",
+    "url": "https://amarppatel.com"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

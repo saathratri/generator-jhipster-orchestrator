@@ -2,6 +2,8 @@
 
 > The master JHipster blueprint for the Saathratri microservices platform. It orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/amarpatel-xx/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.1.0.
 
+Built and maintained by [Amar P. Patel](https://amarppatel.com), architect of the Saathratri platform, whose microservices are generated with this blueprint.
+
 ## Introduction
 
 This is a [JHipster](https://www.jhipster.tech/) blueprint, designed to generate an entire **microservices platform** that mixes **PostgreSQL (with pgvector)** and **Apache Cassandra** services side by side in the same monorepo.
@@ -400,3 +402,12 @@ Huge thanks to:
 - [Catherine Guevara](https://www.linkedin.com/in/catherine-guevara-1a5375b1/)
 
 ---
+
+## About the author
+
+Amar P. Patel is a Florida-based software engineer and founder with 24+ years building enterprise Java/Spring systems, microservices, and AI-powered platforms — architect of Saathratri, author of three npm-published JHipster blueprints, holder of two U.S. patents, and operator in a family hospitality portfolio.
+
+- Website: [amarppatel.com](https://amarppatel.com)
+- GitHub: [github.com/amarpatel-xx](https://github.com/amarpatel-xx)
+- npm: [npmjs.com/~amarpatel-xx](https://www.npmjs.com/~amarpatel-xx)
+- LinkedIn: [linkedin.com/in/amar-p-patel](https://www.linkedin.com/in/amar-p-patel/)
