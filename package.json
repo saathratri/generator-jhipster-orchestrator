@@ -9,7 +9,9 @@
     "microservices",
     "cassandra",
     "pgvector",
-    "jhipster"
+    "jhipster-9",
+    "jhipster",
+    "saathratri"
   ],
   "author": {
     "name": "Amar P. Patel",
