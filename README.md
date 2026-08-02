@@ -409,5 +409,5 @@ Amar P. Patel is a Florida-based software engineer and founder with 24+ years bu
 
 - Website: [amarppatel.com](https://amarppatel.com)
 - GitHub: [github.com/amarpatel-xx](https://github.com/amarpatel-xx)
-- npm: [npmjs.com/~amarpatel-xx](https://www.npmjs.com/~amarpatel-xx)
+- npm: [npmjs.com/~amarppatel](https://www.npmjs.com/~amarppatel)
 - LinkedIn: [linkedin.com/in/amar-p-patel](https://www.linkedin.com/in/amar-p-patel/)
