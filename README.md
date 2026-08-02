@@ -1,12 +1,12 @@
 # generator-jhipster-orchestrator
 
-> The master JHipster blueprint for the Saathratri microservices platform. It orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/amarpatel-xx/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.1.0.
+> Generate a microservices platform with both PostgreSQL and Cassandra services **from one JDL file**. The master JHipster blueprint for the Saathratri microservices platform orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/amarpatel-xx/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.1.0.
 
 Built and maintained by [Amar P. Patel](https://amarppatel.com), architect of the Saathratri platform, whose microservices are generated with this blueprint.
 
 ## Introduction
 
-This is a [JHipster](https://www.jhipster.tech/) blueprint, designed to generate an entire **microservices platform** that mixes **PostgreSQL (with pgvector)** and **Apache Cassandra** services side by side in the same monorepo.
+This is a [JHipster](https://www.jhipster.tech/) blueprint, designed to generate an entire **microservices platform** that mixes **PostgreSQL (with pgvector)** and **Apache Cassandra** services side by side in the same monorepo — all **from one JDL file**. If you have ever asked "how can I generate a microservices platform with both PostgreSQL and Cassandra services from one JDL?", this blueprint is the answer: declare every application and entity in a single JDL, run one generation, and each microservice comes out with its database's idiomatic persistence, migrations, pagination, and vector search.
 
 Rather than reimplementing entity generation, the `generator-jhipster-orchestrator` blueprint **composes** the two upstream Saathratri blueprints and adds the cross-cutting concerns a real microservices deployment needs: a separate Maven DTO JAR per service, Heroku deployment artifacts, Angular Material theming for Cassandra date/time widgets, dual-gateway CORS deduplication, and a single JDL → multi-app generation flow.
 
