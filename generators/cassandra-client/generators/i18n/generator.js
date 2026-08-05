@@ -1,9 +1,3 @@
-/*
- * Copyright (c) 2026 Saathratri, LLC. All rights reserved.
- * SPDX-License-Identifier: LicenseRef-Saathratri-Proprietary
- * Proprietary and confidential - see LICENSE in the repository root.
- */
-
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
 import { languagesSaathratriUtils } from '../../cassandra-client-utils.js';

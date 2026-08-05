@@ -18,7 +18,7 @@
     "email": "amarppatel1@gmail.com",
     "url": "https://amarppatel.com"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/saathratri/generator-jhipster-orchestrator.git"
@@ -70,6 +70,5 @@
   },
   "cacheDirectories": [
     "node_modules"
-  ],
-  "private": true
+  ]
 }
