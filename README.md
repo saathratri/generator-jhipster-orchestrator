@@ -1,6 +1,6 @@
 # generator-jhipster-orchestrator
 
-> Generate a microservices platform with both PostgreSQL and Cassandra services **from one JDL file**. The master JHipster blueprint for the Saathratri microservices platform orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/amarpatel-xx/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.1.0.
+> Generate a microservices platform with both PostgreSQL and Cassandra services **from one JDL file**. The master JHipster blueprint for the Saathratri microservices platform orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/saathratri/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/saathratri/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.1.0.
 
 Built and maintained by [Amar P. Patel](https://amarppatel.com), architect of the Saathratri platform, whose microservices are generated with this blueprint.
 
@@ -301,7 +301,7 @@ Generates a `vector(1536)` column, an HNSW index, embedding generation on save, 
 @customAnnotation("CassandraType.Name.BIGINT") @customAnnotation("UTC_DATETIME") createdDate Long
 ```
 
-For the full Cassandra composite-key / `SET` / `MAP` / vector JDL catalogue, see the [`generator-jhipster-cassandra` README](https://github.com/amarpatel-xx/generator-jhipster-cassandra#-jdl-examples).
+For the full Cassandra composite-key / `SET` / `MAP` / vector JDL catalogue, see the [`generator-jhipster-cassandra` README](https://github.com/saathratri/generator-jhipster-cassandra#-jdl-examples).
 
 ---
 
@@ -344,11 +344,11 @@ The suite stays green across regenerations because the prepare phase rewrites th
 
 ### Debugging test failures
 
-The golden rule is **fix the templates, never the generated app** (it is overwritten on every regeneration) — and for this _assembled_ blueprint, fix `sql-*` / `cassandra-*` template bugs in the **base repos**, not in this repo's copies. The full runbook is in **[`TESTING.md`](TESTING.md)**. For the generated-app backend/frontend bug catalogues, see the companion [`generator-jhipster-cassandra/TESTING.md`](https://github.com/amarpatel-xx/generator-jhipster-cassandra/blob/main/TESTING.md) and [`generator-jhipster-ai-postgresql/TESTING.md`](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql/blob/main/TESTING.md).
+The golden rule is **fix the templates, never the generated app** (it is overwritten on every regeneration) — and for this _assembled_ blueprint, fix `sql-*` / `cassandra-*` template bugs in the **base repos**, not in this repo's copies. The full runbook is in **[`TESTING.md`](TESTING.md)**. For the generated-app backend/frontend bug catalogues, see the companion [`generator-jhipster-cassandra/TESTING.md`](https://github.com/saathratri/generator-jhipster-cassandra/blob/main/TESTING.md) and [`generator-jhipster-ai-postgresql/TESTING.md`](https://github.com/saathratri/generator-jhipster-ai-postgresql/blob/main/TESTING.md).
 
 ### E2E (Cypress) & custom widgets
 
-The orchestrator does **not** own a Cypress sub-generator — the `cypress` test passes flow in automatically from each base blueprint on every regen. Fix Cypress codegen bugs in the base repos. The SET / MAP / date-time `data-cy` widget hooks are owned by `cassandra-angular`; see the cassandra blueprint's [README §E2E Testing with Cypress](https://github.com/amarpatel-xx/generator-jhipster-cassandra#e2e-testing-with-cypress).
+The orchestrator does **not** own a Cypress sub-generator — the `cypress` test passes flow in automatically from each base blueprint on every regen. Fix Cypress codegen bugs in the base repos. The SET / MAP / date-time `data-cy` widget hooks are owned by `cassandra-angular`; see the cassandra blueprint's [README §E2E Testing with Cypress](https://github.com/saathratri/generator-jhipster-cassandra#e2e-testing-with-cypress).
 
 ---
 
@@ -383,8 +383,8 @@ okta apps create jhipster
 - 📘 [Cassandra Data Modeling](https://cassandra.apache.org/doc/latest/data-modeling/)
 - 📘 [pgvector](https://github.com/pgvector/pgvector)
 - 🧓 [Matt Raible on Micro Frontends](https://auth0.com/blog/micro-frontends-for-java-microservices/)
-- ☕️ Companion blueprint: [generator-jhipster-ai-postgresql](https://github.com/amarpatel-xx/generator-jhipster-ai-postgresql)
-- ☕️ Companion blueprint: [generator-jhipster-cassandra](https://github.com/amarpatel-xx/generator-jhipster-cassandra)
+- ☕️ Companion blueprint: [generator-jhipster-ai-postgresql](https://github.com/saathratri/generator-jhipster-ai-postgresql)
+- ☕️ Companion blueprint: [generator-jhipster-cassandra](https://github.com/saathratri/generator-jhipster-cassandra)
 
 ---
 

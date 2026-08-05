@@ -21,12 +21,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/amarpatel-xx/generator-jhipster-orchestrator.git"
+    "url": "git+https://github.com/saathratri/generator-jhipster-orchestrator.git"
   },
   "bugs": {
-    "url": "https://github.com/amarpatel-xx/generator-jhipster-orchestrator/issues"
+    "url": "https://github.com/saathratri/generator-jhipster-orchestrator/issues"
   },
-  "homepage": "https://github.com/amarpatel-xx/generator-jhipster-orchestrator#readme",
+  "homepage": "https://github.com/saathratri/generator-jhipster-orchestrator#readme",
   "type": "module",
   "bin": {
     "jhipster-orchestrator": "cli/cli.cjs"
