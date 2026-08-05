@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 Saathratri, LLC. All rights reserved.
+ * SPDX-License-Identifier: LicenseRef-Saathratri-Proprietary
+ * Proprietary and confidential - see LICENSE in the repository root.
+ */
+
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

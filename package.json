@@ -1,6 +1,6 @@
 {
   "name": "generator-jhipster-orchestrator",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Master JHipster blueprint that orchestrates SQL/pgvector and Cassandra blueprints into a multi-database microservices platform",
   "keywords": [
     "yeoman-generator",
@@ -18,7 +18,7 @@
     "email": "amarppatel1@gmail.com",
     "url": "https://amarppatel.com"
   },
-  "license": "MIT",
+  "license": "UNLICENSED",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/saathratri/generator-jhipster-orchestrator.git"
@@ -70,5 +70,6 @@
   },
   "cacheDirectories": [
     "node_modules"
-  ]
+  ],
+  "private": true
 }
