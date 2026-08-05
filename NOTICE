@@ -1,0 +1,16 @@
+generator-jhipster-orchestrator
+Copyright (c) 2026 Saathratri, LLC.
+Licensed under the MIT License (see LICENSE).
+
+This blueprint is derived from and extends generator-jhipster
+(https://www.jhipster.tech/), which is licensed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+
+Files that carry the JHipster project's Apache-2.0 copyright header
+("Copyright ... the original author or authors from the JHipster project")
+originate from generator-jhipster and retain that header and license. Such
+files may have been modified by Saathratri, LLC; any such modifications are
+Copyright (c) 2026 Saathratri, LLC and are licensed under the MIT License.
+
+All other first-party files are Copyright (c) 2026 Saathratri, LLC and are
+licensed under the MIT License.

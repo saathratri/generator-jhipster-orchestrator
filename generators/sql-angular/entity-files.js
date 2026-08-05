@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 Saathratri, LLC.
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License; see LICENSE in the repository root.
+ */
+
 import { clientApplicationTemplatesBlock } from 'generator-jhipster/generators/client/support';
 
 export const entityModelFiles = clientApplicationTemplatesBlock({

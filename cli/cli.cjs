@@ -1,4 +1,10 @@
 #!/usr/bin/env node
+/*
+ * Copyright (c) 2026 Saathratri, LLC.
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License; see LICENSE in the repository root.
+ */
+
 
 const { basename, dirname, join } = require('path');
 

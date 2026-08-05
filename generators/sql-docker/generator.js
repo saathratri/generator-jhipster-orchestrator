@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 Saathratri, LLC.
+ * SPDX-License-Identifier: MIT
+ * Licensed under the MIT License; see LICENSE in the repository root.
+ */
+
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
 import { sqlSpringBootUtils } from '../sql-spring-boot/sql-spring-boot-utils.js';
