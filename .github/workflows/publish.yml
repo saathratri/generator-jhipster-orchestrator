@@ -1,0 +1,63 @@
+name: Publish
+# Publishes to npm using trusted publishing (OIDC). There is no NPM_TOKEN
+# secret and no long-lived credential anywhere: npm verifies this workflow's
+# identity directly from GitHub's OIDC token and mints a short-lived one.
+#
+# This exists because the classic token was revoked mid-session on 2026-08-06
+# and publishing broke with an E401 that presented itself as a 404. npm is also
+# restricting tokens that bypass 2FA (account changes Aug 2026, direct
+# publishing Jan 2027), so a stored token was going to keep being a liability.
+#
+# REQUIRES a matching Trusted Publisher on npmjs.com for this package, naming
+# BOTH this repository and this workflow's filename. Renaming this file, or
+# moving the repo, breaks publishing until npm is updated to match -- the
+# filename is part of the trust assertion, not just a label.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'npm dist-tag to publish under'
+        required: false
+        default: 'latest'
+
+permissions:
+  contents: read
+  id-token: write # mints the OIDC token npm checks; publishing fails without it
+
+jobs:
+  publish:
+    name: npm publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      # Trusted publishing needs npm >= 11.5.1. The npm bundled with Node 22 is
+      # older than that, so upgrade before publishing or the OIDC handshake is
+      # never attempted and npm falls back to asking for a token.
+      - run: npm install -g npm@latest
+      - run: npm --version
+
+      - run: npm ci
+
+      # Fail early and loudly if the package version is already on the registry,
+      # rather than surfacing it as an opaque publish error.
+      - name: Check version is unpublished
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "::error::$NAME@$VER is already published. Bump the version first."
+            exit 1
+          fi
+          echo "$NAME@$VER is not yet published."
+
+      - run: npm publish --provenance --access public --tag "${{ inputs.tag || 'latest' }}"
