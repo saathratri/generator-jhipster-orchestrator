@@ -9,7 +9,7 @@ export const herokuSaathratriUtils = {
    * heroku-orchestrator-utils Helper Functions
    **************************************/
   getMicroserviceName(baseName) {
-    let serviceName = '';
+    let serviceName;
 
     const endIndexOfServiceName = baseName.indexOf('service');
 

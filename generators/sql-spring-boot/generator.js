@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Saathratri, LLC.
+ * Copyright (c) 2023-2026 Saathratri, LLC.
  * SPDX-License-Identifier: MIT
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
@@ -384,6 +384,13 @@ export default class extends BaseApplicationGenerator {
     return this.asPostWritingTaskGroup({
       async postWritingTemplateTask({ application }) {
         const pomFile = 'pom.xml';
+
+        // Logback 1.5 deprecated conversionRule's [converterClass] attribute in favor of
+        // [class]; the upstream template still emits the old name, so every service boot
+        // logs a logback WARN. Rename it (idempotent).
+        this.editFile('src/main/resources/logback-spring.xml', { ignoreNonExisting: true }, content =>
+          content.replace(/(<conversionRule\s[^>]*?)converterClass=/g, '$1class='),
+        );
 
         // Keep the local .env (OpenAI API key; see .env.example) out of version control.
         if (application.hasVectorFieldsSaathratri) {

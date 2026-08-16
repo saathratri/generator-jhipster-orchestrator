@@ -1,6 +1,6 @@
 # generator-jhipster-orchestrator
 
-> Generate a microservices platform with both PostgreSQL and Cassandra services **from one JDL file**. The master JHipster blueprint for the Saathratri microservices platform orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/saathratri/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/saathratri/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.1.0.
+> Generate a microservices platform with both PostgreSQL and Cassandra services **from one JDL file**. The master JHipster blueprint for the Saathratri microservices platform orchestrates two specialized blueprints — [`generator-jhipster-ai-postgresql`](https://github.com/saathratri/generator-jhipster-ai-postgresql) (SQL / pgvector) and [`generator-jhipster-cassandra`](https://github.com/saathratri/generator-jhipster-cassandra) (Cassandra) — into a single pipeline that generates a full multi-database microservices stack with DTO modularization and Heroku deployment. Compatible with JHipster v9.2.0.
 
 Built and maintained by [Saathratri, LLC](https://www.saathratri.com), whose hospitality platform microservices are generated with this blueprint.
 
@@ -93,7 +93,7 @@ JHipster base:liquibase   → orchestrator:liquibase   → [SQL] liquibase-orche
 As this is a [JHipster](https://www.jhipster.tech/) blueprint, JHipster and its related tools must already be installed — see [Installing JHipster](https://www.jhipster.tech/installation/).
 
 - **Node.js** ^18.13.0 or >= 20.6.1
-- **JHipster** 9.1.0 — `npm install -g generator-jhipster@9.1.0`
+- **JHipster** 9.2.0 — `npm install -g generator-jhipster@9.2.0`
 - **generator-jhipster-ai-postgresql** — `npm install -g generator-jhipster-ai-postgresql`
 - **generator-jhipster-cassandra** — `npm install -g generator-jhipster-cassandra`
 - **Java 21+** and **Docker Desktop** (to build/run the generated apps)
