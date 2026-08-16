@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Saathratri, LLC.
+ * Copyright (c) 2025-2026 Saathratri, LLC.
  * SPDX-License-Identifier: MIT
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
@@ -284,10 +284,13 @@ export default class extends BaseApplicationGenerator {
         const packageJsonPath = 'package.json';
         this.editFile(packageJsonPath, content => {
           if (!content.includes('@angular/material')) {
+            // Material/CDK patch releases don't track @angular/core's (e.g. core 21.2.17
+            // exists, material tops out at 21.2.14) — pin only major.minor via tilde.
             const angularVersion = application.nodeDependencies?.['@angular/common'] || '21.0.0';
+            const materialVersion = `~${angularVersion.split('.').slice(0, 2).join('.')}.0`;
             content = content.replace(
               '"@angular/platform-browser"',
-              `"@angular/material": "${angularVersion}",\n    "@angular/cdk": "${angularVersion}",\n    "@angular/platform-browser"`,
+              `"@angular/material": "${materialVersion}",\n    "@angular/cdk": "${materialVersion}",\n    "@angular/platform-browser"`,
             );
           }
           return content;

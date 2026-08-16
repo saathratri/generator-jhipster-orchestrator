@@ -24,7 +24,6 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { AlertError } from 'app/shared/alert/alert-error';
 <%_ if (enableTranslation) { _%>
 import { TranslateDirective } from 'app/shared/language';
-import { TranslateModule } from '@ngx-translate/core';
 <%_ } _%>
 import { ConvertFromDayjsToDateLongPipe } from 'app/shared/date';
 <%_
@@ -53,7 +52,6 @@ import { ITEM_DELETED_EVENT } from 'app/config/navigation.constants';
       AlertError,
 <%_ if (enableTranslation) { _%>
       TranslateDirective,
-      TranslateModule,
 <%_ } _%>
       FormsModule,
       ConvertFromDayjsToDateLongPipe,

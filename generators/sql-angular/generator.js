@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026 Saathratri, LLC.
+ * Copyright (c) 2023-2026 Saathratri, LLC.
  * SPDX-License-Identifier: MIT
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
@@ -298,10 +298,13 @@ export default class extends BaseApplicationGenerator {
         const packageJsonPath = 'package.json';
         this.editFile(packageJsonPath, content => {
           if (!content.includes('@angular/material')) {
+            // Material/CDK patch releases don't track @angular/core's (e.g. core 21.2.17
+            // exists, material tops out at 21.2.14) — pin only major.minor via tilde.
             const angularVersion = application.nodeDependencies?.['@angular/common'] || '21.0.0';
+            const materialVersion = `~${angularVersion.split('.').slice(0, 2).join('.')}.0`;
             content = content.replace(
               '"@angular/platform-browser"',
-              `"@angular/material": "${angularVersion}",\n    "@angular/cdk": "${angularVersion}",\n    "@angular/platform-browser"`,
+              `"@angular/material": "${materialVersion}",\n    "@angular/cdk": "${materialVersion}",\n    "@angular/platform-browser"`,
             );
           }
           if (!content.includes('"material-icons"')) {
@@ -538,7 +541,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { NgbActiveModal, NgbPagination } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 
 /**
  * Generic read-only popup that lazy-loads a single excluded relationship of
@@ -556,7 +558,7 @@ import { TranslateModule } from '@ngx-translate/core';
   selector: 'jhi-lazy-relationship-read-modal',
   standalone: true,
   templateUrl: './lazy-relationship-read-modal.html',
-  imports: [CommonModule, FormsModule, NgbPagination, TranslateModule],
+  imports: [CommonModule, FormsModule, NgbPagination],
 })
 export class LazyRelationshipReadModalComponent implements OnInit {
   // Inputs set by caller via componentInstance after modalService.open(...).
@@ -737,7 +739,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { NgbActiveModal, NgbPagination } from '@ng-bootstrap/ng-bootstrap';
-import { TranslateModule } from '@ngx-translate/core';
 
 /**
  * Generic edit popup for a single excluded relationship of a parent entity.
@@ -760,7 +761,7 @@ import { TranslateModule } from '@ngx-translate/core';
   selector: 'jhi-lazy-relationship-edit-modal',
   standalone: true,
   templateUrl: './lazy-relationship-edit-modal.html',
-  imports: [CommonModule, FormsModule, NgbPagination, TranslateModule],
+  imports: [CommonModule, FormsModule, NgbPagination],
 })
 export class LazyRelationshipEditModalComponent implements OnInit {
   parentApiUrl = '';
