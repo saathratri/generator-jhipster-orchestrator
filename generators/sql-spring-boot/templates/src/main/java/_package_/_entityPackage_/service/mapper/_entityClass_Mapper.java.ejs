@@ -92,6 +92,25 @@ package <%= entityAbsolutePackage %>.service.mapper;
     a.collection = a.collection || otherEntitiesFields.some(b => a.otherEntity === b.otherEntity && getOriginalField(a.relatedField) === getOriginalField(b.relatedField) && b.collection === true)
   });
   otherEntitiesFields = this._.uniqWith(otherEntitiesFields, (a, b) => a.otherEntity === b.otherEntity && a.collection === b.collection && getOriginalField(a.relatedField) === getOriginalField(b.relatedField));
+  /* Saathratri modification - SHALLOW reverse (DTO -> entity) relationship mappings.
+     toDto was always shallow (qualifiedByName + ignoreByDefault: id + the display field). toEntity and
+     partialUpdate were inherited from EntityMapper UNBOUNDED, so MapStruct generated the reverse mapping of
+     the WHOLE reachable entity graph into every mapper (measured 2026-09-20 on one mapper with three
+     relationships: 2,068 lines / 68 methods / 272 s, against 13 KB / 2.6 s with this change) - which is what
+     made a 56-mapper service need a 5 GB compiler. It was also WRONG for partialUpdate: the generated code
+     copied the DTO's fields INTO the managed related entity (a PATCH could rename the organization it
+     pointed at, and could not re-point at another one: "identifier of an instance was altered").
+     A relationship is persisted by its id alone (no cascade), so the reverse mapping needs the id and
+     nothing else. disableSubMappingMethodsGeneration makes a relationship this template forgot a COMPILE
+     ERROR instead of a silently regenerated graph. Embedded relationships still need generated sub-mappings. */
+  const hasEmbeddedRelationship = restProperties.some(property => property.relationshipName && property.otherEntity.embedded);
+  const ownerSideDtoRelationships = dtoRelationships.filter(relationship => relationship.ownerSide);
+  const reverseRefName = relationship => relationship.otherEntity.entityInstance + 'FromId' + (relationship.collection ? 'Set' : '');
+  const reverseRefEntities = this._.uniq(ownerSideDtoRelationships.map(relationship => relationship.otherEntity)).map(otherEntity => ({
+    otherEntity,
+    collection: ownerSideDtoRelationships.some(relationship => relationship.otherEntity === otherEntity && relationship.collection),
+  }));
+  /* End Saathratri modification */
 _%>
 
 <%_ if (dtoRelationships.some(r => r.collection)) { _%>
@@ -124,7 +143,7 @@ import java.util.UUID;
  * annotations for any relationship mappings.
  */
 <%_ /* Saathratri modification - NoComplexMapping to prevent infinite recursion */ _%>
-@Mapper(componentModel = "spring", mappingControl = NoComplexMapping.class)
+@Mapper(componentModel = "spring", mappingControl = NoComplexMapping.class<%_ if (!hasEmbeddedRelationship) { _%>, disableSubMappingMethodsGeneration = true<%_ } _%>)
 public interface <%= entityClass %>Mapper extends EntityMapper<<%= dtoClass %>, <%= persistClass %>> {
 <%_ if (!embedded) { _%>
   <%_ var renMapAnotEnt = false; /*Render Mapping Annotation during Entity to DTO conversion?*/ _%>
@@ -148,14 +167,25 @@ public interface <%= entityClass %>Mapper extends EntityMapper<<%= dtoClass %>, 
     <%= dtoClass %> toDto(<%= persistClass %> s);
   <%_ } _%>
 
-  <%_ if (vectorFieldsForMapper.length > 0) { _%>
-    <%_ /* Saathratri modification - this override adds the vector-field @Mapping(ignore) below, so it
-          must re-state the base EntityMapper's @Named + null-ignore strategy; otherwise the override
-          drops them and partial update overwrites required fields (e.g. name) with null. */ _%>
+  <%_ if (vectorFieldsForMapper.length > 0 || dtoRelationships.length > 0) { _%>
+    <%_ /* Saathratri modification - this override adds the vector-field @Mapping(ignore) and the shallow
+          relationship mappings below, so it must re-state the base EntityMapper's @Named + null-ignore
+          strategy; otherwise the override drops them and partial update overwrites required fields
+          (e.g. name) with null. */ _%>
     @Named("partialUpdate")
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
   <%_ for (const vf of vectorFieldsForMapper) { _%>
     @Mapping(target = "<%= vf.propertyName %>", ignore = true)
+  <%_ } _%>
+  <%_ for (relationship of dtoRelationships) { _%>
+    <%_ if (!relationship.ownerSide) { _%>
+    @Mapping(target = "<%= relationship.propertyName %>", ignore = true)
+    <%_ } else { _%>
+    @Mapping(target = "<%= relationship.propertyName %>", source = "<%= relationship.propertyName %>", qualifiedByName = "<%= reverseRefName(relationship) %>")
+    <%_ } _%>
+    <%_ if (relationship.collection && fluentMethods) { _%>
+    @Mapping(target = "remove<%= relationship.relationshipNameCapitalized %>", ignore = true)
+    <%_ } _%>
   <%_ } _%>
     void partialUpdate(@MappingTarget <%= persistClass %> entity, <%= dtoClass %> dto);
   <%_ } _%>
@@ -207,9 +237,11 @@ public interface <%= entityClass %>Mapper extends EntityMapper<<%= dtoClass %>, 
     <%_ } _%>
   <%_ } _%>
   <%_ for (relationship of dtoRelationships) { _%>
+    <%_ renMapAnotDto = true; _%>
     <%_ if (!relationship.ownerSide) { _%>
-      <%_ renMapAnotDto = true; _%>
     @Mapping(target = "<%= relationship.propertyName %>", ignore = true)
+    <%_ } else { _%>
+    @Mapping(target = "<%= relationship.propertyName %>", source = "<%= relationship.propertyName %>", qualifiedByName = "<%= reverseRefName(relationship) %>")
     <%_ }
     if (relationship.collection && fluentMethods) {
       renMapAnotDto = true; _%>
@@ -223,6 +255,24 @@ public interface <%= entityClass %>Mapper extends EntityMapper<<%= dtoClass %>, 
   <%_ } _%>
     <%= persistClass %> toEntity(<%= dtoClass %> <%= dtoInstance %>);
   <%_ } _%>
+  <%_ /* Saathratri modification - shallow reverse reference mappers: the id, and nothing else */ _%>
+  <%_ for (const { otherEntity, collection } of reverseRefEntities) { _%>
+
+    @Named("<%= otherEntity.entityInstance %>FromId")
+    @BeanMapping(ignoreByDefault = true)
+    <%_ for (const field of otherEntity.primaryKey.fields) { _%>
+    @Mapping(target = "<%= field.propertyName %>", source = "<%= field.propertyName %>")
+    <%_ } _%>
+    <%- otherEntity.persistClass %> toEntity<%= otherEntity.entityClass %>FromId(<%- otherEntity.dtoClass %> <%= otherEntity.dtoInstance %>);
+    <%_ if (collection) { _%>
+
+    @Named("<%= otherEntity.entityInstance %>FromIdSet")
+    default Set<<%- otherEntity.persistClass %>> toEntity<%= otherEntity.entityClass %>FromIdSet(Set<<%- otherEntity.dtoClass %>> <%= otherEntity.dtoInstance %>Set) {
+        return <%= otherEntity.dtoInstance %>Set == null ? null : <%= otherEntity.dtoInstance %>Set.stream().map(this::toEntity<%= otherEntity.entityClass %>FromId).collect(Collectors.toSet());
+    }
+    <%_ } _%>
+  <%_ } _%>
+  <%_ /* End Saathratri modification */ _%>
   <%_ for (const {otherEntity, relatedField, collection} of otherEntitiesFields) { _%>
     <%_ const mapperName = otherEntity.entityInstance + this._.upperFirst(relatedField.propertyName); _%>
 

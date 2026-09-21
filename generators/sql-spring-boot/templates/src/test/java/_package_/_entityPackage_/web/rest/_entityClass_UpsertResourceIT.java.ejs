@@ -1,0 +1,104 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.web.rest;
+
+import static <%= entityAbsolutePackage %>.domain.<%= entityClass %>TestSamples.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import <%= packageName %>.IntegrationTest;
+import <%= entityAbsolutePackage %>.service.dto.<%= dtoClass %>;
+import <%= entityAbsolutePackage %>.service.mapper.<%= entityClass %>Mapper;
+import jakarta.persistence.EntityManager;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * Integration test for the {@code @upsertResource} endpoint of {@link <%= entityClass %>UpsertResource}:
+ * two upserts under the same id must leave exactly ONE row (keyed by the id, not a fresh
+ * {@code @GeneratedValue}), and the second one updates it rather than inserting a duplicate. Reuses the
+ * generated {@code <%= entityClass %>TestSamples} for valid values and asserts against the database with
+ * a native count, past the persistence context (the endpoint writes with a native upsert).
+ */
+@IntegrationTest
+@AutoConfigureMockMvc
+@WithMockUser
+class <%= entityClass %>UpsertResourceIT {
+
+    private static final String UPSERT_URL = "/api/<%= entityApiUrl %>/upsert/{<%= primaryKey.name %>}";
+
+    @Autowired
+    private ObjectMapper om;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private EntityManager em;
+
+    @Autowired
+    private <%= entityClass %>Mapper <%= entityInstance %>Mapper;
+
+    private long rowCountFor(<%= primaryKey.type %> id) {
+        Number count = (Number) em
+            .createNativeQuery("SELECT count(*) FROM <%= entityTableName %> WHERE <%= primaryKey.fields[0].fieldNameAsDatabaseColumn %> = :id")
+            .setParameter("id", id)
+            .getSingleResult();
+        return count.longValue();
+    }
+
+    @Test
+    @Transactional
+    void upsertInsertsUnderTheGivenIdThenUpdatesTheSameRow() throws Exception {
+<%_ if (primaryKey.typeUUID) { _%>
+        <%= primaryKey.type %> id = UUID.randomUUID();
+<%_ } else if (primaryKey.typeLong) { _%>
+        <%= primaryKey.type %> id = 987_654_321L;
+<%_ } else if (primaryKey.typeInteger) { _%>
+        <%= primaryKey.type %> id = 987_654_321;
+<%_ } else { _%>
+        <%= primaryKey.type %> id = "upsert-it-" + UUID.randomUUID();
+<%_ } _%>
+
+        // First call: inserts the row under the given id.
+        <%= dtoClass %> first = <%= entityInstance %>Mapper.toDto(get<%= entityClass %>Sample1());
+        first.<%= primaryKey.propertyConsumerName %>(id);
+        mockMvc
+            .perform(put(UPSERT_URL, id).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(first)))
+            .andExpect(status().isOk());
+        assertThat(rowCountFor(id)).isEqualTo(1L);
+
+        // Second call with different values under the SAME id: updates the row, no duplicate.
+        <%= dtoClass %> updated = <%= entityInstance %>Mapper.toDto(get<%= entityClass %>Sample2());
+        updated.<%= primaryKey.propertyConsumerName %>(id);
+        mockMvc
+            .perform(put(UPSERT_URL, id).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(om.writeValueAsBytes(updated)))
+            .andExpect(status().isOk());
+        assertThat(rowCountFor(id)).isEqualTo(1L);
+    }
+}

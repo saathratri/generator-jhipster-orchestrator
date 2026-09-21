@@ -1,0 +1,104 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+package <%= entityAbsolutePackage %>.web.rest;
+
+<%_
+// Saathratri @upsertResource: a native INSERT ... ON CONFLICT (<pk>) DO UPDATE keyed by the
+// caller-supplied primary key. Scalar persisted columns only — the id, relationships (FK columns),
+// blobs and vector columns are excluded. Entities that opt in are those the caller keys by an
+// external id (e.g. an orchestrator stamping a maintenance associate by the employee UUID).
+const pkColumn = primaryKey.fields[0].fieldNameAsDatabaseColumn;
+const upsertFields = fields.filter(
+  field => !field.id && !field.transient && !field.autoGenerate && !field.fieldTypeVectorSaathratri && !field.fieldTypeBinary,
+);
+const insertColumns = [pkColumn, ...upsertFields.map(field => field.fieldNameAsDatabaseColumn)].join(', ');
+const insertParams = [`:${primaryKey.name}`, ...upsertFields.map(field => `:${field.fieldName}`)].join(', ');
+const conflictSetters = upsertFields
+  .map(field => `${field.fieldNameAsDatabaseColumn} = EXCLUDED.${field.fieldNameAsDatabaseColumn}`)
+  .join(', ');
+const getterFor = field => {
+  const getter = `${entityInstance}DTO.get${field.fieldNameCapitalized}()`;
+  // Native queries do not apply the JPA enum -> String conversion, so bind the enum name.
+  return field.fieldIsEnum ? `${getter} == null ? null : ${getter}.name()` : getter;
+};
+_%>
+import <%= entityAbsolutePackage %>.service.dto.<%= dtoClass %>;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+<%_ if (primaryKey.typeUUID) { _%>
+import java.util.UUID;
+<%_ } _%>
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Upsert a {@link <%= entityAbsolutePackage %>.domain.<%= persistClass %>} keyed by the caller's own id
+ * (the {@code @upsertResource} opt-in). A companion to the generated {@code <%= entityClass %>Resource},
+ * NOT a replacement: the generated create keeps a {@code @GeneratedValue} id and rejects a
+ * client-supplied one, and the generated update refuses a row that does not yet exist — so neither can
+ * create a row under a chosen id. This does it with a single native
+ * {@code INSERT ... ON CONFLICT (<%= pkColumn %>) DO UPDATE}, so a second call with the same id updates
+ * the row instead of inserting a duplicate. Only scalar columns are written (relationships/blobs/vector
+ * columns are not), so it fits entities the caller keys by an external id, not deep aggregates.
+ */
+@RestController
+@RequestMapping("/api/<%= entityApiUrl %>")
+public class <%= entityClass %>UpsertResource {
+
+    private static final Logger LOG = LoggerFactory.getLogger(<%= entityClass %>UpsertResource.class);
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    /**
+     * {@code PUT  /<%= entityApiUrl %>/upsert/:<%= primaryKey.name %>} : insert the <%= entityInstance %>
+     * under {@code <%= primaryKey.name %>}, or update its columns if the row already exists. A raw upsert
+     * on the primary key that deliberately bypasses {@code @GeneratedValue}.
+     *
+     * @param <%= primaryKey.name %> the id to key the row by.
+     * @param <%= entityInstance %>DTO the values to insert or update.
+     * @return {@code 200 (OK)}.
+     */
+    @PutMapping("/upsert/{<%= primaryKey.name %>}")
+    @Transactional
+    public ResponseEntity<Void> upsert<%= entityClass %>(
+        @PathVariable("<%= primaryKey.name %>") final <%= primaryKey.type %> <%= primaryKey.name %>,
+        @RequestBody final <%= dtoClass %> <%= entityInstance %>DTO
+    ) {
+        LOG.debug("REST request to upsert <%= entityClass %> keyed by id : {}", <%= primaryKey.name %>);
+        entityManager
+            .createNativeQuery(
+                "INSERT INTO <%= entityTableName %> (<%= insertColumns %>) VALUES (<%= insertParams %>) " +
+                "ON CONFLICT (<%= pkColumn %>) DO UPDATE SET <%= conflictSetters %>"
+            )
+            .setParameter("<%= primaryKey.name %>", <%= primaryKey.name %>)
+<%_ for (field of upsertFields) { _%>
+            .setParameter("<%= field.fieldName %>", <%- getterFor(field) %>)
+<%_ } _%>
+            .executeUpdate();
+        return ResponseEntity.ok().build();
+    }
+}
