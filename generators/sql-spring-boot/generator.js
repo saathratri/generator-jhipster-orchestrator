@@ -371,6 +371,39 @@ export default class extends BaseApplicationGenerator {
                   ...javaTestPackageTemplatesBlock('_entityPackage_/'),
                   templates: ['web/rest/_entityClass_ResourceIT.java'],
                 },
+                // Saathratri: the stock round-trip test PLUS the guard for the shallow reverse mapping the
+                // mapper template emits - a PATCH re-points a relationship and never writes into the entity it
+                // pointed at, toEntity carries a relationship by its id alone, and the implementation forges
+                // no DTO<->entity bean mapping of its own (the unbounded version put the whole entity graph
+                // into every mapper: 272 s and 91 KB for ONE mapper, against 2.6 s and 13 KB).
+                {
+                  condition: generator => generator.databaseTypeSql && !entity.skipServer && entity.dtoMapstruct,
+                  ...javaTestPackageTemplatesBlock('_entityPackage_/'),
+                  templates: ['service/mapper/_entityClass_MapperTest.java'],
+                },
+                // Saathratri @upsertResource: an opt-in native INSERT ... ON CONFLICT (pk) DO UPDATE
+                // endpoint keyed by the caller-supplied id (for entities keyed by an external id, e.g.
+                // an associate keyed by the employee UUID). Blocking EntityManager, so SQL + non-reactive.
+                {
+                  condition: generator =>
+                    generator.databaseTypeSql &&
+                    !generator.reactive &&
+                    !entity.skipServer &&
+                    entity.dtoMapstruct &&
+                    (entity.upsertResource ?? entity.annotations?.upsertResource) === true,
+                  ...javaMainPackageTemplatesBlock('_entityPackage_/'),
+                  templates: ['web/rest/_entityClass_UpsertResource.java'],
+                },
+                {
+                  condition: generator =>
+                    generator.databaseTypeSql &&
+                    !generator.reactive &&
+                    !entity.skipServer &&
+                    entity.dtoMapstruct &&
+                    (entity.upsertResource ?? entity.annotations?.upsertResource) === true,
+                  ...javaTestPackageTemplatesBlock('_entityPackage_/'),
+                  templates: ['web/rest/_entityClass_UpsertResourceIT.java'],
+                },
               ],
             },
             context: { ...application, ...entity, ...sqlSpringBootUtils },
@@ -409,13 +442,31 @@ export default class extends BaseApplicationGenerator {
                 '                        <!-- This helps prevent OutOfMemoryError during MapStruct annotation processing -->\n' +
                 '                        <!-- especially with complex entity relationships -->\n' +
                 '                        <fork>true</fork>\n' +
-                '                        <meminitial>2048m</meminitial>\n' +
-                '                        <maxmem>8192m</maxmem>\n' +
+                '                        <meminitial>512m</meminitial>\n' +
+                '                        <maxmem>5120m</maxmem>\n' +
                 '                        <annotationProcessorPaths>',
             );
           }
           return content;
         });
+
+        // SQL services fork the compiler for MapStruct (see the maven-compiler-plugin <maxmem>
+        // above), so the Maven JVM itself only orchestrates the build and needs ~2g — NOT the 8g
+        // default that spring-boot-orchestrator writes into .mvn/jvm.config for the in-process
+        // compiles of non-SQL services. Leaving both at 8g made the peak 8g (Maven) + <maxmem>
+        // (forked javac) ≈ 16g, which memory-reaps constrained dev machines mid-build. Lower the
+        // Maven heap for SQL services only; non-SQL services keep the 8g default they actually need.
+        this.editFile('.mvn/jvm.config', { ignoreNonExisting: true }, content => content.replace('-Xmx8g -Xms2g', '-Xmx2g -Xms512m'));
+
+        // The generated HibernateTimeZoneIT computes its expected values with ZoneId.systemDefault()
+        // but formats them in the configured hibernate.jdbc.time_zone (UTC), so its LocalDateTime /
+        // LocalTime cases only pass when the test JVM's default zone IS UTC. Production runs UTC
+        // (Heroku); a developer machine in any other zone fails these two with a fixed offset.
+        // Force the test fork to UTC so the suite is deterministic and matches production — set on
+        // the argLine property that surefire/failsafe both read via @{argLine}. Idempotent.
+        this.editFile(pomFile, content =>
+          content.includes('-Duser.timezone=') ? content : content.replace(/(<argLine>[^<]*?)(<\/argLine>)/, '$1 -Duser.timezone=UTC$2'),
+        );
 
         // Hibernate bytecode enhancement was tried to kill inverse @OneToOne
         // N+1 queries on the Full-details entity graph, but the only published

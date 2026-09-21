@@ -1,0 +1,154 @@
+<%#
+ Copyright 2013-2026 the original author or authors from the JHipster project.
+
+ This file is part of the JHipster project, see https://www.jhipster.tech/
+ for more information.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-%>
+<%_
+  /* Saathratri modification - the stock template's round trip, PLUS the guard for the shallow reverse
+     mapping the mapper template emits (see _entityClass_Mapper.java.ejs). RED 2026-09-20 against the mapper
+     generated until then: partialUpdate handed back the SAME related object with another id and another
+     name (a PATCH of an order renamed the organization it pointed at), toEntity copied the related DTO's
+     fields into the reference, and the implementation carried 68 methods for three relationships. */
+  const upperFirst = this._.upperFirst;
+  const dtoRelationships = restProperties.filter(property => property.relationshipName && !property.otherEntity.embedded);
+  const hasEmbeddedRelationship = restProperties.some(property => property.relationshipName && property.otherEntity.embedded);
+  const ownerSideDtoRelationships = dtoRelationships.filter(relationship => relationship.ownerSide);
+  /* A relationship we can build samples for: another generated entity with a single-field primary key. */
+  const testable = relationship =>
+    !relationship.otherEntity.builtIn &&
+    relationship.otherEntity.primaryKey &&
+    !relationship.otherEntity.primaryKey.composite &&
+    relationship.otherEntity.primaryKey.fields.length === 1;
+  const toOneRelationships = ownerSideDtoRelationships.filter(relationship => !relationship.collection && testable(relationship));
+  const toManyRelationships = ownerSideDtoRelationships.filter(relationship => relationship.collection);
+  const otherEntitiesUnderTest = this._.uniq(toOneRelationships.map(relationship => relationship.otherEntity)).filter(
+    otherEntity => otherEntity.entityClass !== entityClass,
+  );
+  const pkAccessor = otherEntity => upperFirst(otherEntity.primaryKey.fields[0].propertyName);
+_%>
+package <%- entityAbsolutePackage %>.service.mapper;
+
+import static <%- entityAbsoluteClass %>Asserts.*;
+import static <%- entityAbsoluteClass %>TestSamples.*;
+<%_ for (const otherEntity of otherEntitiesUnderTest) { _%>
+import static <%- otherEntity.entityAbsoluteClass %>Asserts.*;
+import static <%- otherEntity.entityAbsoluteClass %>TestSamples.*;
+<%_ } _%>
+<%_ if (toOneRelationships.length > 0 || toManyRelationships.length > 0 || !hasEmbeddedRelationship) { _%>
+import static org.assertj.core.api.Assertions.assertThat;
+<%_ } _%>
+
+<%_ if (toOneRelationships.length > 0 || toManyRelationships.length > 0) { _%>
+import <%- entityAbsoluteClass %>;
+import <%- entityAbsolutePackage %>.service.dto.<%- dtoClass %>;
+<%_ } _%>
+<%_ for (const otherEntity of otherEntitiesUnderTest) { _%>
+import <%- otherEntity.entityAbsoluteClass %>;
+import <%- otherEntity.entityAbsolutePackage %>.service.dto.<%- otherEntity.dtoClass %>;
+<%_ } _%>
+<%_ if (!hasEmbeddedRelationship) { _%>
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Arrays;
+<%_ } _%>
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class <%- entityClass %>MapperTest {
+
+    private <%- entityClass %>Mapper <%- entityInstance %>Mapper;
+
+    @BeforeEach
+    void setUp() {
+        <%- entityInstance %>Mapper = new <%- entityClass %>MapperImpl();
+    }
+
+    @Test
+    void shouldConvertToDtoAndBack() {
+        var expected = get<%- persistClass %>Sample1();
+        var actual = <%- entityInstance %>Mapper.toEntity(<%- entityInstance %>Mapper.toDto(expected));
+        assert<%- persistClass %>AllPropertiesEquals(expected, actual);
+    }
+<%_ for (const relationship of toOneRelationships) {
+      const otherEntity = relationship.otherEntity;
+      const property = upperFirst(relationship.propertyName);
+      const pk = pkAccessor(otherEntity);
+_%>
+
+    /** A PATCH re-points the relationship; it must never write into the entity the record pointed at. */
+    @Test
+    void partialUpdateRepoints<%- property %>AndNeverWritesIntoTheOneItPointedAt() {
+        <%- otherEntity.persistClass %> managed = get<%- otherEntity.persistClass %>Sample1();
+        <%- persistClass %> entity = new <%- persistClass %>();
+        entity.set<%- property %>(managed);
+
+        <%- otherEntity.dtoClass %> other = new <%- otherEntity.entityClass %>MapperImpl().toDto(get<%- otherEntity.persistClass %>Sample2());
+        <%- dtoClass %> patch = new <%- dtoClass %>();
+        patch.set<%- property %>(other);
+
+        <%- entityInstance %>Mapper.partialUpdate(entity, patch);
+
+        assertThat(entity.get<%- property %>().get<%- pk %>()).as("now points at the other one").isEqualTo(other.get<%- pk %>());
+        assertThat(entity.get<%- property %>()).as("by a NEW reference, not by rewriting the old object").isNotSameAs(managed);
+        assert<%- otherEntity.persistClass %>AllPropertiesEquals(get<%- otherEntity.persistClass %>Sample1(), managed);
+    }
+
+    /** The reverse side carries a relationship by its id and nothing else: a reference, not a copy. */
+    @Test
+    void toEntityCarries<%- property %>ByItsIdAndNothingElse() {
+        <%- otherEntity.dtoClass %> other = new <%- otherEntity.entityClass %>MapperImpl().toDto(get<%- otherEntity.persistClass %>Sample2());
+        <%- dtoClass %> dto = new <%- dtoClass %>();
+        dto.set<%- property %>(other);
+
+        <%- otherEntity.persistClass %> reference = new <%- otherEntity.persistClass %>();
+        reference.set<%- pk %>(other.get<%- pk %>());
+        assert<%- otherEntity.persistClass %>AllPropertiesEquals(reference, <%- entityInstance %>Mapper.toEntity(dto).get<%- property %>());
+    }
+<%_ } _%>
+<%_ for (const relationship of toManyRelationships) {
+      const property = upperFirst(relationship.propertyName);
+_%>
+
+    /** A payload that omits the collection must not blow up the shallow collection mapper. */
+    @Test
+    void toEntityAcceptsAMissing<%- property %>Collection() {
+        <%- dtoClass %> dto = new <%- dtoClass %>();
+        dto.set<%- property %>(null);
+
+        <%- persistClass %> entity = <%- entityInstance %>Mapper.toEntity(dto);
+
+        assertThat(entity).isNotNull();
+    }
+<%_ } _%>
+<%_ if (!hasEmbeddedRelationship) { _%>
+
+    /**
+     * MapStruct names the bean mappings it forges itself {@code <source>To<Target>} and makes them protected.
+     * One of them between a DTO and an entity means a relationship's reverse mapping was left to MapStruct
+     * again - and with it the reverse mapping of the whole reachable entity graph, in EVERY mapper, which is
+     * what once made a 56-mapper service need a 5 GB compiler.
+     */
+    @Test
+    void theImplementationForgesNoBeanMappingOfItsOwn() {
+        assertThat(
+            Arrays.stream(<%- entityClass %>MapperImpl.class.getDeclaredMethods())
+                .filter(method -> Modifier.isProtected(method.getModifiers()))
+                .map(Method::getName)
+                .filter(name -> name.matches(".*<%- dtoSuffix %>(To.*|\\d*)$"))
+        ).isEmpty();
+    }
+<%_ } _%>
+}
