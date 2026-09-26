@@ -32,6 +32,16 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.CONFIGURING]() {
     return this.asConfiguringTaskGroup({
       async configuringTemplateTask() {},
+      keepCqlLoaderMigration() {
+        // JHipster 9.3.1+ defaults Cassandra applications to Liquibase (`databaseMigration: liquibase`,
+        // written into a freshly imported .yo-rc.json) and only keeps the CQL loader for applications
+        // generated before 9.3.1. This blueprint's schema model is the CQL changelog files under
+        // config/cql/changelog (plus hand-applied cql-patches on Astra, schema-action NONE), not Liquibase,
+        // and a regen starts from a deleted .yo-rc.json - so pin the loader for every Cassandra application.
+        if (this.jhipsterConfigWithDefaults.databaseType !== 'cassandra') return;
+        if (this.jhipsterConfig.databaseMigration === 'no') return;
+        this.jhipsterConfig.databaseMigration = 'loader';
+      },
     });
   }
 

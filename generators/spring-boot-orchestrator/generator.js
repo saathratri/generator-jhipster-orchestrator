@@ -18,7 +18,10 @@ const JVM_CONFIG_CONTENT = '-Xmx8g -Xms2g -XX:+UseParallelGC -XX:ParallelGCThrea
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
-    super(args, opts, { ...features, sbsBlueprint: true });
+    // allowDestinationOutsideRoot: yeoman-generator 9 (JHipster 9.4.0) throws when a destination
+    // resolves outside the app root. This generator deliberately writes the sibling
+    // `../<baseName>dto/` Maven module (pom, mvnw, wrapper, README, .gitignore, copied DTOs).
+    super(args, opts, { ...features, sbsBlueprint: true, allowDestinationOutsideRoot: true });
   }
 
   get [BaseApplicationGenerator.INITIALIZING]() {

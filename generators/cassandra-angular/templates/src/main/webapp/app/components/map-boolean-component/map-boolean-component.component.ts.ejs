@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   EventEmitter,
   Input,
@@ -22,6 +23,9 @@ import { MapBooleanEditDialogComponent } from '../map-boolean-edit-dialog-compon
 import { MatDialog } from '@angular/material/dialog';
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'app-map-boolean-component',
   standalone: true,

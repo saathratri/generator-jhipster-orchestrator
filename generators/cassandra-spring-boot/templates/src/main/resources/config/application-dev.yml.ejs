@@ -99,7 +99,7 @@ spring:
     compose:
       enabled: false
 <%_ } _%>
-  jackson<%= springBoot4 ? '2' : '' %>:
+  jackson:
     serialization:
       indent-output: true
 <%_ if (databaseTypeNeo4j) { _%>

@@ -43,7 +43,7 @@
   const vectorFieldsForAiSearch = fields.filter(f => f.fieldTypeVectorSaathratri === true);
   const hasVectorFieldsForAiSearch = vectorFieldsForAiSearch.length > 0;
 _%>
-import { Component, computed, effect, inject, NgZone, OnInit, signal, WritableSignal, untracked<%_ if (databaseTypeCassandra && paginationNo) { _%>, HostListener<%_ } _%> } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, NgZone, OnInit, signal, WritableSignal, untracked<%_ if (databaseTypeCassandra && paginationNo) { _%>, HostListener<%_ } _%> } from '@angular/core';
 <%_ if (jpaMetamodelFiltering && paginationPagination) { _%>
 import { toSignal } from '@angular/core/rxjs-interop';
 <%_ } _%>
@@ -127,6 +127,9 @@ import { DecimalPipe } from '@angular/common';
 <%_ } _%>
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
     selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>',
     templateUrl: './<%= entityFileName %>.html',
     imports: [
