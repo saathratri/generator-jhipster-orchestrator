@@ -315,7 +315,7 @@ export default class extends BaseApplicationGenerator {
             if (!content.includes('spring-ai-openai')) {
               // Spring AI 2.0.0 GA's spring-ai-openai brings only openai-java-core; the okhttp
               // transport (com.openai.client.okhttp.OpenAIOkHttpClient, used by EmbeddingConfiguration)
-              // must be declared explicitly. Pin to the 4.39.1 line spring-ai-openai:2.0.0 manages.
+              // must be declared explicitly. Pin to the 4.49.0 line spring-ai-openai:2.0.1 manages.
               // openai-java-core (via both deps) drags in the legacy io.swagger.core.v3:swagger-annotations
               // jar, whose io.swagger.v3.oas.annotations.media.Schema collides with and shadows springdoc's
               // newer swagger-annotations-jakarta, so springdoc's Schema.$dynamicRef() throws
@@ -336,7 +336,7 @@ $1    </dependency>
 $1    <dependency>
 $1        <groupId>com.openai</groupId>
 $1        <artifactId>openai-java-client-okhttp</artifactId>
-$1        <version>4.39.1</version>
+$1        <version>4.49.0</version>
 $1        <exclusions>
 $1            <exclusion>
 $1                <groupId>io.swagger.core.v3</groupId>
@@ -355,7 +355,7 @@ $1</dependencies>`,
                 `    <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
-                <version>2.0.0</version>
+                <version>2.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

@@ -6,6 +6,8 @@
 
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
+import { useSaathratriAiBom } from './saathratri-ai-bom.js';
+
 // Larger Maven heap for MapStruct annotation processing on SQL services. This lives here (not in
 // maven-orchestrator) because the orchestrator's `maven` router overrides `jhipster:maven`, which
 // JHipster 8 never runs (it runs `java-simple-application:maven`), so maven-orchestrator never
@@ -329,13 +331,23 @@ export default class extends BaseApplicationGenerator {
             `    <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
-                <version>2.0.0</version>
+                <version>2.0.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
         $1`,
           );
         });
+      },
+
+      async useSaathratriAiBomInPom({ application }) {
+        // Saathratri's AI stack is versioned in ONE place, com.saathratri:saathratri-ai-bom (saathratri/saathratri-ai).
+        // The base blueprints stay generic (a plain spring-ai-bom import); here, after every step above that adds it,
+        // the Spring AI BOM import becomes the Saathratri AI BOM import. See saathratri-ai-bom.js.
+        if (!application.applicationTypeMicroservice && !application.applicationTypeGateway) {
+          return;
+        }
+        this.editFile('pom.xml', content => useSaathratriAiBom(content));
       },
 
       async patchCorsInSecurityConfigForMicroservices({ application }) {
