@@ -54,9 +54,40 @@ const GENERATED_POM = `<?xml version="1.0" encoding="UTF-8"?>
 </project>
 `;
 
+/** The order the REAL saathratri-parent pom uses: its own coordinates BEFORE its <parent> (2.0.0 assumed the opposite
+ * and every generated service kept 0.0.1-SNAPSHOT with "no saathratri-parent version found"). */
+const REAL_ORDER_PARENT_POM = `<?xml version="1.0" encoding="UTF-8"?>
+<project>
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.saathratri</groupId>
+    <artifactId>saathratri-parent</artifactId>
+    <version>3.0.0</version>
+    <packaging>pom</packaging>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-bom</artifactId>
+                <version>\${jetty-wiremock-bom.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
+`;
+
 describe('platformVersionOf', () => {
   it("reads saathratri-parent's OWN version, not its Spring Boot parent's", () => {
     expect(platformVersionOf(PARENT_POM)).toBe('3.0.0');
+  });
+
+  it('reads it whichever order the pom declares its coordinates and its <parent> in (the real one: coordinates first)', () => {
+    expect(platformVersionOf(REAL_ORDER_PARENT_POM)).toBe('3.0.0');
   });
 
   it('is undefined for anything that is not the saathratri-parent pom', () => {

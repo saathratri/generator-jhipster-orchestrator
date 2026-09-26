@@ -4,7 +4,7 @@
 
 **generator-jhipster-orchestrator** is a custom JHipster 9 blueprint designed for the Saathratri project. It extends JHipster's default generation capabilities to support microservices architecture with specialized handling for both SQL (PostgreSQL) and Cassandra databases.
 
-**Version:** 2.0.0
+**Version:** 2.0.1
 **JHipster Version:** 9.2.0
 **Blueprint Type:** Side-by-Side (works alongside default JHipster generators)
 
