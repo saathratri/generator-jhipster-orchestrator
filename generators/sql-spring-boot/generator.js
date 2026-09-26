@@ -545,7 +545,7 @@ export default class extends BaseApplicationGenerator {
           this.editFile(pomFile, content => {
             // Add Spring AI version property
             if (!content.includes('spring-ai.version')) {
-              content = content.replace('    </properties>', '        <spring-ai.version>2.0.0</spring-ai.version>\n    </properties>');
+              content = content.replace('    </properties>', '        <spring-ai.version>2.0.1</spring-ai.version>\n    </properties>');
             }
 
             // Add Spring AI BOM to dependencyManagement
@@ -589,7 +589,7 @@ export default class extends BaseApplicationGenerator {
               const depMgmtPattern = '</dependencyManagement>\n\n    <dependencies>\n';
               // Spring AI 2.0.0 GA's spring-ai-openai brings only openai-java-core; the okhttp
               // transport (com.openai.client.okhttp.OpenAIOkHttpClient, used by EmbeddingConfiguration)
-              // must be declared explicitly. Pin to the 4.39.1 line spring-ai-openai:2.0.0 manages.
+              // must be declared explicitly. Pin to the 4.49.0 line spring-ai-openai:2.0.1 manages.
               // openai-java-core (pulled in via both deps below) drags in the legacy
               // io.swagger.core.v3:swagger-annotations jar, whose io.swagger.v3.oas.annotations.media.Schema
               // collides with (and is older than) springdoc's swagger-annotations-jakarta. The stale Schema
@@ -610,7 +610,7 @@ export default class extends BaseApplicationGenerator {
                 '        <dependency>\n' +
                 '            <groupId>com.openai</groupId>\n' +
                 '            <artifactId>openai-java-client-okhttp</artifactId>\n' +
-                '            <version>4.39.1</version>\n' +
+                '            <version>4.49.0</version>\n' +
                 '            <exclusions>\n' +
                 '                <exclusion>\n' +
                 '                    <groupId>io.swagger.core.v3</groupId>\n' +
