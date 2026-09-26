@@ -8,7 +8,7 @@
  * Pure and idempotent: the saathratri repo's checked-in poms are produced by this same function.
  */
 
-export const APP_AI_BOM_VERSION = '1.0.0';
+export const APP_AI_BOM_VERSION = '3.0.0'; // = the platform version; usePlatformVersion sets the real one at regen
 
 const APP_AI_BOM_IMPORT = [
   '<dependency>',

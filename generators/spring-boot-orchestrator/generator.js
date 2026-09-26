@@ -4,9 +4,12 @@
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
 
+import fs from 'node:fs';
+
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
 import { useAppAiBom } from './app-ai-bom.js';
+import { platformVersionOf, usePlatformVersion } from './app-platform-version.js';
 
 // Larger Maven heap for MapStruct annotation processing on SQL services. This lives here (not in
 // maven-orchestrator) because the orchestrator's `maven` router overrides `jhipster:maven`, which
@@ -350,7 +353,14 @@ export default class extends BaseApplicationGenerator {
         if (!application.applicationTypeMicroservice && !application.applicationTypeGateway) {
           return;
         }
-        this.editFile('pom.xml', content => useAppAiBom(content));
+        // the service and its app-ai-bom import take the ONE platform version -
+        // app-parent's, read from the monorepo at regen time - instead of JHipster's 0.0.1-SNAPSHOT.
+        const parentPom = this.destinationPath('../app-parent/pom.xml');
+        const platformVersion = fs.existsSync(parentPom) ? platformVersionOf(fs.readFileSync(parentPom, 'utf8')) : undefined;
+        if (!platformVersion) {
+          this.log.warn(`[saathratri] no app-parent version found at ${parentPom} - keeping the generated version`);
+        }
+        this.editFile('pom.xml', content => usePlatformVersion(useAppAiBom(content), platformVersion));
       },
 
       async patchCorsInSecurityConfigForMicroservices({ application }) {
