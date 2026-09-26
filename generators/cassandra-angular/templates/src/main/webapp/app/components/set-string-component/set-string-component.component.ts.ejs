@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, OnChanges, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, OnChanges, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MaterialModule } from '../../shared/material.module';
@@ -6,6 +6,9 @@ import { SetStringEditDialogComponent } from '../set-string-edit-dialog-componen
 import { MatDialog } from '@angular/material/dialog';
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'app-set-string-component',
   standalone: true,

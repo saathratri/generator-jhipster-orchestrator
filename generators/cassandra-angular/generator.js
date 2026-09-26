@@ -325,23 +325,6 @@ export default class extends BaseApplicationGenerator {
           return content.replace(/"cli":\s*\{\n(\s*)"cache":/, '"cli": {\n$1"analytics": false,\n$1"cache":');
         });
 
-        // Patch webpack.microfrontend.js to share @angular/core/rxjs-interop as singleton.
-        // Without this, microfrontend signal change detection breaks (e.g., isLoading spinner
-        // never stops) because the host and remote get different Angular core instances.
-        // SBS template override doesn't work for composed generators, so patch programmatically.
-        const webpackMfPath = 'webpack/webpack.microfrontend.js';
-        if (this.existsDestination(webpackMfPath)) {
-          this.editFile(webpackMfPath, content => {
-            if (!content.includes('@angular/core/rxjs-interop')) {
-              content = content.replace(
-                "'@angular/common/http': sharedDependencies['@angular/common'],",
-                "'@angular/common/http': sharedDependencies['@angular/common'],\n  '@angular/core/rxjs-interop': sharedDependencies['@angular/core'],",
-              );
-            }
-            return content;
-          });
-        }
-
         // Patch global.scss to import Angular Material theme and Material Icons.
         // SBS template override doesn't work for composed generators (cassandra-angular
         // is composed, not a direct SBS of 'angular'), so patch programmatically.
@@ -480,37 +463,13 @@ Infinite Scroll Styles
           const isMicrofrontendGateway = application.microfrontend && application.applicationTypeGateway;
 
           this.editFile(navbarTsFile, content => {
-            if (!isMicrofrontendGateway) {
-              // Add EntityNavbarItems import
-              if (!content.includes('EntityNavbarItems')) {
-                content = content.replace(
-                  "import NavbarItem from './navbar-item.model';",
-                  "import { EntityNavbarItems } from 'app/entities/entity-navbar-items';\nimport NavbarItem from './navbar-item.model';",
-                );
-              }
-              // Add entitiesNavbarItems property
-              if (!content.includes('entitiesNavbarItems')) {
-                content = content.replace(
-                  'readonly account = inject(AccountService).account;',
-                  'readonly account = inject(AccountService).account;\n  entitiesNavbarItems: NavbarItem[] = [];',
-                );
-              }
-              // Add sorting in ngOnInit
-              if (!content.includes('EntityNavbarItems].sort')) {
-                content = content.replace(
-                  '    this.profileService.getProfileInfo().subscribe(profileInfo => {',
-                  '    // Saathratri modification - sort entity navbar items alphabetically\n' +
-                    '    this.entitiesNavbarItems = [...EntityNavbarItems].sort((a, b) => a.name.localeCompare(b.name));\n' +
-                    '    this.profileService.getProfileInfo().subscribe(profileInfo => {',
-                );
-              }
-            }
-
-            // For gateways with microfrontends: add sorting helper. Insert AFTER
-            // loadMicrofrontendsEntities (immediately before the class's closing brace) so
-            // the public method stays before the private helper — @typescript-eslint/member-ordering
-            // requires public-before-private.
-            if (isMicrofrontendGateway) {
+            // JHipster 9.3+ loads EVERY microfrontend app's own entity menu through federation
+            // (loadNavbarItems(<self>)), so the old non-gateway EntityNavbarItems/entitiesNavbarItems
+            // patch is gone (it was never read by navbar.html) - microservices get the same sort as gateways.
+            // The sorting helper goes AFTER loadMicrofrontendsEntities (immediately before the class's
+            // closing brace) so the public method stays before the private helper —
+            // @typescript-eslint/member-ordering requires public-before-private.
+            if (application.microfrontend) {
               if (!content.includes('sortNavbarItemsAlphabetically') && content.includes('loadMicrofrontendsEntities')) {
                 content = content.replace(
                   /\n\}\s*$/,
@@ -529,29 +488,25 @@ Infinite Scroll Styles
             return content;
           });
 
-          // Patch core/microfrontend/index.ts - cache-bust remoteEntry.js fetches.
-          // remoteEntry.js has a stable URL but new content on every deploy, and the prod
-          // CachingHttpHeadersFilter serves it with a multi-year max-age — so CDN edges and
-          // browsers keep executing a stale copy whose hashed chunk names no longer exist
-          // (ChunkLoadError → the microfrontend silently vanishes from the navbar).
-          // A per-page-load query param forces a fresh fetch on every load.
+          // === Patch main.ts - cache-bust the remotes' remoteEntry.json fetches ===
+          // remoteEntry.json is mutable content at a stable URL (each deploy renames the hashed
+          // chunks it lists). A CDN edge or browser holding a stale copy points at chunk files
+          // that no longer exist and the microfrontend silently vanishes from the navbar.
+          // A per-page-load query param forces a fresh fetch on every load. Native Federation
+          // (JHipster 9.4.0+) derives each remote's scope URL by dropping the last path segment,
+          // so the query string never leaks into the chunk URLs.
           if (isMicrofrontendGateway) {
-            const microfrontendIndexFile = `${clientSrcDir}app/core/microfrontend/index.ts`;
-            this.editFile(microfrontendIndexFile, content => {
-              if (!content.includes('remoteEntryCacheBust')) {
-                content = content.replace(
-                  "import NavbarItem from 'app/layouts/navbar/navbar-item.model';",
-                  "import NavbarItem from 'app/layouts/navbar/navbar-item.model';\n\n" +
-                    '// Saathratri modification - remoteEntry.js is mutable content at a stable URL;\n' +
+            this.editFile(`${clientSrcDir}main.ts`, content => {
+              if (content.includes('remoteEntryCacheBust')) return content;
+              return content
+                .replace(
+                  "import { initFederation } from '@angular-architects/native-federation';",
+                  "import { initFederation } from '@angular-architects/native-federation';\n\n" +
+                    '// Saathratri modification - remoteEntry.json is mutable content at a stable URL;\n' +
                     '// bust CDN/browser caches once per page load so deploys are picked up immediately.\n' +
                     'const remoteEntryCacheBust = Date.now();',
-                );
-                content = content.replace(
-                  /remoteEntry: `\.\/services\/\$\{service\}\/remoteEntry\.js`/g,
-                  'remoteEntry: `./services/${service}/remoteEntry.js?ts=${remoteEntryCacheBust}`',
-                );
-              }
-              return content;
+                )
+                .replace(/'(\.\/services\/[^']+\/remoteEntry\.json)'/g, '`$1?ts=${remoteEntryCacheBust}`');
             });
           }
 
@@ -567,13 +522,13 @@ Infinite Scroll Styles
                   ? `\n                  [${jhiPrefix}Translate]="entityNavbarItem.translationKey"`
                   : '';
                 microfrontendMenus += `
-      @if (account() !== null && ${remote.lowercaseBaseName}EntityNavbarItems().length > 0) {
+      @if (account() !== null && (${remote.lowercaseBaseName}EntityNavbarItems() ?? []).length > 0) {
         <li ngbDropdown class="nav-item dropdown pointer" display="static" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
           <a class="nav-link dropdown-toggle" ngbDropdownToggle href="javascript:void(0);" id="${remote.lowercaseBaseName}-menu" data-cy="${remote.lowercaseBaseName}Menu">
             <span><fa-icon icon="th-list" /><span>${remote.baseName}</span></span>
           </a>
           <ul class="dropdown-menu" ngbDropdownMenu aria-labelledby="${remote.lowercaseBaseName}-menu">
-            @for (entityNavbarItem of ${remote.lowercaseBaseName}EntityNavbarItems(); track $index) {
+            @for (entityNavbarItem of ${remote.lowercaseBaseName}EntityNavbarItems() ?? []; track $index) {
               <li>
                 <a class="dropdown-item" [routerLink]="entityNavbarItem.route" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="collapseNavbar()">
                   <fa-icon icon="asterisk" [fixedWidth]="true" />${translationAttr ? `\n                  <span${translationAttr}>{{entityNavbarItem.name}}</span>` : '\n                  <span>{{entityNavbarItem.name}}</span>'}

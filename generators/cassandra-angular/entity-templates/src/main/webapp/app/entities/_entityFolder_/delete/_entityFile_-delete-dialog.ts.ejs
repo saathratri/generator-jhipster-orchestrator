@@ -16,7 +16,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -%>
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 
@@ -46,6 +46,9 @@ import { <%= entityAngularName %>Service } from '../service/<%= entityFileName %
 import { ITEM_DELETED_EVENT } from 'app/config/navigation.constants';
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
     templateUrl: './<%= entityFileName %>-delete-dialog.html',
     imports: [
       FontAwesomeModule,

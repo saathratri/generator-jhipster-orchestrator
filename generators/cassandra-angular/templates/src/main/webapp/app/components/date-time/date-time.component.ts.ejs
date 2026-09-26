@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnInit, Output, forwardRef } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnInit, Output, forwardRef } from '@angular/core';
 import {
   AbstractControl,
   ControlValueAccessor,
@@ -17,6 +17,9 @@ import dayjs from 'dayjs/esm';
 import { MaterialModule } from '../../shared/material.module';
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
   // eslint-disable-next-line @angular-eslint/component-selector
   selector: 'app-date-time',
   standalone: true,

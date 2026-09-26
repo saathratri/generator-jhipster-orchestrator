@@ -226,17 +226,6 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.POST_WRITING]() {
     return this.asPostWritingTaskGroup({
-      async fixWebpackMicrofrontendSharing({ application }) {
-        if (application.microfrontend) {
-          this.editFile('webpack/webpack.microfrontend.js', content => {
-            if (content.includes('@angular/core/rxjs-interop')) return content;
-            return content.replace(
-              "'@angular/common/http': sharedDependencies['@angular/common'],\n  'rxjs/operators': sharedDependencies.rxjs,",
-              "'@angular/common/http': sharedDependencies['@angular/common'],\n  '@angular/core/rxjs-interop': sharedDependencies['@angular/core'],\n  'rxjs/operators': sharedDependencies.rxjs,",
-            );
-          });
-        }
-      },
       async forceTestOneShot({ application }) {
         // Upstream JHipster's Angular generator emits `"test": "ng test --coverage"` which,
         // after the Karma→Vitest switch, defaults to WATCH mode and never exits. The
@@ -373,40 +362,13 @@ export default class extends BaseApplicationGenerator {
         // === Patch navbar.ts ===
         const isMicrofrontendGateway = application.microfrontend && application.applicationTypeGateway;
         this.editFile(navbarTsFile, content => {
-          if (!isMicrofrontendGateway) {
-            // For non-gateway apps: add EntityNavbarItems import, property, and sorting
-            // 1. Add EntityNavbarItems import
-            if (!content.includes('EntityNavbarItems')) {
-              content = content.replace(
-                "import NavbarItem from './navbar-item.model';",
-                "import { EntityNavbarItems } from 'app/entities/entity-navbar-items';\nimport NavbarItem from './navbar-item.model';",
-              );
-            }
-
-            // 2. Add entitiesNavbarItems property
-            if (!content.includes('entitiesNavbarItems')) {
-              content = content.replace(
-                'readonly account = inject(AccountService).account;',
-                'readonly account = inject(AccountService).account;\n  entitiesNavbarItems: NavbarItem[] = [];',
-              );
-            }
-
-            // 3. Add sorting in ngOnInit (insert before profileService.getProfileInfo)
-            if (!content.includes('EntityNavbarItems].sort')) {
-              content = content.replace(
-                '    this.profileService.getProfileInfo().subscribe(profileInfo => {',
-                '    // Saathratri modification - sort entity navbar items alphabetically\n' +
-                  '    this.entitiesNavbarItems = [...EntityNavbarItems].sort((a, b) => a.name.localeCompare(b.name));\n' +
-                  '    this.profileService.getProfileInfo().subscribe(profileInfo => {',
-              );
-            }
-          }
-
-          // For gateways with microfrontends: add sorting helper and wrap .set() calls
-          if (isMicrofrontendGateway) {
-            // 4. Add sortNavbarItemsAlphabetically helper method AFTER loadMicrofrontendsEntities
-            // (immediately before the class's closing brace) so the public method stays before the
-            // private helper — @typescript-eslint/member-ordering requires public-before-private.
+          // JHipster 9.3+ loads EVERY microfrontend app's own entity menu through federation
+          // (loadNavbarItems(<self>)), so the old non-gateway EntityNavbarItems/entitiesNavbarItems
+          // patch is gone (it was never read by navbar.html) - microservices get the same sort as gateways.
+          if (application.microfrontend) {
+            // Add sortNavbarItemsAlphabetically helper AFTER loadMicrofrontendsEntities (immediately
+            // before the class's closing brace) so the public method stays before the private
+            // helper — @typescript-eslint/member-ordering requires public-before-private.
             if (!content.includes('sortNavbarItemsAlphabetically') && content.includes('loadMicrofrontendsEntities')) {
               content = content.replace(
                 /\n\}\s*$/,
@@ -419,7 +381,7 @@ export default class extends BaseApplicationGenerator {
               );
             }
 
-            // 5. Wrap microfrontend item .set(items) with sorting helper
+            // Wrap every microfrontend item .set(items) with the sorting helper
             if (content.includes('sortNavbarItemsAlphabetically')) {
               content = content.replace(/\.set\(items\)/g, '.set(this.sortNavbarItemsAlphabetically(items))');
             }
@@ -428,29 +390,25 @@ export default class extends BaseApplicationGenerator {
           return content;
         });
 
-        // === Patch core/microfrontend/index.ts - cache-bust remoteEntry.js fetches ===
-        // remoteEntry.js has a stable URL but new content on every deploy, and the prod
-        // CachingHttpHeadersFilter serves it with a multi-year max-age — so CDN edges and
-        // browsers keep executing a stale copy whose hashed chunk names no longer exist
-        // (ChunkLoadError → the microfrontend silently vanishes from the navbar).
-        // A per-page-load query param forces a fresh fetch on every load.
+        // === Patch main.ts - cache-bust the remotes' remoteEntry.json fetches ===
+        // remoteEntry.json is mutable content at a stable URL (each deploy renames the hashed
+        // chunks it lists). A CDN edge or browser holding a stale copy points at chunk files
+        // that no longer exist and the microfrontend silently vanishes from the navbar.
+        // A per-page-load query param forces a fresh fetch on every load. Native Federation
+        // (JHipster 9.4.0+) derives each remote's scope URL by dropping the last path segment,
+        // so the query string never leaks into the chunk URLs.
         if (isMicrofrontendGateway) {
-          const microfrontendIndexFile = `${clientSrcDir}app/core/microfrontend/index.ts`;
-          this.editFile(microfrontendIndexFile, content => {
-            if (!content.includes('remoteEntryCacheBust')) {
-              content = content.replace(
-                "import NavbarItem from 'app/layouts/navbar/navbar-item.model';",
-                "import NavbarItem from 'app/layouts/navbar/navbar-item.model';\n\n" +
-                  '// Saathratri modification - remoteEntry.js is mutable content at a stable URL;\n' +
+          this.editFile(`${clientSrcDir}main.ts`, content => {
+            if (content.includes('remoteEntryCacheBust')) return content;
+            return content
+              .replace(
+                "import { initFederation } from '@angular-architects/native-federation';",
+                "import { initFederation } from '@angular-architects/native-federation';\n\n" +
+                  '// Saathratri modification - remoteEntry.json is mutable content at a stable URL;\n' +
                   '// bust CDN/browser caches once per page load so deploys are picked up immediately.\n' +
                   'const remoteEntryCacheBust = Date.now();',
-              );
-              content = content.replace(
-                /remoteEntry: `\.\/services\/\$\{service\}\/remoteEntry\.js`/g,
-                'remoteEntry: `./services/${service}/remoteEntry.js?ts=${remoteEntryCacheBust}`',
-              );
-            }
-            return content;
+              )
+              .replace(/'(\.\/services\/[^']+\/remoteEntry\.json)'/g, '`$1?ts=${remoteEntryCacheBust}`');
           });
         }
 
@@ -470,7 +428,7 @@ export default class extends BaseApplicationGenerator {
                 : '';
               microfrontendMenus += `
       <!-- ${remote.baseName} Service Menu -->
-      @if (account() !== null && ${remote.lowercaseBaseName}EntityNavbarItems().length > 0) {
+      @if (account() !== null && (${remote.lowercaseBaseName}EntityNavbarItems() ?? []).length > 0) {
         <li
           ngbDropdown
           class="nav-item dropdown pointer"
@@ -485,7 +443,7 @@ export default class extends BaseApplicationGenerator {
             </span>
           </a>
           <ul class="dropdown-menu" ngbDropdownMenu aria-labelledby="${remote.lowercaseBaseName}-menu">
-            @for (entityNavbarItem of ${remote.lowercaseBaseName}EntityNavbarItems(); track $index) {
+            @for (entityNavbarItem of ${remote.lowercaseBaseName}EntityNavbarItems() ?? []; track $index) {
               <li>
                 <a
                   class="dropdown-item"
@@ -1640,7 +1598,7 @@ export class LazyRelationshipEditModalComponent implements OnInit {
 
             const importBlock = [
               `import { NgbModal } from '@ng-bootstrap/ng-bootstrap';`,
-              `import { ApplicationConfigService } from 'app/core/config/application-config.service';`,
+              `import { microserviceContextPath, serverApiUrl } from 'app/config';`,
               `import { LazyRelationshipEditModalComponent } from 'app/shared/lazy-relationship/lazy-relationship-edit-modal';`,
             ];
             for (const imp of importBlock) {
@@ -1668,12 +1626,11 @@ export class LazyRelationshipEditModalComponent implements OnInit {
 
             const handler = `
   // ---- ${MARKER} ----
-  // Base URL is resolved via ApplicationConfigService — same path the
+  // Base URL is built from app/config serverApiUrl + microserviceContextPath — same path the
   // generated entity service uses — so gateway/microfrontend routing is
   // honoured (raw '/api/...' bypasses it and 404s).
   private readonly lazyEditModalService = inject(NgbModal);
-  private readonly lazyEditAppConfig = inject(ApplicationConfigService);
-  protected readonly lazyEditParentApiUrl = this.lazyEditAppConfig.getEndpointFor('api/${entity.entityApiUrl}', '${application.baseName}');
+  protected readonly lazyEditParentApiUrl = \`\${serverApiUrl}\${microserviceContextPath}${application.baseName}/api/${entity.entityApiUrl}\`;
 
   openLazyRelationshipEdit(
     fieldName: string,
@@ -1782,7 +1739,7 @@ export class LazyRelationshipEditModalComponent implements OnInit {
             // 1. Add imports right after the last existing `import ... ;` line.
             const importBlock = [
               `import { NgbModal } from '@ng-bootstrap/ng-bootstrap';`,
-              `import { ApplicationConfigService } from 'app/core/config/application-config.service';`,
+              `import { microserviceContextPath, serverApiUrl } from 'app/config';`,
               `import { LazyRelationshipReadModalComponent } from 'app/shared/lazy-relationship/lazy-relationship-read-modal';`,
             ];
             for (const imp of importBlock) {
@@ -1794,14 +1751,13 @@ export class LazyRelationshipEditModalComponent implements OnInit {
             // 2. Inject the modalService inject() + handler method right
             //    before the class's closing brace. Handler is parameterised at
             //    call site so a single method serves every excluded field.
-            //    Base URL is resolved via ApplicationConfigService — same path
+            //    Base URL is built from app/config serverApiUrl + microserviceContextPath — same path
             //    the generated entity service uses — so the gateway/microfrontend
             //    routing is honoured (raw '/api/...' bypasses it and 404s).
             const handler = `
   // ---- ${MARKER} ----
   private readonly lazyModalService = inject(NgbModal);
-  private readonly lazyAppConfig = inject(ApplicationConfigService);
-  protected readonly lazyParentApiUrl = this.lazyAppConfig.getEndpointFor('api/${entity.entityApiUrl}', '${application.baseName}');
+  protected readonly lazyParentApiUrl = \`\${serverApiUrl}\${microserviceContextPath}${application.baseName}/api/${entity.entityApiUrl}\`;
 
   openLazyRelationship(
     fieldName: string,

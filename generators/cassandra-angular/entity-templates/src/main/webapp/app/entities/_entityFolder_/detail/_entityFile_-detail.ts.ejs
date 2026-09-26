@@ -16,7 +16,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -%>
-import { Component, <% if (anyFieldIsBlobDerived) { %>inject, <% } %>input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, <% if (anyFieldIsBlobDerived) { %>inject, <% } %>input } from '@angular/core';
 <%_ if (anyFieldIsMapSaathratri || fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
 import { <%_ if (anyFieldIsMapSaathratri) { _%>KeyValuePipe, <%_ } _%><%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>DecimalPipe, <%_ } _%>} from '@angular/common';
 <%_ } _%>
@@ -36,6 +36,9 @@ import { DataUtils } from 'app/core/util/data-util.service';
 <%_ } _%>
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
     selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>-detail',
     templateUrl: './<%= entityFileName %>-detail.html',
     imports: [

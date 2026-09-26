@@ -16,7 +16,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -%>
-import { Component, inject, OnInit<% if (anyFieldHasImageContentType) { %>, ElementRef<% } %> } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit<% if (anyFieldHasImageContentType) { %>, ElementRef<% } %> } from '@angular/core';
 <%_ if (fields.some(f => f.fieldTypeVectorSaathratri)) { _%>
 import { JsonPipe } from '@angular/common';
 <%_ } _%>
@@ -80,6 +80,9 @@ import { v1 as uuidv1 } from 'uuid'; // Import TimeUUID (UUID v1)
 <%_ } _%>
 
 @Component({
+  // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
+  // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
+  changeDetection: ChangeDetectionStrategy.Eager,
     selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>-update',
     templateUrl: './<%= entityFileName %>-update.html',
     imports: [
