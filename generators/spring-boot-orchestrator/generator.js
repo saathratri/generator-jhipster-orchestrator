@@ -211,7 +211,12 @@ export default class extends BaseApplicationGenerator {
                 },
               ],
             },
-            context: { ...application, dtoFolderName: `${this.appname}dto` },
+            // the DTO jar carries the ONE platform version, like its service.
+            context: {
+              ...application,
+              dtoFolderName: `${this.appname}dto`,
+              appPlatformVersion: this.appPlatformVersion() ?? '0.0.1-SNAPSHOT',
+            },
           });
         }
       },
@@ -355,12 +360,7 @@ export default class extends BaseApplicationGenerator {
         }
         // the service and its app-ai-bom import take the ONE platform version -
         // app-parent's, read from the monorepo at regen time - instead of JHipster's 0.0.1-SNAPSHOT.
-        const parentPom = this.destinationPath('../app-parent/pom.xml');
-        const platformVersion = fs.existsSync(parentPom) ? platformVersionOf(fs.readFileSync(parentPom, 'utf8')) : undefined;
-        if (!platformVersion) {
-          this.log.warn(`[saathratri] no app-parent version found at ${parentPom} - keeping the generated version`);
-        }
-        this.editFile('pom.xml', content => usePlatformVersion(useAppAiBom(content), platformVersion));
+        this.editFile('pom.xml', content => usePlatformVersion(useAppAiBom(content), this.appPlatformVersion()));
       },
 
       async patchCorsInSecurityConfigForMicroservices({ application }) {
@@ -633,5 +633,18 @@ export default class extends BaseApplicationGenerator {
     return this.asEndTaskGroup({
       async endTemplateTask() {},
     });
+  }
+
+  /**
+   * The ONE Saathratri platform version: app-parent's own version, read from the monorepo
+   * at regen time; undefined (with a warning) when there is no parent pom beside this app.
+   */
+  appPlatformVersion() {
+    const parentPom = this.destinationPath('../app-parent/pom.xml');
+    const version = fs.existsSync(parentPom) ? platformVersionOf(fs.readFileSync(parentPom, 'utf8')) : undefined;
+    if (!version) {
+      this.log.warn(`[saathratri] no app-parent version found at ${parentPom} - keeping the generated version`);
+    }
+    return version;
   }
 }
