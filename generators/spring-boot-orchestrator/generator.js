@@ -211,7 +211,12 @@ export default class extends BaseApplicationGenerator {
                 },
               ],
             },
-            context: { ...application, dtoFolderName: `${this.appname}dto` },
+            // ADR-068 (saathratri repo): the DTO jar carries the ONE platform version, like its service.
+            context: {
+              ...application,
+              dtoFolderName: `${this.appname}dto`,
+              saathratriPlatformVersion: this.saathratriPlatformVersion() ?? '0.0.1-SNAPSHOT',
+            },
           });
         }
       },
@@ -355,12 +360,7 @@ export default class extends BaseApplicationGenerator {
         }
         // ADR-068 (saathratri repo): the service and its saathratri-ai-bom import take the ONE platform version -
         // saathratri-parent's, read from the monorepo at regen time - instead of JHipster's 0.0.1-SNAPSHOT.
-        const parentPom = this.destinationPath('../saathratri-parent/pom.xml');
-        const platformVersion = fs.existsSync(parentPom) ? platformVersionOf(fs.readFileSync(parentPom, 'utf8')) : undefined;
-        if (!platformVersion) {
-          this.log.warn(`[saathratri] no saathratri-parent version found at ${parentPom} - keeping the generated version`);
-        }
-        this.editFile('pom.xml', content => usePlatformVersion(useSaathratriAiBom(content), platformVersion));
+        this.editFile('pom.xml', content => usePlatformVersion(useSaathratriAiBom(content), this.saathratriPlatformVersion()));
       },
 
       async patchCorsInSecurityConfigForMicroservices({ application }) {
@@ -633,5 +633,18 @@ export default class extends BaseApplicationGenerator {
     return this.asEndTaskGroup({
       async endTemplateTask() {},
     });
+  }
+
+  /**
+   * The ONE Saathratri platform version (saathratri ADR-068): saathratri-parent's own version, read from the monorepo
+   * at regen time; undefined (with a warning) when there is no parent pom beside this app.
+   */
+  saathratriPlatformVersion() {
+    const parentPom = this.destinationPath('../saathratri-parent/pom.xml');
+    const version = fs.existsSync(parentPom) ? platformVersionOf(fs.readFileSync(parentPom, 'utf8')) : undefined;
+    if (!version) {
+      this.log.warn(`[saathratri] no saathratri-parent version found at ${parentPom} - keeping the generated version`);
+    }
+    return version;
   }
 }
