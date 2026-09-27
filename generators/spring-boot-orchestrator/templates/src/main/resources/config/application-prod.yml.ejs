@@ -395,17 +395,18 @@ jhipster:
       port: 5000
       ring-buffer-size: 512
 
-# --- SAATHRATRI CHANGE: Auth0 OAuth2 audience with Azure API Management ---
+# --- SAATHRATRI CHANGE: Auth0 OAuth2 audience - Saathratri API (auth0-audience.spec.js) ---
 <%_ /* if (authenticationTypeOauth2) { */ _%>
+  # https://api.example.com is Saathratri's own API: what people's and services' tokens are issued for. The other
+  # two are accepted only while callers switch (2026-09-27): /api/v2/ is Auth0's MANAGEMENT API - service tokens were
+  # Management API tokens because the tenant default audience is /api/v2/ - and the Azure identifier is a retired name.
+  # Release 2 removes both.
   security:
     oauth2:
       audience:
-        # - account
-        # - api://default
-        - https://${AUTH0_DOMAIN}/api/v2/
-        <%_ if (!applicationTypeGateway) { _%>
+        - https://api.example.com
         - https://saathratriapimanagementservcie.azure-api.net
-        <%_ } _%>
+        - https://${AUTH0_DOMAIN}/api/v2/
 <%_ /* } */ _%>
 # --- END SAATHRATRI CHANGE ---
 
