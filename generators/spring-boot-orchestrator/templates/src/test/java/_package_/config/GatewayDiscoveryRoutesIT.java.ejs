@@ -1,0 +1,98 @@
+<%#
+ Copyright (c) 2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+package <%= packageName %>.config;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import <%= packageName %>.IntegrationTest;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
+import org.springframework.cloud.gateway.event.RefreshRoutesEvent;
+import org.springframework.cloud.gateway.route.Route;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+
+/**
+ * The gateway builds its service routes from the PRODUCTION route configuration.
+ *
+ * <p>Spring Cloud Gateway 2025.1 evaluates the discovery locator's predicate in a restricted SpEL context: a method
+ * call there (for example {@code serviceId.toLowerCase()}) throws EL1004E the moment service registration refreshes the
+ * routes, and the gateway dies at startup. No other test sees that: {@code src/test/resources/config/application.yml}
+ * REPLACES the main one, so no test loads the real {@code spring.cloud.gateway.server.webflux} settings, and discovery
+ * is disabled in tests, so no route refresh runs. This test puts both back: it copies that whole subtree (discovery
+ * locator AND default filters) from {@code src/main/resources/config/application.yml}, lists services through Spring
+ * Cloud's simple discovery client (the registry's stand-in; same {@code ReactiveDiscoveryClient} contract, upper-case
+ * ids as Eureka reports them), fires the refresh registration fires, and asks for the routes.
+ *
+ * <p>Written by generator-jhipster-orchestrator for every gateway.
+ */
+@IntegrationTest
+class GatewayDiscoveryRoutesIT {
+
+    /** The prefix every production route setting lives under. */
+    private static final String GATEWAY = "spring.cloud.gateway.server.webflux";
+
+    /** Services as Eureka reports them (upper case) - the ids the routes are built from. */
+    private static final List<String> SERVICES = List.of("FIRSTSERVICE", "SECONDSERVICE");
+
+    @DynamicPropertySource
+    static void productionRoutesAndServices(DynamicPropertyRegistry registry) {
+        YamlPropertiesFactoryBean yaml = new YamlPropertiesFactoryBean();
+        yaml.setResources(new FileSystemResource("src/main/resources/config/application.yml"));
+        Properties main = yaml.getObject();
+        assertThat(main).as("the production application.yml must be readable from the module directory").isNotNull();
+        long copied = 0;
+        for (Map.Entry<Object, Object> e : main.entrySet()) {
+            String key = String.valueOf(e.getKey());
+            if (key.startsWith(GATEWAY + ".")) {
+                Object value = e.getValue();
+                registry.add(key, () -> value);
+                copied++;
+            }
+        }
+        assertThat(copied).as("production route settings copied from " + GATEWAY).isPositive();
+        registry.add("spring.cloud.discovery.enabled", () -> "true");
+        for (int i = 0; i < SERVICES.size(); i++) {
+            String id = SERVICES.get(i);
+            int port = 18080 + i;
+            registry.add("spring.cloud.discovery.client.simple.instances." + id + "[0].uri", () -> "http://localhost:" + port);
+            registry.add("spring.cloud.discovery.client.simple.instances." + id + "[0].service-id", () -> id);
+        }
+    }
+
+    @Autowired
+    private RouteLocator routeLocator;
+
+    @Autowired
+    private ApplicationEventPublisher events;
+
+    @Test
+    void theProductionDiscoveryRoutesBuild_oneLowerCasedPathPerService() {
+        // What service registration triggers in production (RouteRefreshListener -> CachingRouteLocator).
+        events.publishEvent(new RefreshRoutesEvent(this));
+
+        List<Route> routes = routeLocator.getRoutes().collectList().block(Duration.ofSeconds(30));
+
+        assertThat(routes).as("a route per discovered service").isNotNull();
+        for (String service : SERVICES) {
+            String path = "/services/" + service.toLowerCase() + "/**";
+            assertThat(routes)
+                .as("the route for " + service)
+                .anySatisfy(route -> {
+                    assertThat(route.getUri().toString()).isEqualToIgnoringCase("lb://" + service);
+                    assertThat(route.getPredicate().toString()).contains(path);
+                });
+        }
+    }
+}

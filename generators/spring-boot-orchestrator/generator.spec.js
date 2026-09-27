@@ -98,6 +98,10 @@ describe('SubGenerator spring-boot-orchestrator of orchestrator JHipster bluepri
       result.assertFileContent('pom.xml', /<artifactId>aws-java-sdk-s3<\/artifactId>/);
     });
 
+    it('does NOT write the gateway discovery-routes test into a microservice', () => {
+      result.assertNoFile('src/test/java/com/saathratri/cassandrablog/config/GatewayDiscoveryRoutesIT.java');
+    });
+
     it('does NOT write the enlarged jvm.config for a Cassandra service', () => {
       result.assertNoFileContent('.mvn/jvm.config', /-Xmx8g/);
     });
@@ -124,6 +128,15 @@ describe('SubGenerator spring-boot-orchestrator of orchestrator JHipster bluepri
 
     it('writes the enlarged jvm.config for the SQL gateway too', () => {
       result.assertFileContent('.mvn/jvm.config', /-Xmx8g/);
+    });
+
+    it('writes an integration test that builds the discovery routes from the REAL application.yml', () => {
+      const file = 'src/test/java/com/saathratri/gw/config/GatewayDiscoveryRoutesIT.java';
+      result.assertFile(file);
+      result.assertFileContent(file, /^package com\.saathratri\.gw\.config;/m);
+      result.assertFileContent(file, /import com\.saathratri\.gw\.IntegrationTest;/);
+      result.assertFileContent(file, /src\/main\/resources\/config\/application\.yml/);
+      result.assertFileContent(file, /new RefreshRoutesEvent/);
     });
   });
 });

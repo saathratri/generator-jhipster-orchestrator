@@ -172,6 +172,26 @@ export default class extends BaseApplicationGenerator {
           context: application,
         });
 
+        // The gateway's discovery routes are only ever built from the REAL application.yml at runtime; this
+        // integration test builds them the same way (the restricted-SpEL startup crash no other test could see).
+        if (application.applicationTypeGateway) {
+          await this.writeFiles({
+            sections: {
+              files: [
+                {
+                  templates: [
+                    {
+                      sourceFile: 'src/test/java/_package_/config/GatewayDiscoveryRoutesIT.java.ejs',
+                      destinationFile: ctx => `src/test/java/${ctx.packageFolder}/config/GatewayDiscoveryRoutesIT.java`,
+                    },
+                  ],
+                },
+              ],
+            },
+            context: application,
+          });
+        }
+
         // Write DTO module scaffolding (pom.xml, mvnw, mvnw.cmd, README.md,
         // .mvn/wrapper/maven-wrapper.properties) to the sibling ${baseName}dto/
         // Maven module for microservices only (gateway doesn't need a shared DTO JAR).
