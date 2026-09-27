@@ -64,6 +64,23 @@ describe('SubGenerator liquibase-orchestrator of orchestrator JHipster blueprint
     it('needles the vector changelog into master.xml', () => {
       result.assertFileContent('src/main/resources/config/liquibase/master.xml', /_added_vector_DocEmbedding\.xml/);
     });
+
+    it('includes the optional patches directory LAST, never in the test context', () => {
+      const master = result.getSnapshot()['src/main/resources/config/liquibase/master.xml']?.contents ?? '';
+      const patches = master.indexOf('<includeAll path="config/liquibase/patches/"');
+      expect(patches).toBeGreaterThan(-1);
+      expect(patches).toBeGreaterThan(master.indexOf('_added_vector_DocEmbedding.xml'));
+      expect(master).toMatch(/<includeAll path="config\/liquibase\/patches\/"[^>]*errorIfMissingOrEmpty="false"/);
+      expect(master).toMatch(/<includeAll path="config\/liquibase\/patches\/"[^>]*contextFilter="!test"/);
+    });
+
+    it('writes LiquibasePatchFormatTest, which parses every patch with Liquibase itself', () => {
+      const file = 'src/test/java/com/saathratri/org/config/LiquibasePatchFormatTest.java';
+      result.assertFile(file);
+      result.assertFileContent(file, /^package com\.saathratri\.org\.config;/m);
+      result.assertFileContent(file, /FormattedSqlChangeLogParser/);
+      result.assertFileContent(file, /config\/liquibase\/patches/);
+    });
   });
 
   describe('sql without pgvector fields', () => {

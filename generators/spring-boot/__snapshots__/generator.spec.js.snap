@@ -359,6 +359,9 @@ exports[`SubGenerator spring-boot of orchestrator JHipster blueprint > run > sho
   "src/test/java/com/mycompany/myapp/config/DatabaseTestcontainer.java": {
     "stateCleared": "modified",
   },
+  "src/test/java/com/mycompany/myapp/config/LiquibasePatchFormatTest.java": {
+    "stateCleared": "modified",
+  },
   "src/test/java/com/mycompany/myapp/config/SpringBootTestClassOrderer.java": {
     "stateCleared": "modified",
   },

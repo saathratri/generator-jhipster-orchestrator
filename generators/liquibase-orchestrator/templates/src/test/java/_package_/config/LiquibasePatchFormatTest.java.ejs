@@ -1,0 +1,111 @@
+<%#
+ Copyright (c) 2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+package <%= packageName %>.config;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import liquibase.changelog.ChangeLogParameters;
+import liquibase.parser.core.formattedsql.FormattedSqlChangeLogParser;
+import liquibase.resource.DirectoryResourceAccessor;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Every formatted-SQL patch under {@code config/liquibase/patches/} (included last by {@code master.xml}) must parse
+ * the way Liquibase parses it at boot.
+ *
+ * <p>The trap this guards: a COMMENT line whose first word is a Liquibase directive - {@code -- property is brought…},
+ * {@code -- changeset exists because…} - is read as a malformed directive, the whole changelog fails to parse, and the
+ * service boots with its database "NOT ready". This test fails at build time instead, using Liquibase's own parser so
+ * it fails for exactly the reasons boot would. With no patches directory there is nothing to check.
+ *
+ * <p>Written by generator-jhipster-orchestrator for every SQL application.
+ */
+class LiquibasePatchFormatTest {
+
+    private static final Path RESOURCES = Path.of("src/main/resources");
+    private static final Path PATCHES = RESOURCES.resolve("config/liquibase/patches");
+
+    /** A comment whose first word (after any indentation) is a directive keyword. */
+    private static final Pattern DIRECTIVE_LOOKALIKE = Pattern.compile(
+        "^--\s+(property|changeset|rollback|comment|preconditions?|precondition-[a-z-]+|validCheckSum" +
+        "|ignoreLines|include|includeAll|endDelimiter|logicalFilePath)\b",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    @Test
+    void everyPatchParsesWithLiquibasesOwnParser() throws Exception {
+        List<String> failures = new ArrayList<>();
+        for (Path file : patches()) {
+            String location = RESOURCES.relativize(file).toString().replace(java.io.File.separatorChar, '/');
+            try (DirectoryResourceAccessor accessor = new DirectoryResourceAccessor(RESOURCES)) {
+                new FormattedSqlChangeLogParser().parse(location, new ChangeLogParameters(), accessor);
+            } catch (Exception e) {
+                failures.add(location + " -> " + firstLine(e.getMessage()) + hint(file));
+            }
+        }
+        if (!failures.isEmpty()) {
+            fail(
+                "Liquibase cannot parse these patches (the service would boot with its database NOT ready):\n  " +
+                String.join("\n  ", failures)
+            );
+        }
+    }
+
+    @Test
+    void noCommentBeginsWithADirectiveWord() throws IOException {
+        List<String> offenders = new ArrayList<>();
+        for (Path file : patches()) {
+            offenders.addAll(lookalikes(file));
+        }
+        assertThat(offenders)
+            .as("comment lines that Liquibase will read as directives - reword so the first word is not one")
+            .isEmpty();
+    }
+
+    private static List<Path> patches() throws IOException {
+        if (!Files.isDirectory(PATCHES)) {
+            return List.of();
+        }
+        try (Stream<Path> files = Files.list(PATCHES)) {
+            return files.filter(p -> p.toString().endsWith(".sql")).sorted().toList();
+        }
+    }
+
+    private static List<String> lookalikes(Path file) throws IOException {
+        List<String> out = new ArrayList<>();
+        List<String> lines = Files.readAllLines(file);
+        for (int i = 0; i < lines.size(); i++) {
+            if (DIRECTIVE_LOOKALIKE.matcher(lines.get(i)).find()) {
+                out.add(file.getFileName() + ":" + (i + 1) + "  " + lines.get(i).trim());
+            }
+        }
+        return out;
+    }
+
+    private static String hint(Path file) {
+        try {
+            List<String> l = lookalikes(file);
+            return l.isEmpty() ? "" : "\n      likely cause: " + String.join("\n      likely cause: ", l);
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private static String firstLine(String message) {
+        if (message == null) return "(no message)";
+        String trimmed = message.strip();
+        int nl = trimmed.indexOf('\n');
+        return nl < 0 ? trimmed : trimmed.substring(0, nl);
+    }
+}

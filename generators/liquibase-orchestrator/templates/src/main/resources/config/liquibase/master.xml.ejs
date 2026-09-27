@@ -88,4 +88,10 @@
     <!-- jhipster-needle-liquibase-add-constraints-changelog - JHipster will add liquibase constraints changelogs here -->
     <!-- jhipster-needle-liquibase-add-incremental-changelog - JHipster will add incremental liquibase changelogs here -->
     <!-- saathratri-needle-liquibase-add-vector-changelog - Saathratri will add vector column changelogs here -->
+    <!--
+        Hand-written data patches (formatted SQL), run LAST in file-name order - name them YYYYMMDD-<what>.sql.
+        Optional: no directory, no patches. Never in the "test" context: a patch fixes rows a real database holds,
+        which a test database does not. Every patch is parsed at build time by LiquibasePatchFormatTest.
+    -->
+    <includeAll path="config/liquibase/patches/" relativeToChangelogFile="false" errorIfMissingOrEmpty="false" contextFilter="!test"/>
 </databaseChangeLog>

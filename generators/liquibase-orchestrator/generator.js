@@ -150,6 +150,15 @@ export default class extends BaseApplicationGenerator {
                     },
                   ],
                 },
+                {
+                  // Parses every config/liquibase/patches/*.sql with Liquibase's own parser at build time.
+                  templates: [
+                    {
+                      sourceFile: 'src/test/java/_package_/config/LiquibasePatchFormatTest.java.ejs',
+                      destinationFile: ctx => `src/test/java/${ctx.packageFolder}/config/LiquibasePatchFormatTest.java`,
+                    },
+                  ],
+                },
               ],
             },
             context: application,
