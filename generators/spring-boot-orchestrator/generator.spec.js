@@ -83,6 +83,35 @@ describe('SubGenerator spring-boot-orchestrator of orchestrator JHipster bluepri
     });
   });
 
+  describe('microservice with extra dependencies', () => {
+    beforeAll(async () => {
+      await helpers
+        .run(BLUEPRINT_NAMESPACE)
+        .withJHipsterConfig({
+          applicationType: 'microservice',
+          databaseType: 'sql',
+          authenticationType: 'oauth2',
+          baseName: 'ordersvc',
+          packageName: 'com.acme.orders',
+        })
+        .withFiles({
+          '../jhipster-extra-dependencies.json': JSON.stringify({
+            ordersvc: [{ groupId: 'com.acme', artifactId: 'acme-security' }],
+            othersvc: [{ groupId: 'com.acme', artifactId: 'acme-other', version: '9' }],
+          }),
+        })
+        .withOptions({ ignoreNeedlesError: true })
+        .withJHipsterGenerators()
+        .withConfiguredBlueprint()
+        .withBlueprintConfig();
+    });
+
+    it("adds this app's extra dependencies from jhipster-extra-dependencies.json to its pom.xml", () => {
+      result.assertFileContent('pom.xml', /<artifactId>acme-security<\/artifactId>\s*<version>\$\{project\.version\}<\/version>/);
+      result.assertNoFileContent('pom.xml', /acme-other/);
+    });
+  });
+
   describe('microservice (cassandra)', () => {
     beforeAll(async () => {
       await runServer({

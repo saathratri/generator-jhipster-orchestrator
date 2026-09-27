@@ -305,6 +305,22 @@ For the full Cassandra composite-key / `SET` / `MAP` / vector JDL catalogue, see
 
 ---
 
+## 📚 Shared Libraries — Extra Dependencies
+
+Code several generated services share belongs in a library jar, not in N copied files. List the jar per application in
+`jhipster-extra-dependencies.json`, in the directory the JDL is imported from, keyed by `baseName`:
+
+```json
+{ "orders": [{ "groupId": "com.acme", "artifactId": "acme-security" }] }
+```
+
+Each regen adds the listed dependencies to that app's `pom.xml` (idempotent; never into `dependencyManagement`, a plugin
+or a profile). `version` omitted = `${project.version}` (a jar released in lockstep with the apps); `scope` is optional.
+
+Generated tests that come with the blueprint: every gateway gets `config/GatewayDiscoveryRoutesIT` (builds the discovery
+routes from the real `application.yml`); every SQL app gets `config/LiquibasePatchFormatTest`, which parses each
+hand-written patch in `config/liquibase/patches/` (included last by `master.xml`, never in the `test` context).
+
 ## 🛠️ Template Override Strategy
 
 The orchestrator overrides only the templates that need Saathratri-specific changes:

@@ -8,6 +8,7 @@ import fs from 'node:fs';
 
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
+import { EXTRA_DEPENDENCIES_FILE, addExtraDependencies, extraDependenciesFor } from './extra-dependencies.js';
 import { useAppAiBom } from './app-ai-bom.js';
 import { platformVersionOf, usePlatformVersion } from './app-platform-version.js';
 
@@ -381,6 +382,16 @@ export default class extends BaseApplicationGenerator {
         // the service and its app-ai-bom import take the ONE platform version -
         // app-parent's, read from the monorepo at regen time - instead of JHipster's 0.0.1-SNAPSHOT.
         this.editFile('pom.xml', content => usePlatformVersion(useAppAiBom(content), this.appPlatformVersion()));
+      },
+
+      async addExtraDependenciesToPom({ application }) {
+        // Shared code travels as a library jar, not N copies: jhipster-extra-dependencies.json beside the apps lists
+        // extra Maven dependencies per baseName. See extra-dependencies.js.
+        const file = this.destinationPath(`../${EXTRA_DEPENDENCIES_FILE}`);
+        const dependencies = extraDependenciesFor(this.fs.exists(file) ? this.fs.read(file) : undefined, application.baseName);
+        if (dependencies.length > 0) {
+          this.editFile('pom.xml', content => addExtraDependencies(content, dependencies));
+        }
       },
 
       async patchCorsInSecurityConfigForMicroservices({ application }) {
