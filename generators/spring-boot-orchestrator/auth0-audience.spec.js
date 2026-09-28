@@ -27,8 +27,8 @@ function audiences(applicationTypeGateway) {
 describe('the audiences a generated service accepts in production (Auth0)', () => {
   // 2026-09-27: service-to-service tokens were Auth0 MANAGEMENT API tokens (read:users read:roles update:users) because
   // the tenant's default audience is /api/v2/ and the gateway accepted nothing else. They move to Saathratri's own API,
-  // https://api.example.com - release 1 accepts it BESIDE the old two, so nothing breaks while callers switch;
-  // release 2 drops the Azure identifier and /api/v2/.
+  // https://api.example.com - release 1 accepted it BESIDE the old two while callers switched; release 2 (2026-09-28)
+  // dropped the Azure identifier and /api/v2/.
   for (const [what, gateway] of [
     ['the gateway', true],
     ['a microservice', false],
@@ -37,10 +37,10 @@ describe('the audiences a generated service accepts in production (Auth0)', () =
       expect(audiences(gateway)).toContain('https://api.example.com');
     });
 
-    it(`${what} still accepts the old two during the switch`, () => {
-      expect(audiences(gateway)).toEqual(
-        expect.arrayContaining(['https://${AUTH0_DOMAIN}/api/v2/', 'https://saathratriapimanagementservcie.azure-api.net']),
-      );
+    it(`${what} accepts ONLY Saathratri's own API - release 2 dropped the old two`, () => {
+      // RED 2026-09-28: the Azure identifier and Auth0's Management
+      // API (/api/v2/) are no longer accepted - a token for either is refused.
+      expect(audiences(gateway)).toEqual(['https://api.example.com']);
     });
   }
 

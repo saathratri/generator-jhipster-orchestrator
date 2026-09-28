@@ -397,16 +397,13 @@ jhipster:
 
 # --- SAATHRATRI CHANGE: Auth0 OAuth2 audience - Saathratri API (auth0-audience.spec.js) ---
 <%_ /* if (authenticationTypeOauth2) { */ _%>
-  # https://api.example.com is Saathratri's own API: what people's and services' tokens are issued for. The other
-  # two are accepted only while callers switch (2026-09-27): /api/v2/ is Auth0's MANAGEMENT API - service tokens were
-  # Management API tokens because the tenant default audience is /api/v2/ - and the Azure identifier is a retired name.
-  # Release 2 removes both.
+  # https://api.example.com is Saathratri's own API: what people's and services' tokens are issued for - and the ONLY
+  # audience accepted. Never Auth0's Management API (/api/v2/): a service token for it
+  # could change any user. The retired Azure identifier is gone too.
   security:
     oauth2:
       audience:
         - https://api.example.com
-        - https://saathratriapimanagementservcie.azure-api.net
-        - https://${AUTH0_DOMAIN}/api/v2/
 <%_ /* } */ _%>
 # --- END SAATHRATRI CHANGE ---
 
