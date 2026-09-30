@@ -25,18 +25,18 @@ export default class extends BaseApplicationGenerator {
     // to put extra code in this generator to include all the Java
     // code and configuration files; that is also too complicated.
     // Here is the example of using a single @Id with custom annotations:
-    // entity CustomerReservationByHotelAndAccount (customer_reservation_by_hotel_and_account) {
-    //   @Id @customAnnotation("PrimaryKeyType.PARTITIONED") @customAnnotation("CassandraType.Name.UUID") @customAnnotation("") hotelId UUID,
+    // entity PostByBlogAndAuthor (post_by_blog_and_author) {
+    //   @Id @customAnnotation("PrimaryKeyType.PARTITIONED") @customAnnotation("CassandraType.Name.UUID") @customAnnotation("") blogId UUID,
     //   @customAnnotation("PrimaryKeyType.CLUSTERED") @customAnnotation("CassandraType.Name.BIGINT") @customAnnotation("") yearOfDateAdded Long,
-    //   @customAnnotation("PrimaryKeyType.CLUSTERED") @customAnnotation("CassandraType.Name.TEXT") @customAnnotation("") accountNumber String,
+    //   @customAnnotation("PrimaryKeyType.CLUSTERED") @customAnnotation("CassandraType.Name.TEXT") @customAnnotation("") authorLogin String,
     //   @customAnnotation("") @customAnnotation("CassandraType.Name.BIGINT") @customAnnotation("UTC_DATE") dateAdded Long,
     //   @customAnnotation("") @customAnnotation("CassandraType.Name.TEXT") @customAnnotation("") status String,
     //   ...
     // versus:
-    // entity CustomerReservationByHotelAndAccount (customer_reservation_by_hotel_and_account) {
-    //   @Id @customAnnotation("PrimaryKeyType.PARTITIONED") @customAnnotation("CassandraType.Name.UUID") @customAnnotation("") hotelId UUID,
+    // entity PostByBlogAndAuthor (post_by_blog_and_author) {
+    //   @Id @customAnnotation("PrimaryKeyType.PARTITIONED") @customAnnotation("CassandraType.Name.UUID") @customAnnotation("") blogId UUID,
     //   @Id @customAnnotation("PrimaryKeyType.CLUSTERED") @customAnnotation("CassandraType.Name.BIGINT") @customAnnotation("") yearOfDateAdded Long,
-    //   @Id @customAnnotation("PrimaryKeyType.CLUSTERED") @customAnnotation("CassandraType.Name.TEXT") @customAnnotation("") accountNumber String,
+    //   @Id @customAnnotation("PrimaryKeyType.CLUSTERED") @customAnnotation("CassandraType.Name.TEXT") @customAnnotation("") authorLogin String,
     //   @customAnnotation("") @customAnnotation("CassandraType.Name.BIGINT") @customAnnotation("UTC_DATE") dateAdded Long,
     //   @customAnnotation("") @customAnnotation("CassandraType.Name.TEXT") @customAnnotation("") status String,
     /******************************************************************/

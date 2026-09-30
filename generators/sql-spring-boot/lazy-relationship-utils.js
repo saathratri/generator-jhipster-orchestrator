@@ -123,9 +123,9 @@ export function getDisplayLabelField(otherEntity) {
  */
 export function getOwningSideFieldName(entity, otherEntity, relationship) {
   const otherRels = otherEntity?.relationships || [];
-  // Two-pair entity relationships are common (e.g. Contractor has both
-  // `organization` (OneToOne) and `workedForOrganizations` (ManyToMany
-  // inverse to TajOrganization.hiredContractor)). Pick the right inverse by
+  // Two-pair entity relationships are common (e.g. Author has both
+  // `blog` (OneToOne) and `contributedBlogs` (ManyToMany inverse to
+  // Blog.contributor)). Pick the right inverse by
   // matching the relationship NAME we already know about — every JHipster
   // relationship records its peer's role name in `otherEntityRelationshipName`
   // — and only fall back to a same-peer search if that anchor is missing.

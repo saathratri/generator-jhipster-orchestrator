@@ -872,11 +872,9 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
         // Fragment templates and SBS overrides don't reach composed generators, so the
         // .jhi.pgvector_type.ejs / .jhi.jakarta_persistence.ejs copies under templates/ are
         // reference-only. The AUTHORITATIVE fix patches the base generator-jhipster
-        // jakarta_persistence template during the prepare phase — see
-        // saathratri-generator-patch-jakarta-persistence.js in the saathratri repo, called by
-        // saathratri-generator-code-prepare.{sh,bat}. (The 2026-06-27 regen ran a .bat that
-        // lacked the patch and shipped entities without @Type to prod — reads of populated
-        // vector columns then crash with "PSQLException: No results were returned by the query".)
+        // jakarta_persistence template before generation (a prepare step in the consuming
+        // project). Without it, entities are generated without @Type and reads of populated
+        // vector columns crash with "PSQLException: No results were returned by the query".
 
         // Patch ExceptionTranslator to log stacktraces at ERROR level
         const exceptionTranslatorFile = `src/main/java/${packageFolder}/web/rest/errors/ExceptionTranslator.java`;
@@ -1000,7 +998,7 @@ ${idx.columnNames.map(col => `            <column name="${col}"/>`).join('\n')}
         //      left exactly as upstream wrote it.
         //
         // For each excluded relationship we currently only handle the
-        // ManyToMany INVERSE side (the case TajOrganization uses). Other shapes
+        // ManyToMany INVERSE side. Other shapes
         // (owning-side MtM, OneToMany, ManyToOne) are logged + skipped so the
         // generator still completes cleanly; they can be filled in incrementally
         // as the corresponding entities adopt the annotation.
