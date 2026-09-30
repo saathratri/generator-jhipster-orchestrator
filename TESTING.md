@@ -203,7 +203,8 @@ fix carried into the orchestrator copy) — review it, then `npm run update-snap
 
 The orchestrator's bundled `.blueprint/generate-sample/templates/samples/sample.jdl` is the default
 JHipster **Blog/Post/Tag monolith** scaffold — it does **not** represent how this blueprint is used.
-The real exercise is the example workspace's `saathratri-apps-orchestrator-mf.jdl` generated via the
+The real exercise is the example workspace's `saathratri-apps-orchestrator-mf.jdl` (jhipster-orchestrator-example: 5 apps,
+21 entities) generated via the
 master script from the project root:
 
 ```bash
