@@ -74,35 +74,6 @@
         "containerId": "jhipster",
         "attributes": {}
       },
-      <%# --- SAATHRATRI CHANGE: additional application roles --- %>
-      {
-        "id": "cf803faf-5410-42a1-90e6-c69fe24be5f4",
-        "name": "ROLE_OPERATOR",
-        "description": "Front desk role",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "jhipster",
-        "attributes": {}
-      },
-      {
-        "id": "68e43d68-c188-47b4-80bc-a041d6aafce5",
-        "name": "ROLE_TECHNICIAN",
-        "description": "Maintenance role",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "jhipster",
-        "attributes": {}
-      },
-      {
-        "id": "2366137e-ab6a-40c8-be7d-28ce2c6074d4",
-        "name": "ROLE_ANALYST",
-        "description": "Revenue and sales role",
-        "composite": false,
-        "clientRole": false,
-        "containerId": "jhipster",
-        "attributes": {}
-      },
-      <%# --- END SAATHRATRI CHANGE --- %>
       {
         "id": "d2b73e7b-a2d7-40e9-8ebc-2af00454e8aa",
         "name": "default-roles-jhipster",
@@ -1233,25 +1204,6 @@
       "authenticationFlowBindingOverrides": {},
       "fullScopeAllowed": true,
       "nodeReRegistrationTimeout": -1,
-      "protocolMappers" : [ {
-        "id" : "76a0e203-d2a0-4aba-a3e7-1d282d813ebd",
-        "name" : "tenantIds",
-        "protocol" : "openid-connect",
-        "protocolMapper" : "oidc-usermodel-attribute-mapper",
-        "consentRequired" : false,
-        "config" : {
-          "aggregate.attrs" : "false",
-          "introspection.token.claim" : "true",
-          "multivalued" : "false",
-          "userinfo.token.claim" : "true",
-          "user.attribute" : "tenantIds",
-          "id.token.claim" : "true",
-          "lightweight.claim" : "false",
-          "access.token.claim" : "true",
-          "claim.name" : "tenant_access",
-          "jsonType.label" : "JSON"
-        }
-      } ],
       "defaultClientScopes": [
         "web-origins",
         "acr",
@@ -2743,15 +2695,7 @@
         "account": ["view-profile", "manage-account"]
       },
       "notBefore": 0,
-      "groups": ["/Admins", "/Users"],
-      <%# --- SAATHRATRI CHANGE: the tenantIds user attribute feeds the tenant_access
-          token claim (see the protocol mapper above). It ships EMPTY on purpose — populate it
-          with your application's organization UUIDs by overlaying this generated file
-          post-generation (e.g. copied in from a private data repo). --- %>
-      "attributes": {
-        "tenantIds": "[ ]"
-      }
-      <%# --- END SAATHRATRI CHANGE --- %>
+      "groups": ["/Admins", "/Users"]
     },
     {
       "id": "c4af4e2f-b432-4c3b-8405-cca86cd5b97b",
@@ -2779,14 +2723,7 @@
         "account": ["view-profile", "manage-account"]
       },
       "notBefore": 0,
-      "groups": ["/Users"],
-      <%# --- SAATHRATRI CHANGE: tenant_access claim for the regular user — ships EMPTY;
-          overlay the generated file with your application's organization UUIDs (see the
-          admin user note above). --- %>
-      "attributes": {
-        "tenantIds": "[ ]"
-      }
-      <%# --- END SAATHRATRI CHANGE --- %>
+      "groups": ["/Users"]
     }
   ]
 }

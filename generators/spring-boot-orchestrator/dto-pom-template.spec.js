@@ -8,13 +8,13 @@ import ejs from 'ejs';
 const TEMPLATE = readFileSync(fileURLToPath(new URL('./templates/maven/pom.xml.ejs', import.meta.url)), 'utf8');
 
 describe('the DTO jar pom template', () => {
-  it('takes the ONE Saathratri platform version, not a hard-coded one', () => {
+  it('names the DTO jar after its service and versions it like a generated service', () => {
     const pom = ejs.render(TEMPLATE, {
-      packageName: 'com.saathratri.cassandrablog',
-      dtoFolderName: 'cassandrablogdto',
-      appPlatformVersion: '3.0.0',
+      packageName: 'com.mycompany.blog',
+      dtoFolderName: 'blogservicedto',
     });
-    expect(pom).toMatch(/<artifactId>cassandrablogdto<\/artifactId>\s*<version>3\.0\.0<\/version>/);
-    expect(pom).not.toContain('<version>2.0.0</version>');
+    expect(pom).toMatch(
+      /<groupId>com\.mycompany\.blog\.dto<\/groupId>\s*<artifactId>blogservicedto<\/artifactId>\s*<version>0\.0\.1-SNAPSHOT<\/version>/,
+    );
   });
 });

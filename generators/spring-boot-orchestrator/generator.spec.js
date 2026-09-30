@@ -118,8 +118,8 @@ describe('SubGenerator spring-boot-orchestrator of orchestrator JHipster bluepri
         applicationType: 'microservice',
         databaseType: 'cassandra',
         authenticationType: 'oauth2',
-        baseName: 'cassandrablogsvc',
-        packageName: 'com.saathratri.cassandrablog',
+        baseName: 'blogsvc',
+        packageName: 'com.mycompany.blog',
       });
     });
 
@@ -128,7 +128,7 @@ describe('SubGenerator spring-boot-orchestrator of orchestrator JHipster bluepri
     });
 
     it('does NOT write the gateway discovery-routes test into a microservice', () => {
-      result.assertNoFile('src/test/java/com/saathratri/cassandrablog/config/GatewayDiscoveryRoutesIT.java');
+      result.assertNoFile('src/test/java/com/mycompany/blog/config/GatewayDiscoveryRoutesIT.java');
     });
 
     it('does NOT write the enlarged jvm.config for a Cassandra service', () => {

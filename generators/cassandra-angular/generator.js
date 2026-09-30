@@ -434,7 +434,7 @@ Infinite Scroll Styles
         // Many top-level menus (one dropdown per microservice + admin + account): Bootstrap's
         // navbar-nav never wraps, so overflowing items were CLIPPED at the viewport edge (and the
         // bar's dark background ended mid-menu when scrolling right). Let the menu flow onto
-        // additional rows instead. Seen live on admin.example.com 2026-07-11.
+        // additional rows instead.
         if (!application.skipClient) {
           const navbarScssFile = `${srcMainWebapp}app/layouts/navbar/navbar.scss`;
           this.editFile(navbarScssFile, content => {

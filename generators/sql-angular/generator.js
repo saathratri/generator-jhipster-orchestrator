@@ -330,7 +330,7 @@ export default class extends BaseApplicationGenerator {
         // The gateway stacks one dropdown per microservice + admin + account in the top navbar;
         // Bootstrap's navbar-nav never wraps, so items past the viewport edge were CLIPPED (and
         // the bar's dark background ended mid-menu when scrolling right). Let the menu flow onto
-        // additional rows instead. Seen live on admin.example.com 2026-07-11.
+        // additional rows instead.
         if (application.skipClient) return;
         const clientSrcDir = application.clientSrcDir || 'src/main/webapp/';
         const navbarScssFile = `${clientSrcDir}app/layouts/navbar/navbar.scss`;

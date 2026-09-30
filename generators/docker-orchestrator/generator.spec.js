@@ -45,6 +45,15 @@ describe('SubGenerator docker-orchestrator of orchestrator JHipster blueprint', 
       result.assertFileContent(REALM, /"clientId":\s*"orchestrator-client-id"/);
       result.assertFileContent(REALM, /"secret":\s*"orchestrator-client-secret"/);
     });
+
+    it("is generic: JHipster's own roles only, and no user attributes of any one application", () => {
+      const realm = JSON.parse(result.getSnapshot()[REALM].contents);
+      const roles = realm.roles.realm.map(role => role.name).sort();
+      expect(roles).toEqual(['ROLE_ADMIN', 'ROLE_USER', 'default-roles-jhipster', 'offline_access', 'uma_authorization']);
+      for (const user of realm.users) {
+        expect(user.attributes).toBeUndefined();
+      }
+    });
   });
 
   describe('monolith (gated off)', () => {

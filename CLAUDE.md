@@ -1,5 +1,13 @@
 ﻿# JHipster Orchestrator Blueprint - Development Guide for Claude
 
+## This repository is public (GitHub and npm)
+
+Everything here is published: code, templates, specs, docs, commit messages, tags and release notes. Keep it about the
+blueprint and the sample apps only - never name a downstream application's services, entities, domains, organization or
+user IDs, businesses, people, production hosts, incidents or dates, and never cite a downstream project's decision-log
+numbers (no "ADR-0xx"), in any of them. A feature a downstream application needs goes in as a generic option whose value
+that application supplies; spec fixtures use the sample JDL's names (blog, post, tag, store, ...).
+
 ## Project Overview
 
 **generator-jhipster-orchestrator** is a custom JHipster 9 blueprint designed for the Saathratri project. It extends JHipster's default generation capabilities to support microservices architecture with specialized handling for both SQL (PostgreSQL) and Cassandra databases.

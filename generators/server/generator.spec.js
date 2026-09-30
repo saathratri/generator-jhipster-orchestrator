@@ -74,8 +74,8 @@ describe('SubGenerator server of orchestrator JHipster blueprint', () => {
         applicationType: 'microservice',
         databaseType: 'cassandra',
         authenticationType: 'oauth2',
-        baseName: 'cassandrablogsvc',
-        packageName: 'com.saathratri.cassandrablog',
+        baseName: 'blogsvc',
+        packageName: 'com.mycompany.blog',
       });
     });
 

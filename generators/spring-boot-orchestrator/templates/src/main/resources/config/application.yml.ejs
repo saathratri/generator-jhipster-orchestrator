@@ -210,7 +210,7 @@ spring:
             - <% if (authenticationTypeJwt) { %>JWTRelay<% } else { %>TokenRelay<% } %>
             # --- SAATHRATRI CHANGE: Deduplicate CORS headers when requests pass through multiple gateways ---
             # Error: Access-Control-Allow-Origin header contains multiple values, but only one is allowed.
-            # This happens because orchestratorgateway and saathratri-orchestrator both have CORS enabled,
+            # This happens because the gateway and the service behind it both have CORS enabled,
             # so when a request passes through both, duplicate Access-Control-Allow-Origin headers appear.
             # Reference: https://stackoverflow.com/questions/70983244/use-spring-gateway-and-getting-error-access-control-allow-origin-header-conta
             - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE

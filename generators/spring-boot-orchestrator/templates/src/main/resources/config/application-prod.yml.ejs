@@ -395,18 +395,6 @@ jhipster:
       port: 5000
       ring-buffer-size: 512
 
-# --- SAATHRATRI CHANGE: Auth0 OAuth2 audience - Saathratri API (auth0-audience.spec.js) ---
-<%_ /* if (authenticationTypeOauth2) { */ _%>
-  # https://api.example.com is Saathratri's own API: what people's and services' tokens are issued for - and the ONLY
-  # audience accepted. Never Auth0's Management API (/api/v2/): a service token for it
-  # could change any user. The retired Azure identifier is gone too.
-  security:
-    oauth2:
-      audience:
-        - https://api.example.com
-<%_ /* } */ _%>
-# --- END SAATHRATRI CHANGE ---
-
 # ===================================================================
 # Application specific properties
 # Add your own application properties here, see the ApplicationProperties class

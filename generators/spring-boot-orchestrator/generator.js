@@ -4,13 +4,9 @@
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
 
-import fs from 'node:fs';
-
 import BaseApplicationGenerator from 'generator-jhipster/generators/base-application';
 
 import { EXTRA_DEPENDENCIES_FILE, addExtraDependencies, extraDependenciesFor } from './extra-dependencies.js';
-import { useAppAiBom } from './app-ai-bom.js';
-import { platformVersionOf, usePlatformVersion } from './app-platform-version.js';
 
 // Larger Maven heap for MapStruct annotation processing on SQL services. This lives here (not in
 // maven-orchestrator) because the orchestrator's `maven` router overrides `jhipster:maven`, which
@@ -232,11 +228,9 @@ export default class extends BaseApplicationGenerator {
                 },
               ],
             },
-            // the DTO jar carries the ONE platform version, like its service.
             context: {
               ...application,
               dtoFolderName: `${this.appname}dto`,
-              appPlatformVersion: this.appPlatformVersion() ?? '0.0.1-SNAPSHOT',
             },
           });
         }
@@ -267,7 +261,7 @@ export default class extends BaseApplicationGenerator {
       },
 
       async patchCorsInApplicationDevYml({ application }) {
-        // Enable CORS for microservices in the dev profile so the Angular
+        // Enable CORS for microservices in the dev profile so an Angular
         // client (4200) and the gateway proxy (8080) can hit microservice endpoints directly
         // during local development. JHipster's stock template leaves microservice CORS
         // commented out; we replace that block with an active config.
@@ -276,10 +270,10 @@ export default class extends BaseApplicationGenerator {
         // devServerPort/microfrontend EJS logic, so we skip it here.
         //
         // This lives here (not in the sql-spring-boot or cassandra-spring-boot .ejs
-        // templates) because saathratri-generator-code-prepare.bat wipes those subtrees
-        // on every prepare and re-copies them from generator-jhipster-orchestrator and
-        // generator-jhipster-orchestrator respectively. spring-boot-orchestrator/ is
-        // preserved across prepare, so POST_WRITING editFile() is the durable home.
+        // templates) because those subtrees are re-copied from the base blueprints
+        // (generator-jhipster-ai-postgresql and generator-jhipster-cassandra) whenever the
+        // orchestrator is assembled; spring-boot-orchestrator/ is not, so POST_WRITING
+        // editFile() is the durable home.
         if (!application.applicationTypeMicroservice) {
           return;
         }
@@ -372,18 +366,6 @@ export default class extends BaseApplicationGenerator {
         });
       },
 
-      async useAppAiBomInPom({ application }) {
-        // Saathratri's AI stack is versioned in ONE place, com.saathratri:app-ai-bom (saathratri/saathratri-ai).
-        // The base blueprints stay generic (a plain spring-ai-bom import); here, after every step above that adds it,
-        // the Spring AI BOM import becomes the Saathratri AI BOM import. See app-ai-bom.js.
-        if (!application.applicationTypeMicroservice && !application.applicationTypeGateway) {
-          return;
-        }
-        // the service and its app-ai-bom import take the ONE platform version -
-        // app-parent's, read from the monorepo at regen time - instead of JHipster's 0.0.1-SNAPSHOT.
-        this.editFile('pom.xml', content => usePlatformVersion(useAppAiBom(content), this.appPlatformVersion()));
-      },
-
       async addExtraDependenciesToPom({ application }) {
         // Shared code travels as a library jar, not N copies: jhipster-extra-dependencies.json beside the apps lists
         // extra Maven dependencies per baseName. See extra-dependencies.js.
@@ -398,8 +380,8 @@ export default class extends BaseApplicationGenerator {
         // Enable CORS in Spring Security for microservices. The upstream JHipster
         // template only adds .cors(withDefaults()) for non-microservice apps
         // (gated by `if (!applicationTypeMicroservice)` in SecurityConfiguration_
-        // imperative.java.ejs). Saathratri microservices need CORS because the
-        // Angular client (angularclient on port 4200) calls microservice APIs
+        // imperative.java.ejs). These microservices need CORS because an
+        // Angular client (on port 4200) calls microservice APIs
         // directly — without .cors(withDefaults()) the preflight OPTIONS request
         // gets a 401 from Spring Security before the CorsFilter bean (which reads
         // from jhipster.cors) has a chance to add Access-Control-Allow-* headers.
@@ -664,18 +646,5 @@ export default class extends BaseApplicationGenerator {
     return this.asEndTaskGroup({
       async endTemplateTask() {},
     });
-  }
-
-  /**
-   * The ONE Saathratri platform version: app-parent's own version, read from the monorepo
-   * at regen time; undefined (with a warning) when there is no parent pom beside this app.
-   */
-  appPlatformVersion() {
-    const parentPom = this.destinationPath('../app-parent/pom.xml');
-    const version = fs.existsSync(parentPom) ? platformVersionOf(fs.readFileSync(parentPom, 'utf8')) : undefined;
-    if (!version) {
-      this.log.warn(`[saathratri] no app-parent version found at ${parentPom} - keeping the generated version`);
-    }
-    return version;
   }
 }
