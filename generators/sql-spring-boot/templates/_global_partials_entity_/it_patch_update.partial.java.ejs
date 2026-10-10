@@ -47,8 +47,9 @@ webTestClient
 .expectStatus()
 .isOk();
 <%_ } else { _%>
+<%_ /* Saathratri: a whole bean with nulls for what it leaves alone is application/json (a null is ignored); merge-patch+json would CLEAR those fields (RFC 7386) */ _%>
 rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL_ID, partialUpdated<%= persistClass %>.<%- primaryKey.propertySupplierName %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
-.contentType("application/merge-patch+json")
+.contentType(MediaType.APPLICATION_JSON)
 .content(om.writeValueAsBytes(<%= 'partialUpdated' + persistClass %>)))
 .andExpect(status().isOk());
 <%_ } _%>

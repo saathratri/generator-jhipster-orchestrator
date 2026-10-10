@@ -283,10 +283,23 @@ public class <%= serviceClassName %><% if (serviceImpl) { %> implements <%= enti
   <%_ if (serviceImpl) { _%>
     @Override
   <%_ } _%>
-    public <% if (reactive) { %>Mono<% } else { %>Optional<% } %><<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
+  <%_ if (reactive) { _%>
+    public Mono<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
         LOG.debug("Request to partially update <%= entityClass %> : {}", <%= instanceName %>);
-<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false}); -%>
+<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false, clearedFields: false}); -%>
     }
+  <%_ } else { _%>
+    <%_ if (!serviceImpl) { _%>
+    public Optional<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
+        return partialUpdate(<%= instanceName %>, java.util.Set.of());
+    }
+
+    <%_ } _%>
+    public Optional<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>, java.util.Set<String> clearedFields) {
+        LOG.debug("Request to partially update <%= entityClass %> : {}, clearing {}", <%= instanceName %>, clearedFields);
+<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false, clearedFields: true}); -%>
+    }
+  <%_ } _%>
 <%_ } _%>
 <%_ /* Saathratri modification - findAllForSaathratriOrchestrator endpoint */ _%>
 <%_ if (serviceImpl) { _%>

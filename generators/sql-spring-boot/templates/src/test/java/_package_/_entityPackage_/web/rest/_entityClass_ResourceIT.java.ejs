@@ -1292,7 +1292,9 @@ _%>
             <%= relationship.relationshipFieldName %> = TestUtil.findAll(em, <%= relationship.otherEntity.persistClass %>.class).get(0);
         }
       <%_ } else { _%>
-        <%= relationship.otherEntity.persistClass %> <%= relTargetVar %> = <%= relationship.otherEntity.entityNameCapitalized %>ResourceIT.createEntity(<% if (relationship.otherEntity.anyRelationshipIsRequired) { %><%- entityManagerVariable %><% } %>);
+        <%_ /* A self-referenced target is a second row of the same table: build it from the UPDATED values, so a
+              unique field cannot collide with the entity under test (built from the DEFAULT values). */ _%>
+        <%= relationship.otherEntity.persistClass %> <%= relTargetVar %> = <%= relationship.otherEntity.entityNameCapitalized %>ResourceIT.create<% if (relationship.otherEntity.entityClass === entityClass) { %>Updated<% } %>Entity(<% if (relationship.otherEntity.anyRelationshipIsRequired) { %><%- entityManagerVariable %><% } %>);
       <%_ } _%>
       <%_ if(reactive) { _%>
         <%= relationship.otherEntity.persistInstance %>Repository.<%= saveMethod %>(<%= relTargetVar %>)<%= callBlock %>;
@@ -1728,6 +1730,83 @@ _%>
         );
     }
 
+  <%_ /* Saathratri modification - RFC 7386 merge-patch: an explicit null clears */ _%>
+  <%_
+    const clearableFieldsForMergePatch = (reactive || primaryKey.composite || primaryKey.derived) ? [] : fieldsToTest.filter(f =>
+      !f.id && !f.fieldValidationRequired && !f.transient && !f.fieldTypeBinary && f.fieldTypeVectorSaathratri !== true);
+  _%>
+  <%_ if (clearableFieldsForMergePatch.length > 0) { const clearField = clearableFieldsForMergePatch[0]; _%>
+    @Test<%= transactionalAnnotation %>
+    void mergePatch<%= entityClass %>WithAnExplicitNull_clearsThatField() throws Exception {
+        // RFC 7386: in application/merge-patch+json a key sent as null CLEARS the field; an absent key is left alone
+    <%_ for (field of primaryKey.fields.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.<%- field.propertyConsumerName %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+        inserted<%= persistClass %> = <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).get<%= clearField.fieldInJavaBeanMethod %>()).isNotNull();
+
+        java.util.Map<String, Object> patch = new java.util.LinkedHashMap<>();
+        patch.put("<%= primaryKey.name %>", inserted<%= persistClass %>.<%- primaryKey.propertySupplierName %>());
+        patch.put("<%= clearField.fieldName %>", null);
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL_ID, inserted<%= persistClass %>.<%- primaryKey.propertySupplierName %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+            .contentType("application/merge-patch+json")
+            .content(om.writeValueAsBytes(patch)))
+            .andExpect(status().isOk());
+
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).get<%= clearField.fieldInJavaBeanMethod %>()).isNull();
+    }
+
+    @Test<%= transactionalAnnotation %>
+    void jsonPatch<%= entityClass %>WithANull_leavesThatField() throws Exception {
+        // application/json keeps the old rule for callers that send a whole DTO: a null is ignored
+    <%_ for (field of primaryKey.fields.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.<%- field.propertyConsumerName %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+        inserted<%= persistClass %> = <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+
+        java.util.Map<String, Object> patch = new java.util.LinkedHashMap<>();
+        patch.put("<%= primaryKey.name %>", inserted<%= persistClass %>.<%- primaryKey.propertySupplierName %>());
+        patch.put("<%= clearField.fieldName %>", null);
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL_ID, inserted<%= persistClass %>.<%- primaryKey.propertySupplierName %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(om.writeValueAsBytes(patch)))
+            .andExpect(status().isOk());
+
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).get<%= clearField.fieldInJavaBeanMethod %>()).isNotNull();
+    }
+
+  <%_ } _%>
+  <%_
+    const clearableLinksForMergePatch = (reactive || primaryKey.composite || primaryKey.derived || !databaseTypeSql) ? [] : relationships.filter(r =>
+      r.ownerSide && !r.collection && !r.relationshipRequired && !r.id && !r.otherEntity.builtInUser && r.otherEntity.entityClass !== entityClass);
+  _%>
+  <%_ if (clearableLinksForMergePatch.length > 0) { const link = clearableLinksForMergePatch[0]; _%>
+    @Test<%= transactionalAnnotation %>
+    void mergePatch<%= entityClass %>WithAnExplicitNullLink_unlinksIt() throws Exception {
+        // RFC 7386: a link sent as null in application/merge-patch+json is removed; the other record stays
+    <%_ for (field of primaryKey.fields.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.<%- field.propertyConsumerName %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+        var linked = <%= link.otherEntity.entityNameCapitalized %>ResourceIT.createEntity(<% if (link.otherEntity.anyRelationshipIsRequired) { %><%- entityManagerVariable %><% } %>);
+        em.persist(linked);
+        em.flush();
+        <%= persistInstance %>.<%- link.propertyConsumerName %>(linked);
+        inserted<%= persistClass %> = <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).<%- link.propertySupplierName %>()).isNotNull();
+
+        java.util.Map<String, Object> patch = new java.util.LinkedHashMap<>();
+        patch.put("<%= primaryKey.name %>", inserted<%= persistClass %>.<%- primaryKey.propertySupplierName %>());
+        patch.put("<%= link.propertyName %>", null);
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL_ID, inserted<%= persistClass %>.<%- primaryKey.propertySupplierName %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+            .contentType("application/merge-patch+json")
+            .content(om.writeValueAsBytes(patch)))
+            .andExpect(status().isOk());
+
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).<%- link.propertySupplierName %>()).isNull();
+    }
+
+  <%_ } _%>
+  <%_ /* End Saathratri modification */ _%>
     @Test<%= transactionalAnnotation %>
     void patchNonExisting<%= entityClass %>() throws Exception {
         long databaseSizeBeforeUpdate = getRepositoryCount();

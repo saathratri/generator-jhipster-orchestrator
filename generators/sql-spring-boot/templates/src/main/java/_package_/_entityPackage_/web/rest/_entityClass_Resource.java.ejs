@@ -423,10 +423,27 @@ public class <%= entityClass %>Resource {
   <%_ if (entitySpringPreAuthorize) { _%>
     @PreAuthorize("<%- entitySpringPreAuthorize %>")
   <%_ } _%>
-    public <% if (reactive) { %>Mono<<% } %>ResponseEntity<<%= instanceType %>><% if (reactive) { %>><% } %> partialUpdate<%= entityClass %>(
+  <%_ if (reactive) { _%>
+    public Mono<ResponseEntity<<%= instanceType %>>> partialUpdate<%= entityClass %>(
         @PathVariable(value = "<%= primaryKey.name %>", required = false) final <%= primaryKey.type %> <%= primaryKey.name %>,
         <% if (anyPropertyHasValidation) { %>@NotNull <% } %>@RequestBody <%= instanceType %> <%= instanceName %>
     ) throws URISyntaxException {
+  <%_ } else { _%>
+    public ResponseEntity<<%= instanceType %>> partialUpdate<%= entityClass %>(
+        @PathVariable(value = "<%= primaryKey.name %>", required = false) final <%= primaryKey.type %> <%= primaryKey.name %>,
+        <% if (anyPropertyHasValidation) { %>@NotNull <% } %>@RequestBody tools.jackson.databind.JsonNode patchBody,
+        @RequestHeader(value = "Content-Type", required = false) String contentType
+    ) throws URISyntaxException {
+        // Saathratri (RFC 7386): in application/merge-patch+json a key sent as null CLEARS that field and an absent
+        // key is left alone; application/json keeps the old rule (a null is ignored) for callers that send a whole DTO.
+        <%= instanceType %> <%= instanceName %>;
+        try {
+            <%= instanceName %> = objectMapper.treeToValue(patchBody, <%= instanceType %>.class);
+        } catch (tools.jackson.core.JacksonException e) {
+            throw new BadRequestAlertException("Invalid body", ENTITY_NAME, "invalidbody");
+        }
+        java.util.Set<String> clearedFields = mergePatchNulls(patchBody, contentType);
+  <%_ } _%>
         LOG.debug("REST request to partial update <%= entityClass %> partially : {}, {}", <%= primaryKey.name %>, <%= instanceName %>);
         if (<%= instanceName %>.<%- primaryKey.propertySupplierName %>() == null) {
             throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
@@ -462,7 +479,7 @@ public class <%= entityClass %>Resource {
     <% } %>
   <%_ } _%>
 
-            <%- include('../../_partials_entity_/patch_template', {isService: false, viaService: viaService}); -%>
+            <%- include('../../_partials_entity_/patch_template', {isService: false, viaService: viaService, clearedFields: !reactive}); -%>
   <%_ if (reactive) { _%>
             return result
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND)))
@@ -478,6 +495,20 @@ public class <%= entityClass %>Resource {
             );
   <%_ } _%>
     }
+  <%_ if (!reactive) { _%>
+
+    /** The keys a merge-patch (RFC 7386) sends as null - the fields to clear. Any other content type clears nothing. */
+    private static java.util.Set<String> mergePatchNulls(tools.jackson.databind.JsonNode patchBody, String contentType) {
+        java.util.Set<String> cleared = new java.util.LinkedHashSet<>();
+        if (contentType != null && contentType.toLowerCase(java.util.Locale.ROOT).startsWith("application/merge-patch+json")
+            && patchBody != null && patchBody.isObject()) {
+            for (java.util.Map.Entry<String, tools.jackson.databind.JsonNode> e : patchBody.properties()) {
+                if (e.getValue().isNull()) cleared.add(e.getKey());
+            }
+        }
+        return cleared;
+    }
+  <%_ } _%>
 <%_ } _%>
 
     /**

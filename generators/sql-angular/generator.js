@@ -14,6 +14,7 @@ import { filterEntitiesAndPropertiesForClient, generateEntityClientEnumImports }
 import { describeExcludedRelationship, getExcludedRelationships } from '../sql-spring-boot/lazy-relationship-utils.js';
 
 import { angularFilesFromSaathratri, entityModelFiles } from './entity-files.js';
+import { stripExcludedFromFormServiceSpec, stripExcludedFromUpdateSpec } from './excluded-relationship-spec-strip.js';
 import { angularSaathratriUtils } from './sql-angular-utils.js';
 
 // Navbar modifications are applied in POST_WRITING via editFile
@@ -190,8 +191,10 @@ export default class extends BaseApplicationGenerator {
           });
         }
 
-        // app/entities/entity-navbar-items.ts: navbar.ts imports EntityNavbarItems from it, so the
-        // file must exist or the Angular build/tests fail to compile (TS2307 cannot find module).
+        // app/entities/entity-navbar-items.ts: the microfrontend loader (core/microfrontend/index.ts) loads it
+        // through native federation and reads its DEFAULT export, so it has upstream's exact shape - a const
+        // plus `export default`. A named-only export loads as `undefined` and a gateway's navbar fails to sort
+        // it ("is not iterable"), dropping that service's entity menu.
         // Base JHipster writes this file with an `add-entity-navbar` needle and, ONLY for
         // microservices (see angular generator addNeedles → `if (application.applicationTypeMicroservice)`),
         // needles each entity into it during postWriteEntitiesFiles. Because this blueprint replaces
@@ -217,7 +220,7 @@ export default class extends BaseApplicationGenerator {
               .join('\n');
             arrayBody = items ? `${items}\n${navbarNeedle}` : navbarNeedle;
           }
-          const navbarItemsContent = `import NavbarItem from 'app/layouts/navbar/navbar-item.model';\n\nexport const EntityNavbarItems: NavbarItem[] = [\n${arrayBody}\n];\n`;
+          const navbarItemsContent = `import NavbarItem from 'app/layouts/navbar/navbar-item.model';\n\nconst EntityNavbarItems: NavbarItem[] = [\n${arrayBody}\n];\n\nexport default EntityNavbarItems;\n`;
           this.writeDestination(`${clientSrcDir}app/entities/entity-navbar-items.ts`, navbarItemsContent);
         }
       },
@@ -1189,7 +1192,35 @@ export class LazyRelationshipEditModalComponent implements OnInit {
               return result;
             });
 
-            this.log.info(`[sql-angular] Stripped ${excludedFormRels.length} excluded rel(s) from ${entity.entityFileName} update/form`);
+            // The two specs that test the form must lose the same relationships, or the update spec does not compile
+            // (it referenced xsSharedCollection / compareX) and the form-service spec expects controls that are gone.
+            const updateSpecFile = `${clientSrcDir}app/entities/${entity.entityFolderName}/update/${entity.entityFileName}-update.spec.ts`;
+            const formSvcSpecFile = `${clientSrcDir}app/entities/${entity.entityFolderName}/update/${entity.entityFileName}-form.service.spec.ts`;
+            if (this.fs.exists(this.destinationPath(updateSpecFile))) {
+              this.editFile(updateSpecFile, content =>
+                stripExcludedFromUpdateSpec(content, {
+                  entityInstance: entity.entityInstance,
+                  rels: excludedFormRels.map(rel => ({
+                    otherEntityAngularName: rel.otherEntity.entityAngularName,
+                    otherEntityInstancePlural: rel.otherEntity.entityInstancePlural,
+                    propertyName: rel.propertyName,
+                    relationshipFieldName: rel.relationshipFieldName,
+                  })),
+                }),
+              );
+            }
+            if (this.fs.exists(this.destinationPath(formSvcSpecFile))) {
+              this.editFile(formSvcSpecFile, content =>
+                stripExcludedFromFormServiceSpec(
+                  content,
+                  excludedFormRels.map(rel => rel.propertyName),
+                ),
+              );
+            }
+
+            this.log.info(
+              `[sql-angular] Stripped ${excludedFormRels.length} excluded rel(s) from ${entity.entityFileName} update/form/specs`,
+            );
           }
 
           // Detect vector fields using BOTH the prepared property AND the raw JDL annotation

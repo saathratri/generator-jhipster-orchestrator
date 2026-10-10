@@ -28,7 +28,7 @@ _%>
   <%_ if (reactive) { _%>
     Mono<<%= instanceType %>> result = <%= entityInstance %>Service.partialUpdate(<%= instanceName %>);
   <%_ } else { _%>
-    Optional<<%= instanceType %>> result = <%= entityInstance %>Service.partialUpdate(<%= instanceName %>);
+    Optional<<%= instanceType %>> result = <%= entityInstance %>Service.partialUpdate(<%= instanceName %><% if (typeof clearedFields !== 'undefined' && clearedFields) { %>, clearedFields<% } %>);
   <%_ } _%>
 <%_ } else { %>
 <%- returnPrefix %> <%= entityInstance %>Repository.findById(<%= instanceName %>.<%- primaryKey.propertySupplierName %>())
@@ -44,6 +44,32 @@ _%>
       <%_ } _%>
     <%_ } %>
   <% } %>
+<%_ /* Saathratri modification - RFC 7386 merge-patch: the fields sent as null are cleared. Only an optional,
+     non-id property and a single optional link this side owns; a required one keeps its value (as before). */ _%>
+<%_
+const clearableFieldsSaathratri = (typeof clearedFields !== 'undefined' && clearedFields) ? fields.filter(f =>
+  !f.id && !f.transient && !f.autoGenerate && !f.fieldValidationRequired && f.fieldTypeVectorSaathratri !== true) : [];
+const clearableLinksSaathratri = (typeof clearedFields !== 'undefined' && clearedFields) ? relationships.filter(r =>
+  r.ownerSide && !r.collection && !r.relationshipRequired && !r.id) : [];
+if (clearableFieldsSaathratri.length + clearableLinksSaathratri.length > 0) { _%>
+    for (String clearedField : clearedFields) {
+        switch (clearedField) {
+  <%_ for (const f of clearableFieldsSaathratri) { _%>
+            case "<%= f.fieldName %>" -> existing<%= entityClass %>.<%- f.propertyConsumerName %>(null);
+    <%_ if (f.fieldWithContentType) { _%>
+            case "<%= f.fieldName %>ContentType" -> existing<%= entityClass %>.<%- f.propertyConsumerName %>ContentType(null);
+    <%_ } _%>
+  <%_ } _%>
+  <%_ for (const r of clearableLinksSaathratri) { _%>
+            case "<%= r.propertyName %>" -> existing<%= entityClass %>.<%- r.propertyConsumerName %>(null);
+  <%_ } _%>
+            default -> {
+                // an id, a required field or an unknown key: a null there changes nothing
+            }
+        }
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
 <%_ /* Saathratri: Regenerate vector embeddings on partial update — without this, a PATCH that
      changes a source text field (e.g. name/description) leaves the previously stored vector
      stale. Regenerate from the merged entity state, mirroring save()/update(). */ _%>
