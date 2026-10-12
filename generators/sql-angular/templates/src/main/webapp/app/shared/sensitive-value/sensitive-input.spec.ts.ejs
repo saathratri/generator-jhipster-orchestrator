@@ -8,6 +8,7 @@ import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
+import { SENSITIVE_DISPLAY_RULE } from './sensitive-display';
 import { SensitiveInput } from './sensitive-input';
 
 @Component({
@@ -97,5 +98,46 @@ describe('SensitiveInput', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     expect(element().querySelector('[data-cy="secretIsSet"]')?.textContent).toContain('Not set.');
+  });
+});
+
+describe('SensitiveInput with a rule that calls the value safe', () => {
+  @Component({
+    imports: [ReactiveFormsModule, SensitiveInput],
+    template: `<<%- jhiPrefixDashed %>-sensitive-input
+      [formControl]="control"
+      inputId="field_value"
+      name="value"
+      dataCy="value"
+      label="Value"
+      entityName="Setting"
+      fieldName="value"
+      [entity]="setting"
+    />`,
+  })
+  class SettingHost {
+    readonly control = new FormControl<string | null>('America/New_York');
+    readonly setting = { name: 'TIME_ZONE' };
+  }
+
+  it('is an ordinary text input with no eye, hide or copy button', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: SENSITIVE_DISPLAY_RULE,
+          useValue: (entityName: string, fieldName: string, entity: unknown) =>
+            entityName === 'Setting' && fieldName === 'value' && (entity as { name?: string } | null)?.name === 'TIME_ZONE',
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(SettingHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector<HTMLInputElement>('[data-cy="value"]')!.type).toBe('text');
+    expect(element.querySelector('[data-cy="sensitiveReveal"]')).toBeNull();
+    expect(element.querySelector('[data-cy="sensitiveCopy"]')).toBeNull();
   });
 });

@@ -15,30 +15,32 @@
     [id]="inputId()"
     [name]="name()"
     [attr.data-cy]="dataCy()"
-    [type]="revealed() ? 'text' : 'password'"
+    [type]="plain() || revealed() ? 'text' : 'password'"
     [value]="value()"
     [disabled]="disabled()"
     (input)="typed($event)"
     (blur)="touched()"
   />
-  @if (revealed()) {
-    <button type="button" class="btn btn-outline-secondary" (click)="hide()" [attr.aria-label]="'Hide ' + label()" data-cy="sensitiveHide">
-      <fa-icon [icon]="faEyeSlash" />
-    </button>
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      (click)="copy()"
-      [disabled]="value() === ''"
-      [attr.aria-label]="'Copy ' + label()"
-      data-cy="sensitiveCopy"
-    >
-      <fa-icon [icon]="faCopy" />
-    </button>
-  } @else {
-    <button type="button" class="btn btn-outline-secondary" (click)="reveal()" [attr.aria-label]="'Show ' + label()" data-cy="sensitiveReveal">
-      <fa-icon [icon]="faEye" />
-    </button>
+  @if (!plain()) {
+    @if (revealed()) {
+      <button type="button" class="btn btn-outline-secondary" (click)="hide()" [attr.aria-label]="'Hide ' + label()" data-cy="sensitiveHide">
+        <fa-icon [icon]="faEyeSlash" />
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline-secondary"
+        (click)="copy()"
+        [disabled]="value() === ''"
+        [attr.aria-label]="'Copy ' + label()"
+        data-cy="sensitiveCopy"
+      >
+        <fa-icon [icon]="faCopy" />
+      </button>
+    } @else {
+      <button type="button" class="btn btn-outline-secondary" (click)="reveal()" [attr.aria-label]="'Show ' + label()" data-cy="sensitiveReveal">
+        <fa-icon [icon]="faEye" />
+      </button>
+    }
   }
 </div>
 @if (copied()) {

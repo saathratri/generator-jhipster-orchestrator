@@ -3,7 +3,9 @@
  SPDX-License-Identifier: MIT
  Licensed under the MIT License; see LICENSE in the repository root.
 -%>
-@if (value()) {
+@if (value() && plain()) {
+  <span data-cy="sensitiveValue">{{ value() }}</span>
+} @else if (value()) {
   <span class="d-inline-flex align-items-center gap-1">
     <span class="font-monospace" data-cy="sensitiveValue">{{ revealed() ? value() : mask }}</span>
     @if (revealed()) {

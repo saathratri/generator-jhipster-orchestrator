@@ -1,0 +1,24 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+import { InjectionToken } from '@angular/core';
+
+/**
+ * Decides whether a screen may show a @sensitive value plainly - without the mask - because it is known not to be a
+ * secret (a time zone or an on/off switch kept in a generic "value" column). `entityName` is the entity's class name,
+ * `fieldName` the field, `entity` the record shown or edited, so a rule can look at a sibling field (its name).
+ */
+export type SensitiveDisplayRule = (entityName: string, fieldName: string, entity: unknown) => boolean;
+
+/**
+ * As generated, every sensitive value is masked. An application that knows some values are safe replaces this file
+ * (or provides SENSITIVE_DISPLAY_RULE) with its own rule. A write-only value is never sent to the browser at all.
+ */
+export const showsPlainly: SensitiveDisplayRule = () => false;
+
+export const SENSITIVE_DISPLAY_RULE = new InjectionToken<SensitiveDisplayRule>('SENSITIVE_DISPLAY_RULE', {
+  providedIn: 'root',
+  factory: () => showsPlainly,
+});

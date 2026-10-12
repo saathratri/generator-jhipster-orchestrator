@@ -103,6 +103,8 @@ describe('@sensitive fields (cassandra-spring-boot)', () => {
       const file = `${TEST}/web/rest/VaultResourceIT.java`;
       result.assertFileContent(file, 'void sensitiveFieldsNeverReachTheLog() throws Exception {');
       result.assertFileContent(file, 'app.setLevel(Level.DEBUG);');
+      // an entity named Org would shadow the org. package prefix in its own IT
+      result.assertFileContent(file, 'LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME)');
       result.assertFileContent(
         file,
         /for \(String secret : List\.of\(DEFAULT_API_KEY, UPDATED_API_KEY, DEFAULT_SECRET_HASH, UPDATED_SECRET_HASH\)\)/,

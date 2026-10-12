@@ -131,7 +131,7 @@ _%>
                     </div>
     <%_ } _%>
     <%_ if (field.fieldSensitive) { /* @sensitive: typed in masked; a write-only one says whether a value is stored */ _%>
-                    <<%= jhiPrefixDashed %>-sensitive-input formControlName="<%= fieldName %>" inputId="field_<%= fieldName %>" name="<%= fieldName %>" dataCy="<%= fieldName %>" label="<%= fieldNameHumanized %>"<% if (field.fieldWriteOnly) { %> [writeOnly]="true" [isSet]="<%= entityInstance %>?.<%= fieldName %>IsSet"<% } %> />
+                    <<%= jhiPrefixDashed %>-sensitive-input formControlName="<%= fieldName %>" inputId="field_<%= fieldName %>" name="<%= fieldName %>" dataCy="<%= fieldName %>" label="<%= fieldNameHumanized %>"<% if (field.fieldWriteOnly) { %> [writeOnly]="true" [isSet]="<%= entityInstance %>?.<%= fieldName %>IsSet"<% } else { %> entityName="<%= entityClass %>" fieldName="<%= fieldName %>" [entity]="<%= entityInstance %>"<% } %> />
     <%_ } else if (field.fieldTypeLocalDate) { _%>
                     <div class="input-group">
                         <input id="field_<%= fieldName %>" data-cy="<%= fieldName %>" type="text" class="form-control" name="<%= fieldName %>" ngbDatepicker #<%= fieldName %>Dp="ngbDatepicker" formControlName="<%= fieldName %>"<% if (readonly) { %> [readonly]="true"<% } %>/>

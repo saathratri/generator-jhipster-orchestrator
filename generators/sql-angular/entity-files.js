@@ -63,6 +63,7 @@ export const sensitiveValueFiles = {
         'shared/sensitive-value/sensitive-input.ts',
         'shared/sensitive-value/sensitive-input.html',
         'shared/sensitive-value/sensitive-input.spec.ts',
+        'shared/sensitive-value/sensitive-display.ts',
       ],
     }),
   ],

@@ -62,12 +62,22 @@ describe('@sensitive fields (cassandra-angular)', () => {
       `${APP}/shared/sensitive-value/sensitive-input.ts`,
       `${APP}/shared/sensitive-value/sensitive-input.html`,
       `${APP}/shared/sensitive-value/sensitive-input.spec.ts`,
+      `${APP}/shared/sensitive-value/sensitive-display.ts`,
     ]);
+  });
+
+  it('a generated rule decides which sensitive values a screen may show plainly - by default, none', () => {
+    const file = `${APP}/shared/sensitive-value/sensitive-display.ts`;
+    result.assertFileContent(file, 'export const showsPlainly: SensitiveDisplayRule = () => false;');
+    result.assertFileContent(`${APP}/shared/sensitive-value/sensitive-value.ts`, 'inject(SENSITIVE_DISPLAY_RULE)');
   });
 
   it('the list masks a sensitive value, shows only Set / Not set for a write-only one, and sorts by neither', () => {
     const file = `${ENTITY}/list/vault.html`;
-    result.assertFileContent(file, '<jhi-sensitive-value [value]="vault.apiKey" label="Api Key" />');
+    result.assertFileContent(
+      file,
+      '<jhi-sensitive-value [value]="vault.apiKey" label="Api Key" entityName="Vault" fieldName="apiKey" [entity]="vault" />',
+    );
     result.assertFileContent(file, `{{ vault.secretHashIsSet ? 'Set' : 'Not set' }}`);
     result.assertNoFileContent(file, '{{ vault.apiKey }}');
     result.assertNoFileContent(file, '{{ vault.secretHash }}');
@@ -79,7 +89,10 @@ describe('@sensitive fields (cassandra-angular)', () => {
 
   it('the detail masks a sensitive value and shows only Set / Not set for a write-only one', () => {
     const file = `${ENTITY}/detail/vault-detail.html`;
-    result.assertFileContent(file, '<jhi-sensitive-value [value]="vaultRef.apiKey" label="Api Key" />');
+    result.assertFileContent(
+      file,
+      '<jhi-sensitive-value [value]="vaultRef.apiKey" label="Api Key" entityName="Vault" fieldName="apiKey" [entity]="vaultRef" />',
+    );
     result.assertFileContent(file, `{{ vaultRef.secretHashIsSet ? 'Set' : 'Not set' }}`);
     result.assertNoFileContent(file, '{{ vaultRef.apiKey }}');
     result.assertFileContent(
@@ -92,7 +105,7 @@ describe('@sensitive fields (cassandra-angular)', () => {
     const file = `${ENTITY}/update/vault-update.html`;
     result.assertFileContent(
       file,
-      /<jhi-sensitive-input formControlName="apiKey" inputId="field_apiKey" name="apiKey" dataCy="apiKey" label="Api Key"\s*\/>/,
+      /<jhi-sensitive-input formControlName="apiKey" inputId="field_apiKey" name="apiKey" dataCy="apiKey" label="Api Key" entityName="Vault" fieldName="apiKey" \[entity\]="vault"\s*\/>/,
     );
     result.assertFileContent(
       file,

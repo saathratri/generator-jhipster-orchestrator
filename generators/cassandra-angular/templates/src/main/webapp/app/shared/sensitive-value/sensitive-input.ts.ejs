@@ -3,17 +3,20 @@
  SPDX-License-Identifier: MIT
  Licensed under the MIT License; see LICENSE in the repository root.
 -%>
-import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, forwardRef, inject, input, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faCopy, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+
+import { SENSITIVE_DISPLAY_RULE } from './sensitive-display';
 
 /**
  * The form input for a @sensitive field: typed in masked, the eye button shows what is typed, the hide button masks it
  * again, and the copy button - there only while it is shown - copies it.
  *
  * A write-only field (@sensitive(writeOnly)) is never sent to the browser, so its input starts empty and says only
- * whether a value is stored; left empty, the stored value is kept.
+ * whether a value is stored; left empty, the stored value is kept. A value the application's SENSITIVE_DISPLAY_RULE calls
+ * safe is an ordinary text input.
  */
 @Component({
   selector: '<%- jhiPrefixDashed %>-sensitive-input',
@@ -31,7 +34,12 @@ export class SensitiveInput implements ControlValueAccessor {
   readonly writeOnly = input(false);
   /** For a write-only field: whether a value is stored. */
   readonly isSet = input<boolean | null | undefined>(false);
+  /** For SENSITIVE_DISPLAY_RULE: the entity's class name, the field and the record edited. */
+  readonly entityName = input('');
+  readonly fieldName = input('');
+  readonly entity = input<unknown>();
 
+  protected readonly plain = computed(() => !this.writeOnly() && this.rule(this.entityName(), this.fieldName(), this.entity()));
   protected readonly value = signal('');
   protected readonly revealed = signal(false);
   protected readonly copied = signal(false);
@@ -40,6 +48,7 @@ export class SensitiveInput implements ControlValueAccessor {
   protected readonly faEyeSlash = faEyeSlash;
   protected readonly faCopy = faCopy;
 
+  private readonly rule = inject(SENSITIVE_DISPLAY_RULE);
   private onChange?: (value: string | null) => void;
   private onTouched?: () => void;
 

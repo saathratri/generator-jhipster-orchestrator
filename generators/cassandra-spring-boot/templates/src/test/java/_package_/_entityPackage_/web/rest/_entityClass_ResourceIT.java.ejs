@@ -2394,7 +2394,7 @@ _%>
     @Test<%= transactionalAnnotation %>
     void sensitiveFieldsNeverReachTheLog() throws Exception {
         // A @sensitive value is in no log line, even at DEBUG, where every REST and service call logs its DTO
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
         ch.qos.logback.classic.Logger app = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("<%= packageName %>");
         Level appLevel = app.getLevel();
         ListAppender<ILoggingEvent> captured = new ListAppender<>();

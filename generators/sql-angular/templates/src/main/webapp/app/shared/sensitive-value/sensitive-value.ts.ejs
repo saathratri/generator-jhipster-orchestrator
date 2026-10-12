@@ -3,14 +3,16 @@
  SPDX-License-Identifier: MIT
  Licensed under the MIT License; see LICENSE in the repository root.
 -%>
-import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faCopy, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+
+import { SENSITIVE_DISPLAY_RULE } from './sensitive-display';
 
 /**
  * Shows a @sensitive value masked. The eye button reveals it, the hide button masks it again, and the copy button -
  * there only while the value is revealed - copies it. The mask has the same length for every value, so it does not
- * give the value's length away.
+ * give the value's length away. A value the application's SENSITIVE_DISPLAY_RULE calls safe is shown plainly.
  */
 @Component({
   selector: '<%- jhiPrefixDashed %>-sensitive-value',
@@ -22,13 +24,20 @@ export class SensitiveValue {
   readonly value = input<string | null | undefined>();
   /** What the value is, for the buttons' accessible names ("Show API Key"). */
   readonly label = input('value');
+  /** For SENSITIVE_DISPLAY_RULE: the entity's class name, the field and the record shown. */
+  readonly entityName = input('');
+  readonly fieldName = input('');
+  readonly entity = input<unknown>();
 
+  protected readonly plain = computed(() => this.rule(this.entityName(), this.fieldName(), this.entity()));
   protected readonly mask = '••••••••';
   protected readonly revealed = signal(false);
   protected readonly copied = signal(false);
   protected readonly faEye = faEye;
   protected readonly faEyeSlash = faEyeSlash;
   protected readonly faCopy = faCopy;
+
+  private readonly rule = inject(SENSITIVE_DISPLAY_RULE);
 
   protected reveal(): void {
     this.revealed.set(true);

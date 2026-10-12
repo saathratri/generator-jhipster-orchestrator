@@ -543,7 +543,7 @@ _%>
     <%_ if (field.fieldWriteOnly) { /* @sensitive(writeOnly): never sent to the browser */ _%>
                     <td data-cy="<%= fieldName %>IsSet">{{ <%= entityInstance %>.<%= fieldName %>IsSet ? 'Set' : 'Not set' }}</td>
     <%_ } else if (field.fieldSensitive) { _%>
-                    <td><<%= jhiPrefixDashed %>-sensitive-value [value]="<%= entityInstance %>.<%= fieldName %>" label="<%= field.fieldNameHumanized %>" /></td>
+                    <td><<%= jhiPrefixDashed %>-sensitive-value [value]="<%= entityInstance %>.<%= fieldName %>" label="<%= field.fieldNameHumanized %>" entityName="<%= entityClass %>" fieldName="<%= fieldName %>" [entity]="<%= entityInstance %>" /></td>
     <%_ } else if (field.fieldTypeBinary && field.blobContentTypeImage) { _%>
                     <td>
                     @if (<%= entityInstance %>.<%= fieldName %>) {

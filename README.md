@@ -313,6 +313,8 @@ entity PsqlVault {
 - `@sensitive(writeOnly)` — also never returned: the DTO field is `@JsonProperty(access = WRITE_ONLY)` with a read-only
   `<field>IsSet`, an update that leaves it empty keeps the stored value, and the screens show only Set / Not set.
 - The generated `<Entity>ResourceIT` proves no log line carries a sensitive value (`sensitiveFieldsNeverReachTheLog`).
+- Which values a screen may still show plainly (a settings column holding a time zone in one row and a key in the next)
+  is one rule an application replaces: `SENSITIVE_DISPLAY_RULE` in `shared/sensitive-value/sensitive-display.ts`.
 - The DTO JAR copies the same DTO, so it depends on `jackson-annotations` (see DTO Modularization).
 
 Full contract, the generated tests and the combinations the generator refuses: the

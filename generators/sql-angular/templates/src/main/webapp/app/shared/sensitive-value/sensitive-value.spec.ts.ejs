@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { SENSITIVE_DISPLAY_RULE } from './sensitive-display';
 import { SensitiveValue } from './sensitive-value';
 
 describe('SensitiveValue', () => {
@@ -59,5 +60,34 @@ describe('SensitiveValue', () => {
     fixture.componentRef.setInput('value', null);
     fixture.detectChanges();
     expect(button('sensitiveReveal')).toBeNull();
+  });
+});
+
+describe('SensitiveValue with a rule that calls the value safe', () => {
+  it('shows it plainly, with no eye, hide or copy button', () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: SENSITIVE_DISPLAY_RULE, useValue: (entityName: string, fieldName: string) => entityName === 'Setting' && fieldName === 'value' }],
+    });
+    const fixture = TestBed.createComponent(SensitiveValue);
+    fixture.componentRef.setInput('value', 'America/New_York');
+    fixture.componentRef.setInput('entityName', 'Setting');
+    fixture.componentRef.setInput('fieldName', 'value');
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.textContent).toContain('America/New_York');
+    expect(element.querySelector('[data-cy="sensitiveReveal"]')).toBeNull();
+    expect(element.querySelector('[data-cy="sensitiveCopy"]')).toBeNull();
+  });
+
+  it('masks it when the rule does not name it', () => {
+    TestBed.configureTestingModule({ providers: [{ provide: SENSITIVE_DISPLAY_RULE, useValue: () => false }] });
+    const fixture = TestBed.createComponent(SensitiveValue);
+    fixture.componentRef.setInput('value', 'example-secret-value');
+    fixture.componentRef.setInput('entityName', 'Setting');
+    fixture.componentRef.setInput('fieldName', 'value');
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('example-secret-value');
   });
 });
