@@ -33,6 +33,30 @@ const VAULT_FIELDS = [
   },
 ];
 
+// Owner links to Vault, whose label is the link's display field and whose apiKey carries @sensitive and nothing else.
+const LINKED_ENTITIES = [
+  vault([
+    { fieldName: 'label', fieldType: 'String', options: { customAnnotation: ['DISPLAY_IN_GUI_RELATIONSHIP_LINK', ''] } },
+    { fieldName: 'apiKey', fieldType: 'String', options: { sensitive: true } },
+  ]),
+  {
+    name: 'Owner',
+    changelogDate: '20200101000200',
+    dto: 'mapstruct',
+    service: 'serviceImpl',
+    fields: [{ fieldName: 'name', fieldType: 'String' }],
+    relationships: [
+      {
+        relationshipName: 'vault',
+        otherEntityName: 'vault',
+        otherEntityField: 'label',
+        relationshipSide: 'left',
+        relationshipType: 'many-to-one',
+      },
+    ],
+  },
+];
+
 const runServer = entities =>
   helpers
     .runJHipster('server')
@@ -140,6 +164,25 @@ describe('@sensitive fields (sql-spring-boot)', () => {
     it('is accepted and printed as set / missing', () => {
       result.assertFileContent(`${JAVA}/service/dto/VaultDTO.java`, `", note=" + (getNote() == null ? "missing" : "set") +`);
       result.assertFileContent(`${JAVA}/domain/Vault.java`, `", note=" + (getNote() == null ? "missing" : "set") +`);
+    });
+  });
+
+  describe('an entity linked to an entity whose only option on a field is @sensitive', () => {
+    // The linking entity's mapper reads the linked entity's fields for its display label; a field with options but no
+    // @customAnnotation must not stop the run.
+    let error;
+    beforeAll(async () => {
+      error = await refusal(runServer(LINKED_ENTITIES));
+    });
+
+    it('generates', () => {
+      expect(error).toBeUndefined();
+    });
+
+    it("the linking entity's mapper carries the linked display field, never the sensitive one", () => {
+      const file = `${JAVA}/service/mapper/OwnerMapper.java`;
+      result.assertFileContent(file, '@Mapping(target = "label", source = "label")');
+      result.assertNoFileContent(file, '"apiKey"');
     });
   });
 

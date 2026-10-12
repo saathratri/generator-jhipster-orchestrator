@@ -102,12 +102,20 @@ export function getDisplayLabelField(otherEntity) {
   const fields = otherEntity?.fields;
   if (!Array.isArray(fields)) return null;
   for (const f of fields) {
-    const ca = f.options?.customAnnotation || f.customAnnotation;
-    if (Array.isArray(ca) && ca[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+    if (isDisplayInGuiLinkField(f)) {
       return f.fieldName;
     }
   }
   return null;
+}
+
+/**
+ * Whether `field` carries the DISPLAY_IN_GUI_RELATIONSHIP_LINK custom annotation. A field can have options without any
+ * @customAnnotation (a field marked only @sensitive, for one), so never read `field.options.customAnnotation[0]` directly.
+ */
+export function isDisplayInGuiLinkField(field) {
+  const ca = field?.options?.customAnnotation || field?.customAnnotation;
+  return Array.isArray(ca) && ca[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK';
 }
 
 /**

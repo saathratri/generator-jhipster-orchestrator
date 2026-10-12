@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { isDisplayInGuiLinkField } from './lazy-relationship-utils.js';
 import { saathratriConstants } from './saathratri-constants.js';
 
 const LAST_USED_PORT_FILE = 'last-used-port.json';
@@ -42,7 +43,7 @@ export const sqlSpringBootUtils = {
 
     for (const field of fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (field.options.customAnnotation[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+        if (isDisplayInGuiLinkField(field)) {
           /*
            * Display customization - human readable names.
            * entityInstance + "." + relationshipFieldName + "." + otherEntityField

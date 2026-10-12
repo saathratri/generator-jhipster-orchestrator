@@ -4,7 +4,7 @@
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
 
-import { beforeAll, describe, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { defaultHelpers as helpers, result } from 'generator-jhipster/testing';
 
@@ -113,5 +113,65 @@ describe('@sensitive fields (sql-angular)', () => {
 
   it('the model carries <field>IsSet for a write-only field', () => {
     result.assertFileContent(`${ENTITY}/vault.model.ts`, 'secretHashIsSet?: boolean | null;');
+  });
+});
+
+// Owner links to Vault, whose label is the link's display field and whose apiKey carries @sensitive and nothing else.
+const LINKED_VAULT = {
+  ...VAULT,
+  fields: [
+    { fieldName: 'label', fieldType: 'String', options: { customAnnotation: ['DISPLAY_IN_GUI_RELATIONSHIP_LINK', ''] } },
+    { fieldName: 'apiKey', fieldType: 'String', options: { sensitive: true } },
+  ],
+};
+const OWNER = {
+  name: 'Owner',
+  changelogDate: '20200101000200',
+  dto: 'mapstruct',
+  service: 'serviceImpl',
+  fields: [{ fieldName: 'name', fieldType: 'String' }],
+  relationships: [
+    {
+      relationshipName: 'vault',
+      otherEntityName: 'vault',
+      otherEntityField: 'label',
+      relationshipSide: 'left',
+      relationshipType: 'many-to-one',
+    },
+  ],
+};
+const OWNER_ENTITY = `${APP}/entities/owner`;
+
+describe('@sensitive fields (sql-angular) - an entity linked to an entity whose only option on a field is @sensitive', () => {
+  // The linking entity's screens read the linked entity's fields for the link's label; a field with options but no
+  // @customAnnotation must not stop the run.
+  let error;
+  beforeAll(async () => {
+    error = await helpers
+      .runJHipster('jhipster:angular')
+      .withJHipsterConfig({ clientFramework: 'angular' }, [LINKED_VAULT, OWNER])
+      .withOptions({ ignoreNeedlesError: true })
+      .withJHipsterGenerators()
+      .withConfiguredBlueprint()
+      .withBlueprintConfig()
+      .then(
+        () => undefined,
+        e => e.message,
+      );
+  });
+
+  it('generates', () => {
+    expect(error).toBeUndefined();
+  });
+
+  it("the linking entity's list, detail and form label the link with the display field, never the sensitive one", () => {
+    for (const file of [
+      `${OWNER_ENTITY}/list/owner.html`,
+      `${OWNER_ENTITY}/detail/owner-detail.html`,
+      `${OWNER_ENTITY}/update/owner-update.html`,
+    ]) {
+      result.assertFileContent(file, /vault[^\n]*\.label/);
+      result.assertNoFileContent(file, 'apiKey');
+    }
   });
 });

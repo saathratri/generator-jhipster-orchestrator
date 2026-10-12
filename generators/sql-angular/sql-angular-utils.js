@@ -4,6 +4,7 @@
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
 
+import { isDisplayInGuiLinkField } from '../sql-spring-boot/lazy-relationship-utils.js';
 import { saathratriConstants } from '../sql-spring-boot/saathratri-constants.js';
 
 export const angularSaathratriUtils = {
@@ -24,7 +25,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (field.options.customAnnotation[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+        if (isDisplayInGuiLinkField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
@@ -62,7 +63,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (field.options.customAnnotation[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+        if (isDisplayInGuiLinkField(field)) {
           /*
            * Display customization - human readable names.
            * relationshipFieldName.otherEntityField
@@ -90,7 +91,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (field.options.customAnnotation[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+        if (isDisplayInGuiLinkField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
@@ -128,7 +129,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (field.options.customAnnotation[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+        if (isDisplayInGuiLinkField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
@@ -166,7 +167,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (field.options.customAnnotation[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK') {
+        if (isDisplayInGuiLinkField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
