@@ -495,11 +495,14 @@ _%>
         <table class="table table-striped" aria-describedby="page-heading">
             <thead>
                 <tr <%= jhiPrefix %>Sort [(sortState)]="sortState" (sortChange)="navigateToWithComponentValues($event)">
-<%_ for (const field of fields.filter(field => !field.hidden  && ((primaryKeySaathratri.composite && field.fieldName !== 'id') || !primaryKeySaathratri.composite))) { _%>
-                    <th scope="col" <%= jhiPrefix %>SortBy="<%= field.fieldName %>">
+<%_ for (const field of fields.filter(field => !field.hidden  && ((primaryKeySaathratri.composite && field.fieldName !== 'id') || !primaryKeySaathratri.composite))) {
+    // A sensitive value is never a sort key: the order alone would leak something about the values.
+    const fieldSupportsSortBy = !field.transient && !field.fieldSensitive;
+_%>
+                    <th scope="col"<% if (fieldSupportsSortBy) { %> <%= jhiPrefix %>SortBy="<%= field.fieldName %>"<% } %>>
                         <div class="d-flex">
                             <span>__jhiTranslateTag__('<%- field.fieldTranslationKey %>')</span>
-  <%_ if (!field.transient) { _%>
+  <%_ if (fieldSupportsSortBy) { _%>
                         <% if (searchEngineAny && !field.fieldTypeBoolean && !field.fieldTypeNumeric && !field.fieldTypeTemporal) { %>@if (!currentSearch()) {<% } %>
                             <fa-icon class="p-1" icon="sort"></fa-icon>
                         <% if (searchEngineAny && !field.fieldTypeBoolean && !field.fieldTypeNumeric && !field.fieldTypeTemporal) { %>}<% } %>
@@ -537,7 +540,11 @@ for (field of fields.filter(field => !field.hidden && ((primaryKeySaathratri.com
     const fieldName = field.fieldName;
     const fieldType = field.fieldType;
 _%>
-    <%_ if (field.fieldTypeBinary && field.blobContentTypeImage) { _%>
+    <%_ if (field.fieldWriteOnly) { /* @sensitive(writeOnly): never sent to the browser */ _%>
+                    <td data-cy="<%= fieldName %>IsSet">{{ <%= entityInstance %>.<%= fieldName %>IsSet ? 'Set' : 'Not set' }}</td>
+    <%_ } else if (field.fieldSensitive) { _%>
+                    <td><<%= jhiPrefixDashed %>-sensitive-value [value]="<%= entityInstance %>.<%= fieldName %>" label="<%= field.fieldNameHumanized %>" /></td>
+    <%_ } else if (field.fieldTypeBinary && field.blobContentTypeImage) { _%>
                     <td>
                     @if (<%= entityInstance %>.<%= fieldName %>) {
                         <a (click)="openFile(<%= entityInstance %>.<%= fieldName %>, <%= entityInstance %>.<%= fieldName %>ContentType)">

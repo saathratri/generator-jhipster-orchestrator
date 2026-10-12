@@ -358,7 +358,11 @@ _%>
 <%_ for (const field of fields.filter(field => !field.id && !field.transient)) {
   if(!field.isCompositePrimaryKeyField ) {
   const isNumeric = field.fieldTypeNumeric; _%>
+  <%_ if (field.fieldSensitive) { /* a sensitive value is never printed: set / missing only */ _%>
+            ", <%= field.fieldName %>=" + (get<%= field.fieldInJavaBeanMethod %>() == null ? "missing" : "set") +
+  <%_ } else { _%>
             ", <%= field.fieldName %>=<% if (! isNumeric) { %>'<% } %>" + get<%= field.fieldInJavaBeanMethod %>() <% if (! isNumeric) { %>+ "'" <% } %>+
+  <%_ } _%>
   <%_ if (field.fieldWithContentType) { _%>
             ", <%= field.fieldName %>ContentType='" + get<%= field.fieldInJavaBeanMethod %>ContentType() + "'" +
   <%_ } _%>

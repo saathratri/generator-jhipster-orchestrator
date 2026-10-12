@@ -162,7 +162,8 @@ _%>
             <thead>
                 <tr <%= jhiPrefix %>Sort [(sortState)]="sortState" (sortChange)="navigateToWithComponentValues($event)">
 <%_ for (const field of fields.filter(field => !field.hidden && !field.hideListView)) {
-    const { fieldSupportsSortBy } = field;
+    // A sensitive value is never a sort key: the order alone would leak something about the values.
+    const fieldSupportsSortBy = field.fieldSupportsSortBy && !field.fieldSensitive;
 _%>
                     <th scope="col"<% if (fieldSupportsSortBy) { %> <%= jhiPrefix %>SortBy="<%= field.fieldName %>"<% } %>>
                         <div class="d-flex">
@@ -226,6 +227,10 @@ _%>
                         <span>{{ <%= entityInstance %>.<%= fieldName %>ContentType }}, {{ byteSize(<%= entityInstance %>.<%= fieldName %> ?? '') }}</span>
                     }
                     </td>
+    <%_ } else if (field.fieldWriteOnly) { /* @sensitive(writeOnly): never sent to the browser */ _%>
+                    <td data-cy="<%= fieldName %>IsSet">{{ <%= entityInstance %>.<%= fieldName %>IsSet ? 'Set' : 'Not set' }}</td>
+    <%_ } else if (field.fieldSensitive) { _%>
+                    <td><<%= jhiPrefixDashed %>-sensitive-value [value]="<%= entityInstance %>.<%= fieldName %>" label="<%= field.fieldNameHumanized %>" /></td>
     <%_ } else if (field.fieldIsEnum) { _%>
                     <%# TODO: import enum and use its key as label _%>
                     <td<% if (field.id) { %>><a<%- routerLink %><% } %>>__jhiTranslateTagEnum__('<%= frontendAppName %>.<%= fieldType %>', { "value": "<%= entityInstance %>.<%= fieldName %> ?? 'null'" })<% if (field.id) { %></a><% } %></td>

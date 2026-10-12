@@ -88,7 +88,9 @@ _%>
                     <%_ if(!field.fieldTypeLocalDate && !field.fieldTypeLocalDateSaathratri && !field.fieldTypeTimed && !field.fieldTypeTimedSaathratri) { _%>
                     <label class="form-label" for="field_<%= fieldName %>"<% if (field.documentation) { if (enableTranslation) { %> [ngbTooltip]="'<%= i18nKeyPrefix %>.help.<%= fieldName %>' | translate"<% } else { %> ngbTooltip="<%= field.documentation %>"<% } } %>>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</label>
                     <%_ } _%>
-  <%_ if (field.fieldIsEnum) { _%>
+  <%_ if (field.fieldSensitive) { /* @sensitive: typed in masked; a write-only one says whether a value is stored */ _%>
+                    <<%= jhiPrefixDashed %>-sensitive-input formControlName="<%= fieldName %>" inputId="field_<%= fieldName %>" name="<%= fieldName %>" dataCy="<%= fieldName %>" label="<%= field.fieldNameHumanized %>"<% if (field.fieldWriteOnly) { %> [writeOnly]="true" [isSet]="<%= entityInstance %>?.<%= fieldName %>IsSet"<% } %> />
+  <%_ } else if (field.fieldIsEnum) { _%>
                     <select class="form-control" name="<%= fieldName %>" formControlName="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>">
     <%_ const enumPrefix = frontendAppName + '.'+ fieldType; _%>
                         <option [ngValue]="null"><% if (enableTranslation) { %>{{ '<%= enumPrefix %>.null' | translate }}<% } %></option>
@@ -282,7 +284,9 @@ _%>
                     <%_ if(field.fieldTypeMapDayjsSaathratri || (!field.fieldTypeLocalDate && !field.fieldTypeLocalDateSaathratri && !field.fieldTypeTimed && !field.fieldTypeTimedSaathratri)) { _%>
                     <label class="form-label" for="field_<%= fieldName %>"<% if (field.documentation) { if (enableTranslation) { %> [ngbTooltip]="'<%= i18nKeyPrefix %>.help.<%= fieldName %>' | translate"<% } else { %> ngbTooltip="<%= field.documentation %>"<% } } %>>__jhiTranslateTag__('<%= i18nKeyPrefix %>.<%= fieldName %>')</label>
                     <%_ } _%>
-                    <%_ if (field.fieldIsEnum) { _%>
+                    <%_ if (field.fieldSensitive) { /* @sensitive: typed in masked; a write-only one says whether a value is stored */ _%>
+                    <<%= jhiPrefixDashed %>-sensitive-input formControlName="<%= fieldName %>" inputId="field_<%= fieldName %>" name="<%= fieldName %>" dataCy="<%= fieldName %>" label="<%= field.fieldNameHumanized %>"<% if (field.fieldWriteOnly) { %> [writeOnly]="true" [isSet]="<%= entityInstance %>?.<%= fieldName %>IsSet"<% } %> />
+  <%_ } else if (field.fieldIsEnum) { _%>
                     <select class="form-control" name="<%= fieldName %>" formControlName="<%= fieldName %>" id="field_<%= fieldName %>" data-cy="<%= fieldName %>">
     <%_ const enumPrefix = frontendAppName + '.'+ fieldType; _%>
                         <option [ngValue]="null"><% if (enableTranslation) { %>{{ '<%= enumPrefix %>.null' | translate }}<% } %></option>

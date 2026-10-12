@@ -28,7 +28,7 @@ _%>
   <%_ if (reactive) { _%>
     Mono<<%= instanceType %>> result = <%= entityInstance %>Service.partialUpdate(<%= instanceName %>);
   <%_ } else { _%>
-    Optional<<%= instanceType %>> result = <%= entityInstance %>Service.partialUpdate(<%= instanceName %>);
+    Optional<<%= instanceType %>> result = <%= entityInstance %>Service.partialUpdate(<%= instanceName %><% if (typeof clearedFields !== 'undefined' && clearedFields) { %>, clearedFields<% } %>);
   <%_ } _%>
 <%_ } else { %>
   <%_ if (primaryKeySaathratri.composite) { _%>
@@ -52,6 +52,27 @@ _%>
       <%_ } _%>
     <%_ } %>
   <% } %>
+<%_ /* Saathratri modification - RFC 7386 merge-patch: the fields sent as null are cleared. Only an optional
+     column that is not part of the key; a required one keeps its value (as before). */ _%>
+<%_
+const clearableFieldsSaathratri = (typeof clearedFields !== 'undefined' && clearedFields) ? fields.filter(f =>
+  !f.id && !f.isCompositePrimaryKeyField && !f.transient && !f.autoGenerate && !f.fieldValidationRequired && f.fieldTypeVectorSaathratri !== true) : [];
+if (clearableFieldsSaathratri.length > 0) { _%>
+    for (String clearedField : clearedFields) {
+        switch (clearedField) {
+  <%_ for (const f of clearableFieldsSaathratri) { _%>
+            case "<%= f.fieldName %>" -> existing<%= entityClass %>.set<%= f.fieldInJavaBeanMethod %>(null);
+    <%_ if (f.fieldWithContentType) { _%>
+            case "<%= f.fieldName %>ContentType" -> existing<%= entityClass %>.set<%= f.fieldInJavaBeanMethod %>ContentType(null);
+    <%_ } _%>
+  <%_ } _%>
+            default -> {
+                // a key column, a required field or an unknown key: a null there changes nothing
+            }
+        }
+    }
+<%_ } _%>
+<%_ /* End Saathratri modification */ _%>
 <%_ /* Saathratri: Regenerate vector embeddings on partial update */ _%>
 <%_
 const vectorFieldsForPatch = typeof fields !== 'undefined' ? fields.filter(f => f.fieldTypeVectorSaathratri === true) : [];

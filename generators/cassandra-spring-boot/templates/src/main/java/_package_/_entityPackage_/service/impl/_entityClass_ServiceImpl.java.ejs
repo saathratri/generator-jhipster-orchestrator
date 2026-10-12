@@ -31,6 +31,10 @@ const entityToDto = 'toDto';
 const entityToDtoReference = mapper + '::'+ 'toDto';
 const repository = entityInstance  + 'Repository';
 const searchRepository = entityInstance  + 'SearchRepository';
+// @sensitive(writeOnly): never sent to a client, so an update arrives without it and must keep the stored value.
+const writeOnlyFields = fields.filter(field => field.fieldWriteOnly);
+const keepsWriteOnlyFields = dtoMapstruct && !reactive && writeOnlyFields.length > 0;
+const storedIdGetter = primaryKeySaathratri.composite ? `get${primaryKeySaathratri.nameCapitalized}()` : `get${primaryKey.nameCapitalized}()`;
 
 _%>
 <%_ if (serviceImpl) { _%>
@@ -156,13 +160,28 @@ public class <%= serviceClassName %><% if (serviceImpl) { %> implements <%= enti
      * @return the persisted entity.
      */
   <%_ } _%>
-  <%_ if (serviceImpl) { _%>
+  <%_ if (reactive) { _%>
+    <%_ if (serviceImpl) { _%>
     @Override
-  <%_ } _%>
-    public <% if (reactive) { %>Mono<% } else { %>Optional<% } %><<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
+    <%_ } _%>
+    public Mono<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
         LOG.debug("Request to partially update <%= entityClass %> : {}", <%= instanceName %>);
-<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false}); -%>
+<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false, clearedFields: false}); -%>
     }
+  <%_ } else { _%>
+    <%_ if (!serviceImpl) { _%>
+    public Optional<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
+        return partialUpdate(<%= instanceName %>, java.util.Set.of());
+    }
+
+    <%_ } else { _%>
+    @Override
+    <%_ } _%>
+    public Optional<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>, java.util.Set<String> clearedFields) {
+        LOG.debug("Request to partially update <%= entityClass %> : {}, clearing {}", <%= instanceName %>, clearedFields);
+<%- include('../../_partials_entity_/patch_template', {isService: true, viaService: false, clearedFields: true}); -%>
+    }
+  <%_ } _%>
 <%_ } _%>
 <%_ if (!jpaMetamodelFiltering) { _%>
 
@@ -417,4 +436,18 @@ _%>
 %>
 <%- methodsOutput %>
 <% } %>
+<%_ if (keepsWriteOnlyFields && updatableEntity) { _%>
+
+    /**
+     * Write-only fields are never sent to a client, so an update arrives without them: every write-only field the
+     * update left empty keeps its stored value.
+     */
+    private void keepStoredWriteOnlyFields(<%= persistClass %> <%= entityInstance %>, <%= instanceType %> <%= instanceName %>) {
+  <%_ for (const field of writeOnlyFields) { _%>
+        if (<%= instanceName %>.get<%= field.fieldInJavaBeanMethod %>() == null || <%= instanceName %>.get<%= field.fieldInJavaBeanMethod %>().isEmpty()) {
+            <%= repository %>.findById(<%= entityInstance %>.<%- storedIdGetter %>).map(<%= persistClass %>::get<%= field.fieldInJavaBeanMethod %>).ifPresent(<%= entityInstance %>::set<%= field.fieldInJavaBeanMethod %>);
+        }
+  <%_ } _%>
+    }
+<%_ } _%>
 }

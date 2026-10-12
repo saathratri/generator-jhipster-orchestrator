@@ -126,6 +126,10 @@ import { KeyValuePipe<%_ if (hasVectorFieldsForAiSearch) { _%>, DecimalPipe<%_ }
 import { DecimalPipe } from '@angular/common';
 <%_ } _%>
 
+<%_ if (fields.some(field => field.fieldSensitive)) { _%>
+import { SensitiveValue } from 'app/shared/sensitive-value/sensitive-value';
+<%_ } _%>
+
 @Component({
   // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
   // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
@@ -133,6 +137,9 @@ import { DecimalPipe } from '@angular/common';
     selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>',
     templateUrl: './<%= entityFileName %>.html',
     imports: [
+<%_ if (fields.some(field => field.fieldSensitive)) { _%>
+      SensitiveValue,
+<%_ } _%>
       RouterLink,
 <%_ if (searchEngine || cassandraComposite || hasVectorFieldsForAiSearch) { _%>
       FormsModule,

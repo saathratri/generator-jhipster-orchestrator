@@ -43,6 +43,9 @@ export interface I<%= entityAngularName %> {
 <%_ for (const field of fields.filter(f => f.fieldTypeVectorSaathratri)) { _%>
     <%= field.fieldName %>?: number[] | null;
 <%_ } _%>
+<%_ for (const field of fields.filter(f => f.fieldWriteOnly)) { /* @sensitive(writeOnly): the server reports only whether it is set */ _%>
+    <%= field.fieldName %>IsSet?: boolean | null;
+<%_ } _%>
 }
 export interface I<%= entityAngularName %>Id {
 <%_ variablesWithTypesPrimaryKey.forEach(variablesWithType => { _%>
@@ -67,6 +70,9 @@ _%>
 <%_ } _%>
 <%_ for (const field of fields.filter(f => f.fieldTypeVectorSaathratri)) { _%>
   <%= field.fieldName %>?: number[] | null,
+<%_ } _%>
+<%_ for (const field of fields.filter(f => f.fieldWriteOnly)) { /* @sensitive(writeOnly): the server reports only whether it is set */ _%>
+  <%= field.fieldName %>IsSet?: boolean | null,
 <%_ } _%>
 }
 <%_ if (!readOnly && primaryKey) { _%>

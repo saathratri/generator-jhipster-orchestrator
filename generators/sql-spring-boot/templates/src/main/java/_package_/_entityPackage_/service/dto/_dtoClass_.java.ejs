@@ -19,6 +19,10 @@
 package <%- entityAbsolutePackage %>.service.dto;
 
 import java.util.Objects;
+<%_ const writeOnlyDtoFields = restProperties.filter(property => property.fieldName && property.fieldWriteOnly); _%>
+<%_ if (writeOnlyDtoFields.length > 0) { _%>
+import com.fasterxml.jackson.annotation.JsonProperty;
+<%_ } _%>
 <%_ if (entityApiDescription || importApiModelProperty) { _%>
 import io.swagger.v3.oas.annotations.media.Schema;
 <%_ } _%>
@@ -108,6 +112,9 @@ _%>
   <%_ if (property.fieldTypeBytes && databaseTypeSql) { _%>
     @Lob
   <%_ } _%>
+  <%_ if (field && field.fieldWriteOnly) { _%>
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+  <%_ } _%>
     private <%- property.propertyDtoJavaType %> <%- property.propertyName %><% if (property.collection && relationship) { %> = new HashSet<>()<% } %>;
 
   <%_ if (property.fieldWithContentType) { _%>
@@ -149,6 +156,17 @@ _%>
     }
 <%_ } _%>
 <%_ /* End Saathratri modification */ _%>
+<%_ for (const field of writeOnlyDtoFields) { _%>
+
+    /**
+     * Whether <%- field.propertyName %> holds a value. <%- field.propertyName %> itself is write-only: accepted on create
+     * and update, never returned.
+     */
+    @JsonProperty(value = "<%- field.propertyName %>IsSet", access = JsonProperty.Access.READ_ONLY)
+    public boolean <%- field.propertyName %>IsSet() {
+        return <%- field.propertyName %> != null && !<%- field.propertyName %>.isEmpty();
+    }
+<%_ } _%>
 
 <%_ const idNames = primaryKey ? [...primaryKey.fields.map(f => f.propertyName)] : [] _%>
     @Override
@@ -187,7 +205,11 @@ _%>
 <%_ /* Saathratri modification - use dtoProperties (vector-filtered) in toString */ _%>
 <%_ for ([idx, property] of dtoProperties.entries()) {
   const isQuoted = property.fieldName && !property.fieldTypeNumeric _%>
+  <%_ if (property.fieldName && property.fieldSensitive) { /* a sensitive value is never printed: set / missing only */ _%>
+            "<%- idx === 0 ? '' : ', ' %><%- property.propertyName %>=" + (<%- property.propertySupplierName %>() == null ? "missing" : "set") +
+  <%_ } else { _%>
             "<%- idx === 0 ? '' : ', ' %><%- property.propertyName %>=<% if (isQuoted) { %>'<% } %>" + <%- property.propertySupplierName %>() <% if (isQuoted) { %>+ "'" <% } %>+
+  <%_ } _%>
 <%_ } _%>
 <%_ /* End Saathratri modification */ _%>
             "}";

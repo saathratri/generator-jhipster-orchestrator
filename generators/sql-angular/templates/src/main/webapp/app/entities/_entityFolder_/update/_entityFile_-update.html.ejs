@@ -130,7 +130,9 @@ _%>
                         <input type="file" id="file_<%= fieldName %>" data-cy="<%= fieldName %>" (change)="setFileData($event, '<%= fieldName %>', <% if (fieldTypeBlobContent === 'image') { %>true)" accept="image/*"<% if (enableTranslation) { %> <%= jhiPrefix %>Translate="entity.action.addimage"<% } %><% } else { %>false)"<% if (enableTranslation) { %> <%= jhiPrefix %>Translate="entity.action.addblob"<% } %><% } %>/>
                     </div>
     <%_ } _%>
-    <%_ if (field.fieldTypeLocalDate) { _%>
+    <%_ if (field.fieldSensitive) { /* @sensitive: typed in masked; a write-only one says whether a value is stored */ _%>
+                    <<%= jhiPrefixDashed %>-sensitive-input formControlName="<%= fieldName %>" inputId="field_<%= fieldName %>" name="<%= fieldName %>" dataCy="<%= fieldName %>" label="<%= fieldNameHumanized %>"<% if (field.fieldWriteOnly) { %> [writeOnly]="true" [isSet]="<%= entityInstance %>?.<%= fieldName %>IsSet"<% } %> />
+    <%_ } else if (field.fieldTypeLocalDate) { _%>
                     <div class="input-group">
                         <input id="field_<%= fieldName %>" data-cy="<%= fieldName %>" type="text" class="form-control" name="<%= fieldName %>" ngbDatepicker #<%= fieldName %>Dp="ngbDatepicker" formControlName="<%= fieldName %>"<% if (readonly) { %> [readonly]="true"<% } %>/>
                         <button type="button" class="btn btn-secondary" (click)="<%= fieldName %>Dp.toggle()"><fa-icon icon="calendar-alt" /></button>

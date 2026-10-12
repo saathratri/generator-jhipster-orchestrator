@@ -17,4 +17,12 @@ describe('the DTO jar pom template', () => {
       /<groupId>com\.mycompany\.blog\.dto<\/groupId>\s*<artifactId>blogservicedto<\/artifactId>\s*<version>0\.0\.1-SNAPSHOT<\/version>/,
     );
   });
+
+  it('carries jackson-annotations: a write-only (@sensitive(writeOnly)) DTO field is @JsonProperty(access = WRITE_ONLY)', () => {
+    const pom = ejs.render(TEMPLATE, { packageName: 'com.mycompany.blog', dtoFolderName: 'blogservicedto' });
+    expect(pom).toMatch(
+      /<groupId>com\.fasterxml\.jackson\.core<\/groupId>\s*<artifactId>jackson-annotations<\/artifactId>\s*<version>\$\{jackson-annotations\.version\}<\/version>/,
+    );
+    expect(pom).toMatch(/<jackson-annotations\.version>2\.21<\/jackson-annotations\.version>/);
+  });
 });

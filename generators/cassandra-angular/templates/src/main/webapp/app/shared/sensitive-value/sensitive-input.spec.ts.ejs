@@ -1,0 +1,101 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Component, signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+
+import { SensitiveInput } from './sensitive-input';
+
+@Component({
+  imports: [ReactiveFormsModule, SensitiveInput],
+  template: `<<%- jhiPrefixDashed %>-sensitive-input
+    [formControl]="control"
+    inputId="field_secret"
+    name="secret"
+    dataCy="secret"
+    label="API Key"
+    [writeOnly]="writeOnly()"
+    [isSet]="isSet()"
+  />`,
+})
+class Host {
+  readonly control = new FormControl<string | null>('example-secret-value');
+  readonly writeOnly = signal(false);
+  readonly isSet = signal(false);
+}
+
+describe('SensitiveInput', () => {
+  let fixture: ComponentFixture<Host>;
+
+  const element = (): HTMLElement => fixture.nativeElement as HTMLElement;
+  const field = (): HTMLInputElement => element().querySelector<HTMLInputElement>('[data-cy="secret"]')!;
+  const button = (dataCy: string): HTMLButtonElement | null => element().querySelector<HTMLButtonElement>(`[data-cy="${dataCy}"]`);
+  const click = async (dataCy: string): Promise<void> => {
+    button(dataCy)!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+
+  beforeEach(async () => {
+    fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  });
+
+  it('shows the value masked, with no copy until it is revealed', () => {
+    expect(field().type).toBe('password');
+    expect(field().value).toBe('example-secret-value');
+    expect(field().id).toBe('field_secret');
+    expect(button('sensitiveCopy')).toBeNull();
+  });
+
+  it('reveals with the eye button and masks again with the hide button', async () => {
+    await click('sensitiveReveal');
+    expect(field().type).toBe('text');
+    expect(button('sensitiveCopy')).not.toBeNull();
+
+    await click('sensitiveHide');
+    expect(field().type).toBe('password');
+    expect(button('sensitiveCopy')).toBeNull();
+  });
+
+  it('copies the revealed value', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+    await click('sensitiveReveal');
+    await click('sensitiveCopy');
+
+    expect(writeText).toHaveBeenCalledWith('example-secret-value');
+  });
+
+  it('sends what is typed to the form, and no value when the input is emptied', () => {
+    field().value = 'typed-value';
+    field().dispatchEvent(new Event('input'));
+    expect(fixture.componentInstance.control.value).toBe('typed-value');
+
+    field().value = '';
+    field().dispatchEvent(new Event('input'));
+    expect(fixture.componentInstance.control.value).toBeNull();
+  });
+
+  it('a write-only input says whether a value is stored', async () => {
+    fixture.componentInstance.writeOnly.set(true);
+    fixture.componentInstance.isSet.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(element().querySelector('[data-cy="secretIsSet"]')?.textContent).toContain('Set - leave blank to keep the stored value.');
+
+    fixture.componentInstance.isSet.set(false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(element().querySelector('[data-cy="secretIsSet"]')?.textContent).toContain('Not set.');
+  });
+});

@@ -28,6 +28,9 @@ const pageOrFlux = (reactive) ? 'Flux' : 'Page';
 const mapper = entityInstance  + 'Mapper';
 const entityToDtoReference = mapper + '::'+ 'toDto';
 const repository = entityInstance  + 'Repository';
+// @sensitive(writeOnly): never sent to a client, so an update arrives without it and must keep the stored value.
+const writeOnlyFields = fields.filter(field => field.fieldWriteOnly);
+const keepsWriteOnlyFields = dtoMapstruct && !reactive && writeOnlyFields.length > 0;
 
 /* Saathratri modification - entity graph directive parsing */
 const normalizeDirectives = value =>
@@ -257,6 +260,9 @@ public class <%= serviceClassName %><% if (serviceImpl) { %> implements <%= enti
         LOG.debug("Request to update <%= entityClass %> : {}", <%= instanceName %>);
     <%_ if (dtoMapstruct) { _%>
         <%= persistClass %> <%= entityInstance %> = <%= mapper %>.toEntity(<%= instanceName %>);
+      <%_ if (keepsWriteOnlyFields) { _%>
+        keepStoredWriteOnlyFields(<%= entityInstance %>, <%= instanceName %>);
+      <%_ } _%>
         generateEmbeddings(<%= entityInstance %>);
         <%= entityInstance %> = <%= repository %>.save(<%= entityInstance %>);
         return <%= mapper %>.toDto(<%= entityInstance %>);
@@ -682,6 +688,20 @@ _%>
         if (value != null) {
             setter.accept(value);
         }
+    }
+<%_ } _%>
+<%_ if (keepsWriteOnlyFields && updatableEntity) { _%>
+
+    /**
+     * Write-only fields are never sent to a client, so an update arrives without them: every write-only field the
+     * update left empty keeps its stored value.
+     */
+    private void keepStoredWriteOnlyFields(<%= persistClass %> <%= entityInstance %>, <%= instanceType %> <%= instanceName %>) {
+  <%_ for (const field of writeOnlyFields) { _%>
+        if (<%= instanceName %>.<%= field.propertySupplierName %>() == null || <%= instanceName %>.<%= field.propertySupplierName %>().isEmpty()) {
+            <%= repository %>.findById(<%= entityInstance %>.<%= primaryKey.propertySupplierName %>()).map(<%= persistClass %>::<%= field.propertySupplierName %>).ifPresent(<%= entityInstance %>::<%= field.propertyConsumerName %>);
+        }
+  <%_ } _%>
     }
 <%_ } _%>
 <%_ /* Saathratri modification - generate embeddings on save/update */ _%>

@@ -13,6 +13,7 @@ import {
 } from 'generator-jhipster/generators/client/support';
 
 import { cassandraSpringBootUtils } from '../cassandra-spring-boot/cassandra-spring-boot-utils.js';
+import { prepareSensitiveField } from '../cassandra-spring-boot/sensitive-fields.js';
 
 import { angularSaathratriUtils } from './cassandra-angular-utils.js';
 
@@ -79,7 +80,10 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.PREPARING_EACH_ENTITY_FIELD]() {
     return this.asPreparingEachEntityFieldTaskGroup({
-      async preparingEachEntityFieldTemplateTask() {},
+      async preparingEachEntityFieldTemplateTask({ application, entity, field }) {
+        // @sensitive / @sensitive(writeOnly): sets fieldSensitive / fieldWriteOnly, refuses what it cannot keep secret.
+        prepareSensitiveField({ application, entity, field });
+      },
     });
   }
 
@@ -269,6 +273,28 @@ export default class extends BaseApplicationGenerator {
               componentName: entity.componentName || `${entity.entityAngularName}Component`,
               enumPrefix: entity.enumPrefix || '',
             },
+          });
+        }
+
+        // @sensitive: the shared masked display + masked input, once, when an entity's screens use them.
+        if (entities.some(e => !e.builtIn && !e.skipClient && (e.fields ?? []).some(field => field.fieldSensitive))) {
+          await this.writeFiles({
+            sections: {
+              files: [
+                {
+                  ...clientApplicationTemplatesBlock(),
+                  templates: [
+                    'shared/sensitive-value/sensitive-value.ts',
+                    'shared/sensitive-value/sensitive-value.html',
+                    'shared/sensitive-value/sensitive-value.spec.ts',
+                    'shared/sensitive-value/sensitive-input.ts',
+                    'shared/sensitive-value/sensitive-input.html',
+                    'shared/sensitive-value/sensitive-input.spec.ts',
+                  ],
+                },
+              ],
+            },
+            context: application,
           });
         }
       },

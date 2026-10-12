@@ -1,0 +1,46 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+@if (writeOnly()) {
+  <div class="form-text mt-0 mb-1" [attr.data-cy]="dataCy() + 'IsSet'">
+    {{ isSet() ? 'Set - leave blank to keep the stored value.' : 'Not set.' }}
+  </div>
+}
+<div class="input-group">
+  <input
+    class="form-control"
+    autocomplete="off"
+    [id]="inputId()"
+    [name]="name()"
+    [attr.data-cy]="dataCy()"
+    [type]="revealed() ? 'text' : 'password'"
+    [value]="value()"
+    [disabled]="disabled()"
+    (input)="typed($event)"
+    (blur)="touched()"
+  />
+  @if (revealed()) {
+    <button type="button" class="btn btn-outline-secondary" (click)="hide()" [attr.aria-label]="'Hide ' + label()" data-cy="sensitiveHide">
+      <fa-icon [icon]="faEyeSlash" />
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      (click)="copy()"
+      [disabled]="value() === ''"
+      [attr.aria-label]="'Copy ' + label()"
+      data-cy="sensitiveCopy"
+    >
+      <fa-icon [icon]="faCopy" />
+    </button>
+  } @else {
+    <button type="button" class="btn btn-outline-secondary" (click)="reveal()" [attr.aria-label]="'Show ' + label()" data-cy="sensitiveReveal">
+      <fa-icon [icon]="faEye" />
+    </button>
+  }
+</div>
+@if (copied()) {
+  <div class="form-text text-success" role="status">Copied</div>
+}

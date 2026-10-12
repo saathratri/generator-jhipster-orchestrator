@@ -55,6 +55,10 @@
   if (saveUserSnapshot && (viaService || constructorName.endsWith('Resource'))) {
     beans.push({class: 'UserRepository', instance: 'userRepository'});
   }
+  // Saathratri: a PATCH body is read as sent, so an explicit null in merge-patch+json can CLEAR (RFC 7386)
+  if (isController && !readOnly && !reactive) {
+    beans.push({class: 'tools.jackson.databind.ObjectMapper', instance: 'objectMapper'});
+  }
 _%>
 
 <%_ for (const bean of beans) { _%>

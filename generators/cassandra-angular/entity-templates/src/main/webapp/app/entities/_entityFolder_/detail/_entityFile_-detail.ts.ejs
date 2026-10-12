@@ -35,6 +35,10 @@ import { I<%= entityAngularName %> } from '../<%= entityFileName %>.model';
 import { DataUtils } from 'app/core/util/data-util.service';
 <%_ } _%>
 
+<%_ if (fields.some(field => field.fieldSensitive)) { _%>
+import { SensitiveValue } from 'app/shared/sensitive-value/sensitive-value';
+<%_ } _%>
+
 @Component({
   // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
   // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
@@ -42,6 +46,9 @@ import { DataUtils } from 'app/core/util/data-util.service';
     selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>-detail',
     templateUrl: './<%= entityFileName %>-detail.html',
     imports: [
+<%_ if (fields.some(field => field.fieldSensitive)) { _%>
+      SensitiveValue,
+<%_ } _%>
       FontAwesomeModule,
       Alert,
       AlertError,

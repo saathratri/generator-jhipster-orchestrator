@@ -1,0 +1,91 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+import { ChangeDetectionStrategy, Component, forwardRef, input, signal } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faCopy, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+
+/**
+ * The form input for a @sensitive field: typed in masked, the eye button shows what is typed, the hide button masks it
+ * again, and the copy button - there only while it is shown - copies it.
+ *
+ * A write-only field (@sensitive(writeOnly)) is never sent to the browser, so its input starts empty and says only
+ * whether a value is stored; left empty, the stored value is kept.
+ */
+@Component({
+  selector: '<%- jhiPrefixDashed %>-sensitive-input',
+  templateUrl: './sensitive-input.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FontAwesomeModule],
+  providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => SensitiveInput), multi: true }],
+})
+export class SensitiveInput implements ControlValueAccessor {
+  readonly inputId = input.required<string>();
+  readonly name = input.required<string>();
+  readonly dataCy = input.required<string>();
+  /** What the value is, for the buttons' accessible names ("Show API Key"). */
+  readonly label = input('value');
+  readonly writeOnly = input(false);
+  /** For a write-only field: whether a value is stored. */
+  readonly isSet = input<boolean | null | undefined>(false);
+
+  protected readonly value = signal('');
+  protected readonly revealed = signal(false);
+  protected readonly copied = signal(false);
+  protected readonly disabled = signal(false);
+  protected readonly faEye = faEye;
+  protected readonly faEyeSlash = faEyeSlash;
+  protected readonly faCopy = faCopy;
+
+  private onChange?: (value: string | null) => void;
+  private onTouched?: () => void;
+
+  writeValue(value: string | null | undefined): void {
+    this.value.set(value ?? '');
+  }
+
+  registerOnChange(fn: (value: string | null) => void): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.disabled.set(isDisabled);
+  }
+
+  protected typed(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.value.set(value);
+    this.copied.set(false);
+    // An empty write-only input means "keep the stored value": the server receives no value rather than an empty one.
+    this.onChange?.(value === '' ? null : value);
+  }
+
+  protected touched(): void {
+    this.onTouched?.();
+  }
+
+  protected reveal(): void {
+    this.revealed.set(true);
+  }
+
+  protected hide(): void {
+    this.revealed.set(false);
+    this.copied.set(false);
+  }
+
+  protected async copy(): Promise<void> {
+    const value = this.value();
+    if (!this.revealed() || value === '') {
+      return;
+    }
+    await navigator.clipboard.writeText(value);
+    this.copied.set(true);
+  }
+}

@@ -79,6 +79,10 @@ import { v4 as uuidv4 } from 'uuid'; // Import UUID (UUID v4)
 import { v1 as uuidv1 } from 'uuid'; // Import TimeUUID (UUID v1)
 <%_ } _%>
 
+<%_ if (fields.some(field => field.fieldSensitive)) { _%>
+import { SensitiveInput } from 'app/shared/sensitive-value/sensitive-input';
+<%_ } _%>
+
 @Component({
   // Saathratri: keep the eager change detection these components were written for - Angular 22 (JHipster 9.3+)
   // made OnPush the default, and this state is plain fields mutated from subscriptions/dialog callbacks, not signals.
@@ -86,6 +90,9 @@ import { v1 as uuidv1 } from 'uuid'; // Import TimeUUID (UUID v1)
     selector: '<%= jhiPrefixDashed %>-<%= entityFileName %>-update',
     templateUrl: './<%= entityFileName %>-update.html',
     imports: [
+<%_ if (fields.some(field => field.fieldSensitive)) { _%>
+      SensitiveInput,
+<%_ } _%>
       FontAwesomeModule,
       Alert,
       AlertError,

@@ -1,0 +1,63 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { SensitiveValue } from './sensitive-value';
+
+describe('SensitiveValue', () => {
+  let fixture: ComponentFixture<SensitiveValue>;
+  const SECRET = 'example-secret-value';
+
+  const text = (): string => (fixture.nativeElement as HTMLElement).textContent;
+  const button = (dataCy: string): HTMLButtonElement | null =>
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>(`[data-cy="${dataCy}"]`);
+  const click = async (dataCy: string): Promise<void> => {
+    button(dataCy)!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(SensitiveValue);
+    fixture.componentRef.setInput('value', SECRET);
+    fixture.componentRef.setInput('label', 'API Key');
+    fixture.detectChanges();
+  });
+
+  it('masks the value and offers no copy until it is revealed', () => {
+    expect(text()).not.toContain(SECRET);
+    expect(button('sensitiveReveal')?.getAttribute('aria-label')).toBe('Show API Key');
+    expect(button('sensitiveCopy')).toBeNull();
+  });
+
+  it('reveals the value with the eye button and masks it again with the hide button', async () => {
+    await click('sensitiveReveal');
+    expect(text()).toContain(SECRET);
+    expect(button('sensitiveCopy')).not.toBeNull();
+
+    await click('sensitiveHide');
+    expect(text()).not.toContain(SECRET);
+    expect(button('sensitiveCopy')).toBeNull();
+  });
+
+  it('copies the revealed value', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+    await click('sensitiveReveal');
+    await click('sensitiveCopy');
+
+    expect(writeText).toHaveBeenCalledWith(SECRET);
+    expect(text()).toContain('Copied');
+  });
+
+  it('shows nothing when there is no value', () => {
+    fixture.componentRef.setInput('value', null);
+    fixture.detectChanges();
+    expect(button('sensitiveReveal')).toBeNull();
+  });
+});

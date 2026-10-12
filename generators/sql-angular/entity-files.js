@@ -50,3 +50,20 @@ export const angularFilesFromSaathratri = {
     }),
   ],
 };
+
+// @sensitive: the masked display and the masked form input the entity screens use - written once per application,
+// when one of its entities has a sensitive field.
+export const sensitiveValueFiles = {
+  sensitive: [
+    clientApplicationTemplatesBlock({
+      templates: [
+        'shared/sensitive-value/sensitive-value.ts',
+        'shared/sensitive-value/sensitive-value.html',
+        'shared/sensitive-value/sensitive-value.spec.ts',
+        'shared/sensitive-value/sensitive-input.ts',
+        'shared/sensitive-value/sensitive-input.html',
+        'shared/sensitive-value/sensitive-input.spec.ts',
+      ],
+    }),
+  ],
+};

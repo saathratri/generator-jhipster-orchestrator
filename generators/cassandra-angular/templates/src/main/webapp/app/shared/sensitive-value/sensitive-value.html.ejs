@@ -1,0 +1,25 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+@if (value()) {
+  <span class="d-inline-flex align-items-center gap-1">
+    <span class="font-monospace" data-cy="sensitiveValue">{{ revealed() ? value() : mask }}</span>
+    @if (revealed()) {
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="hide()" [attr.aria-label]="'Hide ' + label()" data-cy="sensitiveHide">
+        <fa-icon [icon]="faEyeSlash" />
+      </button>
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="copy()" [attr.aria-label]="'Copy ' + label()" data-cy="sensitiveCopy">
+        <fa-icon [icon]="faCopy" />
+      </button>
+      @if (copied()) {
+        <span class="small text-success" role="status">Copied</span>
+      }
+    } @else {
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="reveal()" [attr.aria-label]="'Show ' + label()" data-cy="sensitiveReveal">
+        <fa-icon [icon]="faEye" />
+      </button>
+    }
+  </span>
+}

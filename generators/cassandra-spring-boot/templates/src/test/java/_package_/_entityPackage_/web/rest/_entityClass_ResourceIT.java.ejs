@@ -24,6 +24,14 @@ import static <%= packageName %>.web.rest.TestUtil.createUpdateProxyForBean;
 // Saathratri Modification: Composite Primary Key
 //const fieldsToTest = fields.filter(field => !field.id && !field.autoGenerate && !field.transient);
 const fieldsToTest = fields.filter(field => !field.transient && !field.fieldTypeVectorSaathratri);
+/* @sensitive: a write-only field is never in a response (the response says only <field>IsSet), so the GET assertions
+   check it is absent; every sensitive field gets the log test, and the IT sends write-only fields itself. The extra
+   tests are generated for single-value primary keys. */
+const writeOnlyFieldsToTest = fieldsToTest.filter(field => field.fieldWriteOnly);
+const sensitiveFieldsToTest = fieldsToTest.filter(field => field.fieldSensitive);
+const sensitiveTestsApply = sensitiveFieldsToTest.length > 0 && !reactive && dtoMapstruct && !primaryKeySaathratri.composite;
+const writeOnlyTestsApply = writeOnlyFieldsToTest.length > 0 && !reactive && dtoMapstruct;
+const requestBodyWriter = writeOnlyTestsApply ? 'bodyWithWriteOnlyFields' : 'om.writeValueAsBytes';
 let mapsIdEntity;
 let mapsIdEntityInstance;
 let mapsIdRepoInstance;
@@ -204,6 +212,12 @@ import java.util.stream.Stream;
   <%_ } _%>
 <%_ } _%>
 import java.util.List;
+<%_ if (sensitiveTestsApply) { _%>
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
+<%_ } _%>
 <%_ if (anyFieldIsUUID || primaryKey.typeString) { _%>
 import java.util.UUID;
 <%_ } _%>
@@ -335,6 +349,15 @@ if (field.fieldTypeString || field.blobContentTypeText || field.fieldTypeSetSaat
   for (let i = 0; i < sampleTextLength; i++) {
     sampleTextString += "A";
     updatedTextString += "B";
+  }
+  if (field.fieldSensitive) {
+    // @sensitive: values no other field shares, so the log test can tell this value from any other in a log line
+    const marker = sensitiveFieldsToTest.indexOf(field);
+    sampleTextString = `Sx${marker}a`.repeat(sampleTextLength).slice(0, sampleTextLength);
+    updatedTextString = `Sx${marker}b`.repeat(sampleTextLength).slice(0, sampleTextLength);
+    if (sampleTextString === updatedTextString) {
+      updatedTextString = 'T'.repeat(sampleTextLength);
+    }
   }
   if (field.fieldValidateRulesPattern !== undefined) {
     // Generate Strings, using pattern
@@ -662,7 +685,7 @@ _%>
   <%_ if (reactive) { _%>
         var returned<%- restClass %> = webTestClient.post().uri(ENTITY_API_URL)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus()
             .isCreated()
@@ -678,7 +701,7 @@ _%>
                   .with(csrf())
     <%_ } _%>
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content(om.writeValueAsBytes(<%= restInstance %>))
+                  .content(<%- requestBodyWriter %>(<%= restInstance %>))
                 )
                 .andExpect(status().isCreated())
                 .andReturn()
@@ -695,6 +718,13 @@ _%>
         assertIncrementedRepositoryCount(databaseSizeBeforeCreate);
   <%_ if (dtoMapstruct) { _%>
         var returned<%- persistClass %> = <%= entityInstance %>Mapper.toEntity(returned<%- dtoClass %>);
+  <%_ } _%>
+  <%_ if (writeOnlyTestsApply) { _%>
+        // A write-only field is never returned: check it is absent, then compare the stored value with the one sent
+    <%_ for (const field of writeOnlyFieldsToTest) { _%>
+        assertThat(returned<%- dtoClass %>.get<%- field.fieldInJavaBeanMethod %>()).as("write-only <%- field.fieldName %> is never returned").isNull();
+        returned<%- persistClass %>.set<%- field.fieldInJavaBeanMethod %>(<%= dtoInstance %>.get<%- field.fieldInJavaBeanMethod %>());
+    <%_ } _%>
   <%_ } _%>
         assert<%- persistClass %>UpdatableFieldsEquals(returned<%- persistClass %>, getPersisted<%- persistClass %>(returned<%- persistClass %>));
   <%_ if (searchEngineElasticsearch) { _%>
@@ -725,7 +755,7 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.post().uri(ENTITY_API_URL)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isCreated();
   <%_ } else { _%>
@@ -736,7 +766,7 @@ _%>
                 .with(csrf())
     <%_ } _%>
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(om.writeValueAsBytes(<%= restInstance %>))
+                .content(<%- requestBodyWriter %>(<%= restInstance %>))
             )
             .andExpect(status().isCreated());
   <%_ } _%>
@@ -782,13 +812,13 @@ _%>
     <%_ if (reactive) { _%>
         webTestClient.put().uri(ENTITY_API_URL_ID, <%_ if (dtoMapstruct) { _%>updated<%= dtoClass %> <%_ } else { _%> updated<%= persistClass %> <%_ } _%>.get<%= primaryKey.nameCapitalized %>())
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%_ if (dtoMapstruct) { _%>updated<%= dtoClass %> <%_ } else { _%> updated<%= persistClass %> <%_ } _%>))
+            .bodyValue(<%- requestBodyWriter %>(<%_ if (dtoMapstruct) { _%>updated<%= dtoClass %> <%_ } else { _%> updated<%= persistClass %> <%_ } _%>))
             .exchange()
             .expectStatus().isOk();
     <%_ } else { _%>
         rest<%= entityClass %>MockMvc.perform(put(ENTITY_API_URL_ID, <%_ if (dtoMapstruct) { _%>updated<%= dtoClass %> <%_ } else { _%> updated<%= persistClass %> <%_ } _%>.get<%= primaryKey.nameCapitalized %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%_ if (dtoMapstruct) { _%>updated<%= dtoClass %> <%_ } else { _%> updated<%= persistClass %> <%_ } _%>)))
+            .content(<%- requestBodyWriter %>(<%_ if (dtoMapstruct) { _%>updated<%= dtoClass %> <%_ } else { _%> updated<%= persistClass %> <%_ } _%>)))
             .andExpect(status().isOk());
     <%_ } _%>
 
@@ -836,13 +866,13 @@ _%>
         <%_ if (reactive) { _%>
         webTestClient.post().uri(ENTITY_API_URL)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isBadRequest();
         <%_ } else { _%>
         rest<%= entityClass %>MockMvc.perform(post(ENTITY_API_URL)<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isBadRequest());
         <%_ } _%>
         <%_ if (databaseTypeCouchbase) { _%>
@@ -944,8 +974,12 @@ _%>
   <%_ } else { _%>
   <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.[*].<%= primaryKey.name %>").value(hasItem(<%= idValue %>))<%= !reactive ? ')' : '' %><%_ } _%>  
   <%_ } _%>
+  <% for (const writeOnlyField of writeOnlyFieldsToTest) { %>
+  <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.[*].<%= writeOnlyField.fieldName %>").doesNotExist()<%= !reactive ? ')' : '' %>
+  <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.[*].<%= writeOnlyField.fieldName %>IsSet").value(hasItem(true))<%= !reactive ? ')' : '' %>
+  <% } %>
   <% for (field of fieldsToTest) { %>
-    <%_ if( !field.isCompositePrimaryKeyField ) { _%>
+    <%_ if( !field.isCompositePrimaryKeyField && !field.fieldWriteOnly ) { _%>
   <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
             <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.[*].<%= field.fieldName %>ContentType").value(hasItem(<%= 'DEFAULT_' + field.fieldNameUnderscored.toUpperCase() %>_CONTENT_TYPE))<%= !reactive ? ')' : '' %>
   <%_ } _%>
@@ -1027,8 +1061,12 @@ _%>
   <%_ } else { _%>
   <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.<%= primaryKey.name %>").value(<%= idValue %>)<%= !reactive ? ')' : '' %><%_ } _%>
   <%_ } _%>
+  <% for (const writeOnlyField of writeOnlyFieldsToTest) { %>
+  <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.<%= writeOnlyField.fieldName %>").doesNotExist()<%= !reactive ? ')' : '' %>
+  <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.<%= writeOnlyField.fieldName %>IsSet").value(true)<%= !reactive ? ')' : '' %>
+  <% } %>
   <% for (field of fieldsToTest) { %>
-    <%_ if( !field.isCompositePrimaryKeyField ) { _%>
+    <%_ if( !field.isCompositePrimaryKeyField && !field.fieldWriteOnly ) { _%>
   <%_ if (field.fieldTypeBinary && !field.blobContentTypeText) { _%>
   <%= !reactive ? '.andExpect(' : '.' %>jsonPath("$.<%= field.fieldName %>ContentType").value(<%= 'DEFAULT_' + field.fieldNameUnderscored.toUpperCase() %>_CONTENT_TYPE)<%= !reactive ? ')' : '' %>
   <%_ } _%>
@@ -1447,7 +1485,7 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.put().uri(ENTITY_API_URL_ID, <%= (dtoMapstruct ? dtoInstance : 'updated' + persistClass) %>.get<%= primaryKey.nameCapitalized %>())
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= (dtoMapstruct ? dtoInstance : 'updated' + persistClass) %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= (dtoMapstruct ? dtoInstance : 'updated' + persistClass) %>))
             .exchange()
             .expectStatus().isOk();
   <%_ } else { _%>
@@ -1466,7 +1504,7 @@ _%>
         }
     _%>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%= (dtoMapstruct ? dtoInstance : 'updated' + persistClass) %>)))
+            .content(<%- requestBodyWriter %>(<%= (dtoMapstruct ? dtoInstance : 'updated' + persistClass) %>)))
             .andExpect(status().isOk());
   <%_ } _%>
 
@@ -1524,7 +1562,7 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.put().uri(ENTITY_API_URL_ID, <%= restInstance %>.get<%= primaryKey.nameCapitalized %>())
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isBadRequest();
   <%_ } else { _%>
@@ -1542,7 +1580,7 @@ _%>
             }
         _%>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isBadRequest());
   <%_ } _%>
 
@@ -1586,18 +1624,18 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.put().uri(ENTITY_API_URL_ID, <%- primaryKey.javaValueGenerator %>)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isBadRequest();
   <%_ } else if (primaryKeySaathratri.composite) { _%>
         rest<%= entityClass %>MockMvc.perform(put(ENTITY_API_URL + "/<%= primaryKeySaathratri.ids.map(f => '{' + f.fieldName + '}').join('/') %>"<%_ for (field of primaryKeySaathratri.ids) { _%>, <%- field.fieldJavaValueGenerator %><%_ } _%>)<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isBadRequest());
   <%_ } else { _%>
         rest<%= entityClass %>MockMvc.perform(put(ENTITY_API_URL_ID, <%- primaryKey.javaValueGenerator %>)<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isBadRequest());
   <%_ } _%>
 
@@ -1641,13 +1679,13 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.put().uri(ENTITY_API_URL)
             .contentType(MediaType.APPLICATION_JSON)
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isEqualTo(405);
   <%_ } else { _%>
         rest<%= entityClass %>MockMvc.perform(put(ENTITY_API_URL)<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
             .contentType(MediaType.APPLICATION_JSON)
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isMethodNotAllowed());
   <%_ } _%>
 
@@ -1723,6 +1761,74 @@ _%>
         );
     }
 
+  <%_ /* Saathratri modification - RFC 7386 merge-patch: an explicit null clears */ _%>
+  <%_
+    const clearableFieldsForMergePatch = reactive ? [] : fieldsToTest.filter(f => !f.id && !f.isCompositePrimaryKeyField
+      && !f.fieldValidationRequired && !f.transient && !f.fieldTypeBinary && f.fieldTypeVectorSaathratri !== true);
+  _%>
+  <%_ if (clearableFieldsForMergePatch.length > 0) { const clearField = clearableFieldsForMergePatch[0]; _%>
+    @Test<%= transactionalAnnotation %>
+    void mergePatch<%= entityClass %>WithAnExplicitNull_clearsThatField() throws Exception {
+        // RFC 7386: in application/merge-patch+json a key sent as null CLEARS the field
+  <%_ if(primaryKeySaathratri.composite) { _%>
+    <%_ for (field of primaryKeySaathratri.ids.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.get<%= primaryKeySaathratri.nameCapitalized %>().set<%= field.fieldNameCapitalized %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+  <%_ } else { _%>
+    <%_ for (field of primaryKey.fields.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.set<%= field.fieldNameCapitalized %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+  <%_ } _%>
+        <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+
+        // what a caller holds - the whole record - with the one field it wants cleared sent as null
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> patch = om.convertValue(<%= persistInstance %>, java.util.LinkedHashMap.class);
+        patch.put("<%= clearField.fieldName %>", null);
+<%_ if (primaryKeySaathratri.composite) { _%>
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL + "/<%= primaryKeySaathratri.ids.map(f => '{' + f.fieldName + '}').join('/') %>"<%_ for (field of primaryKeySaathratri.ids) { _%>, <%= persistInstance %>.get<%= primaryKeySaathratri.nameCapitalized %>().get<%= field.fieldNameCapitalized %>()<%_ } _%>)<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+<%_ } else { _%>
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL_ID, <%= persistInstance %>.get<%= primaryKey.nameCapitalized %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+<%_ } _%>
+            .contentType("application/merge-patch+json")
+            .content(<%- requestBodyWriter %>(patch)))
+            .andExpect(status().isOk());
+
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).get<%= clearField.fieldInJavaBeanMethod %>()).isNull();
+    }
+
+    @Test<%= transactionalAnnotation %>
+    void jsonPatch<%= entityClass %>WithANull_leavesThatField() throws Exception {
+        // application/json keeps the old rule for callers that send a whole DTO: a null is ignored
+  <%_ if(primaryKeySaathratri.composite) { _%>
+    <%_ for (field of primaryKeySaathratri.ids.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.get<%= primaryKeySaathratri.nameCapitalized %>().set<%= field.fieldNameCapitalized %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+  <%_ } else { _%>
+    <%_ for (field of primaryKey.fields.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.set<%= field.fieldNameCapitalized %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+  <%_ } _%>
+        <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+
+        // what a caller holds - the whole record - with the one field it wants cleared sent as null
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, Object> patch = om.convertValue(<%= persistInstance %>, java.util.LinkedHashMap.class);
+        patch.put("<%= clearField.fieldName %>", null);
+<%_ if (primaryKeySaathratri.composite) { _%>
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL + "/<%= primaryKeySaathratri.ids.map(f => '{' + f.fieldName + '}').join('/') %>"<%_ for (field of primaryKeySaathratri.ids) { _%>, <%= persistInstance %>.get<%= primaryKeySaathratri.nameCapitalized %>().get<%= field.fieldNameCapitalized %>()<%_ } _%>)<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+<%_ } else { _%>
+        rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL_ID, <%= persistInstance %>.get<%= primaryKey.nameCapitalized %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% }%>
+<%_ } _%>
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(<%- requestBodyWriter %>(patch)))
+            .andExpect(status().isOk());
+
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).get<%= clearField.fieldInJavaBeanMethod %>()).isNotNull();
+    }
+
+  <%_ } _%>
+  <%_ /* End Saathratri modification */ _%>
     @Test<%= transactionalAnnotation %>
     void patchNonExisting<%= entityClass %>() throws Exception {
         long databaseSizeBeforeUpdate = getRepositoryCount();
@@ -1752,7 +1858,7 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.patch().uri(ENTITY_API_URL_ID, <%= restInstance %>.get<%= primaryKey.nameCapitalized %>())
             .contentType(MediaType.valueOf("application/merge-patch+json"))
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isBadRequest();
   <%_ } else { _%>
@@ -1770,7 +1876,7 @@ _%>
         }
     _%>
             .contentType("application/merge-patch+json")
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isBadRequest());
   <%_ } _%>
 
@@ -1814,7 +1920,7 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.patch().uri(ENTITY_API_URL_ID, <%- primaryKey.javaValueGenerator %>)
             .contentType(MediaType.valueOf("application/merge-patch+json"))
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isBadRequest();
   <%_ } else { _%>
@@ -1832,7 +1938,7 @@ _%>
         }
     _%>
             .contentType("application/merge-patch+json")
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isBadRequest());
   <%_ } _%>
 
@@ -1876,13 +1982,13 @@ _%>
   <%_ if (reactive) { _%>
         webTestClient.patch().uri(ENTITY_API_URL)
             .contentType(MediaType.valueOf("application/merge-patch+json"))
-            .bodyValue(om.writeValueAsBytes(<%= restInstance %>))
+            .bodyValue(<%- requestBodyWriter %>(<%= restInstance %>))
             .exchange()
             .expectStatus().isEqualTo(405);
   <%_ } else { _%>
         rest<%= entityClass %>MockMvc.perform(patch(ENTITY_API_URL)<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
             .contentType("application/merge-patch+json")
-            .content(om.writeValueAsBytes(<%= restInstance %>)))
+            .content(<%- requestBodyWriter %>(<%= restInstance %>)))
             .andExpect(status().isMethodNotAllowed());
   <%_ } _%>
 
@@ -2230,5 +2336,113 @@ _%>
         assertThat(persisted.get<%= vf.fieldNameCapitalized %>()).isEqualTo(toCqlVectorSaathratri(regenerated));
     }
   <%_ } _%>
+<%_ } _%>
+<%_ if (writeOnlyTestsApply) { _%>
+
+    /**
+     * The JSON a client sends for {@code value}. Jackson leaves a write-only field out of a serialized DTO (it is never
+     * returned), so the test adds the write-only values a client would type in.
+     */
+    @SuppressWarnings("unchecked")
+    private byte[] bodyWithWriteOnlyFields(Object value) {
+        if (!(value instanceof <%= dtoClass %> <%= dtoInstance %>)) {
+            return om.writeValueAsBytes(value);
+        }
+        java.util.Map<String, Object> body = om.convertValue(<%= dtoInstance %>, java.util.LinkedHashMap.class);
+  <%_ for (const field of writeOnlyFieldsToTest) { _%>
+        if (<%= dtoInstance %>.get<%- field.fieldInJavaBeanMethod %>() != null) {
+            body.put("<%= field.fieldName %>", <%= dtoInstance %>.get<%- field.fieldInJavaBeanMethod %>());
+        }
+  <%_ } _%>
+        return om.writeValueAsBytes(body);
+    }
+  <%_ if (!readOnly && updatableEntity && !primaryKeySaathratri.composite) { _%>
+
+    @Test<%= transactionalAnnotation %>
+    void updateWithoutWriteOnlyFieldsKeepsStoredValues() throws Exception {
+        // A client never receives a write-only field, so its update arrives without one: the stored value stays
+    <%_ for (field of primaryKey.fields.filter(f => !f.autoGenerateByRepository)) { _%>
+        <%= persistInstance %>.set<%= field.fieldNameCapitalized %>(<%- field.fieldJavaValueGenerator %>);
+    <%_ } _%>
+        <%= entityInstance %>Repository.<%= saveMethod %>(<%= persistInstance %>)<%= callBlock %>;
+        <%= persistClass %> updated<%= persistClass %> = <%= entityInstance %>Repository.findById(<%= persistInstance %>.get<%= primaryKey.nameCapitalized %>()).orElseThrow();
+        <%= dtoClass %> <%= dtoInstance %> = <%= entityInstance %>Mapper.toDto(updated<%= persistClass %>);
+    <%_ for (const field of writeOnlyFieldsToTest) { _%>
+        <%= dtoInstance %>.set<%- field.fieldInJavaBeanMethod %>(null);
+    <%_ } _%>
+
+        var response = rest<%= entityClass %>MockMvc
+            .perform(
+                put(ENTITY_API_URL_ID, <%= dtoInstance %>.get<%= primaryKey.nameCapitalized %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(bodyWithWriteOnlyFields(<%= dtoInstance %>))
+            )
+            .andExpect(status().isOk());
+    <%_ for (const field of writeOnlyFieldsToTest) { _%>
+        response.andExpect(jsonPath("$.<%= field.fieldName %>").doesNotExist());
+        response.andExpect(jsonPath("$.<%= field.fieldName %>IsSet").value(true));
+    <%_ } _%>
+
+    <%_ for (const field of writeOnlyFieldsToTest) { _%>
+        assertThat(getPersisted<%- persistClass %>(<%= persistInstance %>).get<%- field.fieldInJavaBeanMethod %>()).isEqualTo(<%= 'DEFAULT_' + field.fieldNameUnderscored.toUpperCase() %>);
+    <%_ } _%>
+    }
+  <%_ } _%>
+<%_ } _%>
+<%_ if (sensitiveTestsApply) { _%>
+
+    @Test<%= transactionalAnnotation %>
+    void sensitiveFieldsNeverReachTheLog() throws Exception {
+        // A @sensitive value is in no log line, even at DEBUG, where every REST and service call logs its DTO
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger app = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger("<%= packageName %>");
+        Level appLevel = app.getLevel();
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.start();
+        root.addAppender(captured);
+        app.setLevel(Level.DEBUG);
+        try {
+            <%= dtoClass %> created = om.readValue(
+                rest<%= entityClass %>MockMvc
+                    .perform(
+                        post(ENTITY_API_URL)<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(<%- requestBodyWriter %>(<%= entityInstance %>Mapper.toDto(<%= persistInstance %>)))
+                    )
+                    .andExpect(status().isCreated())
+                    .andReturn()
+                    .getResponse()
+                    .getContentAsString(),
+                <%= dtoClass %>.class
+            );
+            rest<%= entityClass %>MockMvc.perform(get(ENTITY_API_URL_ID, created.get<%= primaryKey.nameCapitalized %>())).andExpect(status().isOk());
+            rest<%= entityClass %>MockMvc.perform(get(ENTITY_API_URL)).andExpect(status().isOk());
+  <%_ if (!readOnly && updatableEntity) { _%>
+            <%= persistClass %> updated<%= persistClass %> = <%= entityInstance %>Repository.findById(created.get<%= primaryKey.nameCapitalized %>()).orElseThrow();
+    <%_ for (const field of sensitiveFieldsToTest) { _%>
+            updated<%= persistClass %>.set<%- field.fieldInJavaBeanMethod %>(<%= 'UPDATED_' + field.fieldNameUnderscored.toUpperCase() %>);
+    <%_ } _%>
+            rest<%= entityClass %>MockMvc
+                .perform(
+                    put(ENTITY_API_URL_ID, created.get<%= primaryKey.nameCapitalized %>())<% if (authenticationUsesCsrf) { %>.with(csrf())<% } %>
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(<%- requestBodyWriter %>(<%= entityInstance %>Mapper.toDto(updated<%= persistClass %>)))
+                )
+                .andExpect(status().isOk());
+  <%_ } _%>
+        } finally {
+            root.detachAppender(captured);
+            app.setLevel(appLevel);
+        }
+
+        List<String> lines = captured.list
+            .stream()
+            .map(event -> event.getFormattedMessage() + (event.getThrowableProxy() == null ? "" : " " + event.getThrowableProxy().getMessage()))
+            .toList();
+        assertThat(lines).as("the calls above logged at DEBUG").anyMatch(line -> line.contains("<%= entityClass %>"));
+        for (String secret : List.of(<%- sensitiveFieldsToTest.flatMap(field => ['DEFAULT_', 'UPDATED_'].map(prefix => prefix + field.fieldNameUnderscored.toUpperCase())).join(', ') %>)) {
+            assertThat(lines).as("no log line carries a sensitive value").noneMatch(line -> line.contains(secret));
+        }
+    }
 <%_ } _%>
 }

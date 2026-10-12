@@ -12,6 +12,7 @@ import { javaSaathratriUtils } from '../cassandra-java/generators/domain/cassand
 
 import { cassandraSpringBootUtils } from './cassandra-spring-boot-utils.js';
 import { springDataCassandraSaathratriUtils } from './generators/data-cassandra/cassandra-spring-data-cassandra-utils.js';
+import { prepareSensitiveField } from './sensitive-fields.js';
 
 export default class extends BaseApplicationGenerator {
   constructor(args, opts, features) {
@@ -91,6 +92,9 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.PREPARING_EACH_ENTITY_FIELD]() {
     return this.asPreparingEachEntityFieldTaskGroup({
       async preparingEachEntityFieldTemplateTask({ entity, field, application }) {
+        // @sensitive / @sensitive(writeOnly): sets fieldSensitive / fieldWriteOnly, refuses what it cannot keep secret.
+        prepareSensitiveField({ application, entity, field });
+
         // Detect vector fields annotated with @customAnnotation("VECTOR")
         const annotation = field.options?.customAnnotation?.[0];
         if (annotation === 'VECTOR') {

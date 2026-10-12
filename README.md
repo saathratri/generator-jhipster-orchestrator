@@ -28,6 +28,7 @@ It is a **Side-by-Side (SBS) blueprint** (`sbsBlueprint: true`): it complements 
 - **Composed Upstream Capabilities**
   - **AI semantic vector search** and **human-readable foreign keys** flow in from `generator-jhipster-ai-postgresql`.
   - **Cassandra composite primary keys**, `SET`/`MAP` collection widgets, and UTC date handling flow in from `generator-jhipster-cassandra`.
+  - **`@sensitive` secret fields** (never printed, masked on screen with eye / hide / copy, write-only never returned) flow in from both.
 
 - **Deployment & Platform Concerns**
   - **Heroku**: generates `Procfile`, `system.properties`, `bootstrap-heroku.yml`, and a `heroku` Maven profile.
@@ -249,6 +250,9 @@ jhipster-orchestrator/                  <-- example workspace
             ...
 ```
 
+The DTO JAR's `pom.xml` depends on `jakarta.validation-api`, `jakarta.persistence-api`, `swagger-annotations` and
+`jackson-annotations` (a `@sensitive(writeOnly)` field is `@JsonProperty(access = WRITE_ONLY)` in the DTO).
+
 **How it works:** `server/generator.js` (WRITING) scaffolds the DTO project skeleton; the `sql-spring-boot` / `cassandra-spring-boot` generators (WRITING_ENTITIES) write each entity's DTO into both the service and the DTO project; for Cassandra composite keys a matching `DTOId` class is copied too.
 
 Consume a DTO module with coordinates `<packageName>.dto : <baseName>dto : 2.0.0`:
@@ -290,6 +294,31 @@ entity PsqlTag {
 ```
 
 Generates a `vector(1536)` column, an HNSW index, embedding generation on save, and a cosine-similarity search API.
+
+### `@sensitive` — Secret Fields (SQL and Cassandra)
+
+Marks a field that holds a secret. Both composed blueprints honour it the same way:
+
+```jdl
+entity PsqlVault {
+    label String required
+    @sensitive apiKey String maxlength(200)
+    @sensitive(writeOnly) secretHash String maxlength(128)
+}
+```
+
+- `@sensitive` — the entity and DTO `toString()` print `set` / `missing`, never the value, so no generated log line
+  carries it; the screens mask it behind **eye** (reveal), **hide** (mask again) and **copy** (shown only while
+  revealed) buttons; it is never a sort key, and on SQL never a criteria filter.
+- `@sensitive(writeOnly)` — also never returned: the DTO field is `@JsonProperty(access = WRITE_ONLY)` with a read-only
+  `<field>IsSet`, an update that leaves it empty keeps the stored value, and the screens show only Set / Not set.
+- The generated `<Entity>ResourceIT` proves no log line carries a sensitive value (`sensitiveFieldsNeverReachTheLog`).
+- The DTO JAR copies the same DTO, so it depends on `jackson-annotations` (see DTO Modularization).
+
+Full contract, the generated tests and the combinations the generator refuses: the
+[generator-jhipster-ai-postgresql](https://github.com/saathratri/generator-jhipster-ai-postgresql#sensitive-fields-sensitive)
+and [generator-jhipster-cassandra](https://github.com/saathratri/generator-jhipster-cassandra#-sensitive-fields-sensitive)
+READMEs.
 
 ### Cassandra Primary Keys & Column Types
 

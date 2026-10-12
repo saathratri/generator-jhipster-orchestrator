@@ -19,6 +19,10 @@
 package <%- entityAbsolutePackage %>.service.dto;
 
 import java.util.Objects;
+<%_ const writeOnlyDtoFields = fields.filter(field => field.fieldWriteOnly); _%>
+<%_ if (writeOnlyDtoFields.length > 0) { _%>
+import com.fasterxml.jackson.annotation.JsonProperty;
+<%_ } _%>
 <%_ if (entityApiDescription || importApiModelProperty) { _%>
 import io.swagger.v3.oas.annotations.media.Schema;
 <%_ } _%>
@@ -122,6 +126,9 @@ public class <%- dtoClass %> implements Serializable {
         <%_ } _%>
       <%_ } _%>
     <%_ } _%>
+    <%_ if (property.fieldWriteOnly) { _%>
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    <%_ } _%>
     <%_
         if(property.fieldTypeSetSaathratri) {
     _%>
@@ -150,6 +157,17 @@ public class <%- dtoClass %> implements Serializable {
 public <%- dtoClass %> () {
     // Empty constructor needed for Jackson.
 }
+<%_ for (const field of writeOnlyDtoFields) { _%>
+
+    /**
+     * Whether <%- field.fieldName %> holds a value. <%- field.fieldName %> itself is write-only: accepted on create
+     * and update, never returned.
+     */
+    @JsonProperty(value = "<%- field.fieldName %>IsSet", access = JsonProperty.Access.READ_ONLY)
+    public boolean <%- field.fieldName %>IsSet() {
+        return <%- field.fieldName %> != null && !<%- field.fieldName %>.isEmpty();
+    }
+<%_ } _%>
 <%_ if (primaryKeySaathratri.composite) { _%>
     public <%= dtoClass %>Id get<%= primaryKeySaathratri.nameCapitalized %>() {
         return this.<%= primaryKeySaathratri.name %>;
@@ -296,7 +314,11 @@ public <%- dtoClass %> () {
   const refType = reference.type || reference.propertyDtoJavaType || reference.fieldType;
   const isQuoted = (reference.field || reference).fieldTypeString || (reference.field || reference).fieldTypeUUID;_%>
   <%_ if (!isCompositePrimaryKeyServerReference(primaryKeySaathratri, reference) && !reference.fieldTypeVectorSaathratri) { _%>
+    <%_ if ((reference.field || reference).fieldSensitive) { /* a sensitive value is never printed: set / missing only */ _%>
+            "<%= idx === 0 ? '' : ', ' %><%= refName %>=" + (<%= buildJavaGet(reference) %> == null ? "missing" : "set") +
+    <%_ } else { _%>
             "<%= idx === 0 ? '' : ', ' %><%= refName %>=<% if (isQuoted) { %>'<% } %>" + <%= buildJavaGet(reference) %> <% if (isQuoted) { %>+ "'" <% } %>+
+    <%_ } _%>
             <%_ if(refType === 'ByteBuffer') { _%>
             ", <%= refName %>ContentType='" + get<%= this._.upperFirst(refName) %>ContentType() + "'" +
 <%_ } _%>

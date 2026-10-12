@@ -8,6 +8,7 @@ import BaseApplicationGenerator from 'generator-jhipster/generators/base-applica
 import { javaMainPackageTemplatesBlock, javaTestPackageTemplatesBlock } from 'generator-jhipster/generators/java/support';
 
 import { describeExcludedRelationship, getExcludedRelationships } from './lazy-relationship-utils.js';
+import { maskToStringFragment, prepareSensitiveField, sensitiveFieldsOf } from './sensitive-fields.js';
 import { sqlSpringBootUtils } from './sql-spring-boot-utils.js';
 
 export default class extends BaseApplicationGenerator {
@@ -108,6 +109,9 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.PREPARING_EACH_ENTITY_FIELD]() {
     return this.asPreparingEachEntityFieldTaskGroup({
       async preparingEachEntityFieldTemplateTask({ application, entity, field }) {
+        // @sensitive / @sensitive(writeOnly): sets fieldSensitive / fieldWriteOnly, refuses what it cannot keep secret.
+        prepareSensitiveField({ application, entity, field });
+
         // Check for VECTOR custom annotation to exclude from DTOs
         const vectorAnnotation = field.options?.customAnnotation?.[0];
         if (vectorAnnotation === 'VECTOR') {
@@ -186,6 +190,15 @@ export default class extends BaseApplicationGenerator {
   get [BaseApplicationGenerator.POST_PREPARING_EACH_ENTITY]() {
     return this.asPostPreparingEachEntityTaskGroup({
       async postPreparingEachEntityTemplateTask({ entity }) {
+        // A sensitive field is never a filter: a filter value travels in the URL (access logs, browser history) and
+        // the criteria's toString is logged on every filtered request.
+        for (const field of sensitiveFieldsOf(entity)) {
+          field.filterableField = false;
+        }
+        if (entity.entityJavaFilterableProperties) {
+          entity.entityJavaFilterableProperties = entity.entityJavaFilterableProperties.filter(property => !property.fieldSensitive);
+        }
+
         // Deduplicate entityJavaFilterableProperties to prevent compilation errors
         // This can happen when multiple relationships generate the same filter name
         // (e.g., two relationships both named "workOrder" would both generate "workOrderId" filter)
@@ -680,6 +693,16 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.POST_WRITING_ENTITIES]() {
     return this.asPostWritingEntitiesTaskGroup({
+      // The entity class comes from base JHipster's domain template; its toString prints every field. A sensitive
+      // field prints set / missing instead, so no log line that prints the entity carries the value.
+      async maskSensitiveFieldsInEntityToString({ application, entities }) {
+        for (const entity of entities.filter(e => !e.builtIn && !e.skipServer)) {
+          const sensitiveFields = sensitiveFieldsOf(entity);
+          if (sensitiveFields.length === 0) continue;
+          const domainFile = `${application.srcMainJava ?? 'src/main/java/'}${entity.entityAbsoluteFolder}domain/${entity.persistClass}.java`;
+          this.editFile(domainFile, content => sensitiveFields.reduce((masked, field) => maskToStringFragment(masked, field), content));
+        }
+      },
       async postWritingEntitiesTemplateTask({ entities, application }) {
         const packageFolder = (
           application.packageFolder ??

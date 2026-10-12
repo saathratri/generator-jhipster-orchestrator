@@ -12,8 +12,9 @@ import BaseApplicationGenerator from 'generator-jhipster/generators/base-applica
 import { filterEntitiesAndPropertiesForClient, generateEntityClientEnumImports } from 'generator-jhipster/generators/client/support';
 
 import { describeExcludedRelationship, getExcludedRelationships } from '../sql-spring-boot/lazy-relationship-utils.js';
+import { prepareSensitiveField, sensitiveFieldsOf } from '../sql-spring-boot/sensitive-fields.js';
 
-import { angularFilesFromSaathratri, entityModelFiles } from './entity-files.js';
+import { angularFilesFromSaathratri, entityModelFiles, sensitiveValueFiles } from './entity-files.js';
 import { stripExcludedFromFormServiceSpec, stripExcludedFromUpdateSpec } from './excluded-relationship-spec-strip.js';
 import { angularSaathratriUtils } from './sql-angular-utils.js';
 
@@ -91,7 +92,10 @@ export default class extends BaseApplicationGenerator {
 
   get [BaseApplicationGenerator.PREPARING_EACH_ENTITY_FIELD]() {
     return this.asPreparingEachEntityFieldTaskGroup({
-      async preparingEachEntityFieldTemplateTask({ field }) {
+      async preparingEachEntityFieldTemplateTask({ application, entity, field }) {
+        // @sensitive / @sensitive(writeOnly): sets fieldSensitive / fieldWriteOnly, refuses what it cannot keep secret.
+        prepareSensitiveField({ application, entity, field });
+
         // Detect vector fields independently (in case sql-spring-boot hasn't set the property yet)
         if (!field.fieldTypeVectorSaathratri) {
           const vectorAnnotation = field.options?.customAnnotation?.[0];
@@ -189,6 +193,11 @@ export default class extends BaseApplicationGenerator {
             sections: entity.entityClientModelOnly ? { model: [entityModelFiles] } : angularFilesFromSaathratri,
             context: { ...application, ...entity, ...angularSaathratriUtils, generateEntityClientEnumImports },
           });
+        }
+
+        // @sensitive: the shared masked display + masked input, once, when an entity's screens use them.
+        if (filteredEntities.some(e => !e.builtIn && !e.entityClientModelOnly && sensitiveFieldsOf(e).length > 0)) {
+          await this.writeFiles({ sections: sensitiveValueFiles, context: application });
         }
 
         // app/entities/entity-navbar-items.ts: the microfrontend loader (core/microfrontend/index.ts) loads it
@@ -944,6 +953,30 @@ export class LazyRelationshipEditModalComponent implements OnInit {
 
   get [BaseApplicationGenerator.POST_WRITING_ENTITIES]() {
     return this.asPostWritingEntitiesTaskGroup({
+      // The list / detail / update component classes come from base JHipster; the templates this blueprint writes use
+      // <jhi-sensitive-value> / <jhi-sensitive-input> for @sensitive fields, so those components import them.
+      async importSensitiveValueComponents({ application, entities }) {
+        const clientSrcDir = application.clientSrcDir || 'src/main/webapp/';
+        for (const entity of entities.filter(e => !e.builtIn && !e.embedded && !e.entityClientModelOnly)) {
+          if (!entity.entityFolderName || !entity.entityFileName || sensitiveFieldsOf(entity).length === 0) continue;
+          const folder = `${clientSrcDir}app/entities/${entity.entityFolderName}`;
+          const components = [
+            { file: `${folder}/list/${entity.entityFileName}.ts`, name: 'SensitiveValue', from: 'sensitive-value' },
+            { file: `${folder}/detail/${entity.entityFileName}-detail.ts`, name: 'SensitiveValue', from: 'sensitive-value' },
+          ];
+          if (!entity.readOnly) {
+            components.push({
+              file: `${folder}/update/${entity.entityFileName}-update.ts`,
+              name: 'SensitiveInput',
+              from: 'sensitive-input',
+            });
+          }
+          for (const { file, name, from } of components) {
+            if (!this.fs.exists(this.destinationPath(file))) continue;
+            this.editFile(file, content => addStandaloneImport(content, name, `app/shared/sensitive-value/${from}`));
+          }
+        }
+      },
       async postWritingEntitiesTemplateTask({ application, entities }) {
         const clientSrcDir = application.clientSrcDir || 'src/main/webapp/';
 
@@ -1905,4 +1938,11 @@ export class LazyRelationshipEditModalComponent implements OnInit {
 
     return content;
   }
+}
+
+/** Adds `import { name } from 'path';` and `name` to the component's `imports: [...]`, once. */
+export function addStandaloneImport(content, name, path) {
+  if (content.includes(`import { ${name} } from '${path}';`)) return content;
+  const withImport = content.replace(/(\n@Component\(\{)/, `\nimport { ${name} } from '${path}';\n$1`);
+  return withImport.replace(/(@Component\(\{[\s\S]*?imports:\s*\[)/, `$1${name}, `);
 }

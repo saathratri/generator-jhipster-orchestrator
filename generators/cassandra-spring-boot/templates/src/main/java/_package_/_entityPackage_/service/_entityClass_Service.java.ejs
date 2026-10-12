@@ -87,7 +87,22 @@ public interface <%= entityClass %>Service {
      * @param <%= instanceName %> the entity to update partially.
      * @return the persisted entity.
      */
-    <% if (reactive) { %>Mono<% } else { %>Optional<% } %><<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>);
+  <%_ if (reactive) { _%>
+    Mono<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>);
+  <%_ } else { _%>
+    default Optional<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>) {
+        return partialUpdate(<%= instanceName %>, java.util.Set.of());
+    }
+
+    /**
+     * Partially updates a <%= entityInstance %>, and clears the fields a merge-patch sent as null (RFC 7386).
+     *
+     * @param <%= instanceName %> the entity to update partially.
+     * @param clearedFields the properties to set to null (a key column, a required or an unknown one is ignored).
+     * @return the persisted entity.
+     */
+    Optional<<%= instanceType %>> partialUpdate(<%= instanceType %> <%= instanceName %>, java.util.Set<String> clearedFields);
+  <%_ } _%>
 <%_ if (!jpaMetamodelFiltering) {  _%>
 
     /**

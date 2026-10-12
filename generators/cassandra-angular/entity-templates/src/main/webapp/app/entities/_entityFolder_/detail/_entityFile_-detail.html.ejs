@@ -72,7 +72,11 @@
 _%>
         <dt><span<% if (field.documentation) { if (enableTranslation) { %> [ngbTooltip]="'<%= i18nKeyPrefix %>.help.<%= fieldName %>' | translate"<% } else { %> ngbTooltip="<%= field.documentation %>"<% } } %>>__jhiTranslateTag__('<%- field.fieldTranslationKey %>')</span></dt>
         <dd>
-    <%_ if (field.fieldIsEnum) { _%>
+    <%_ if (field.fieldWriteOnly) { /* @sensitive(writeOnly): never sent to the browser */ _%>
+          <span data-cy="<%= fieldName %>IsSet">{{ <%= entityInstance %>Ref.<%= fieldName %>IsSet ? 'Set' : 'Not set' }}</span>
+    <%_ } else if (field.fieldSensitive) { _%>
+          <<%= jhiPrefixDashed %>-sensitive-value [value]="<%= entityInstance %>Ref.<%= fieldName %>" label="<%= field.fieldNameHumanized %>" />
+    <%_ } else if (field.fieldIsEnum) { _%>
           <%# TODO: import enum and use its key as label _%>
           <span>__jhiTranslateTagEnum__('<%= frontendAppName %>.<%= fieldType %>', { "value": "<%= entityInstance %>Ref.<%= fieldName %> ?? 'null'" })</span>
     <%_ } else if (field.fieldTypeBinary && field.blobContentTypeImage) { _%>

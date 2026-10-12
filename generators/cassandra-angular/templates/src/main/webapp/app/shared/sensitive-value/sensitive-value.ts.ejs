@@ -1,0 +1,50 @@
+<%#
+ Copyright (c) 2025-2026 Saathratri, LLC.
+ SPDX-License-Identifier: MIT
+ Licensed under the MIT License; see LICENSE in the repository root.
+-%>
+import { ChangeDetectionStrategy, Component, input, signal } from '@angular/core';
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+import { faCopy, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+
+/**
+ * Shows a @sensitive value masked. The eye button reveals it, the hide button masks it again, and the copy button -
+ * there only while the value is revealed - copies it. The mask has the same length for every value, so it does not
+ * give the value's length away.
+ */
+@Component({
+  selector: '<%- jhiPrefixDashed %>-sensitive-value',
+  templateUrl: './sensitive-value.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [FontAwesomeModule],
+})
+export class SensitiveValue {
+  readonly value = input<string | null | undefined>();
+  /** What the value is, for the buttons' accessible names ("Show API Key"). */
+  readonly label = input('value');
+
+  protected readonly mask = '••••••••';
+  protected readonly revealed = signal(false);
+  protected readonly copied = signal(false);
+  protected readonly faEye = faEye;
+  protected readonly faEyeSlash = faEyeSlash;
+  protected readonly faCopy = faCopy;
+
+  protected reveal(): void {
+    this.revealed.set(true);
+  }
+
+  protected hide(): void {
+    this.revealed.set(false);
+    this.copied.set(false);
+  }
+
+  protected async copy(): Promise<void> {
+    const value = this.value();
+    if (!this.revealed() || !value) {
+      return;
+    }
+    await navigator.clipboard.writeText(value);
+    this.copied.set(true);
+  }
+}

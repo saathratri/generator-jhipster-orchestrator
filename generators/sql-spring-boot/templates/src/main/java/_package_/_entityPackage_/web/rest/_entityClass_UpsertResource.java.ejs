@@ -29,8 +29,13 @@ const upsertFields = fields.filter(
 );
 const insertColumns = [pkColumn, ...upsertFields.map(field => field.fieldNameAsDatabaseColumn)].join(', ');
 const insertParams = [`:${primaryKey.name}`, ...upsertFields.map(field => `:${field.fieldName}`)].join(', ');
+// A write-only field (@sensitive(writeOnly)) is never sent to a client, so an upsert without it keeps the stored value.
 const conflictSetters = upsertFields
-  .map(field => `${field.fieldNameAsDatabaseColumn} = EXCLUDED.${field.fieldNameAsDatabaseColumn}`)
+  .map(field =>
+    field.fieldWriteOnly
+      ? `${field.fieldNameAsDatabaseColumn} = COALESCE(NULLIF(EXCLUDED.${field.fieldNameAsDatabaseColumn}, ''), ${entityTableName}.${field.fieldNameAsDatabaseColumn})`
+      : `${field.fieldNameAsDatabaseColumn} = EXCLUDED.${field.fieldNameAsDatabaseColumn}`,
+  )
   .join(', ');
 const getterFor = field => {
   const getter = `${entityInstance}DTO.get${field.fieldNameCapitalized}()`;

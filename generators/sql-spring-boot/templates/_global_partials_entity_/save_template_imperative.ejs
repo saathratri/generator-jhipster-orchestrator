@@ -18,6 +18,9 @@
 -%>
 <%_ if (dtoMapstruct) { _%>
         <%- persistClass %> <%- persistInstance %> = <%- entityInstance %>Mapper.toEntity(<%- restInstance %>);
+  <%_ if (!saveNewEntityOperation && fields.some(field => field.fieldWriteOnly)) { _%>
+        keepStoredWriteOnlyFields(<%- persistInstance %>, <%- restInstance %>);
+  <%_ } _%>
 <%_ } _%>
 <%_ if (!saveNewEntityOperation && requiresPersistableImplementation) { _%>
         <%- persistInstance %>.setIsPersisted();
