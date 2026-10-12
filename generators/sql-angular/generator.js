@@ -960,10 +960,13 @@ export class LazyRelationshipEditModalComponent implements OnInit {
         for (const entity of entities.filter(e => !e.builtIn && !e.embedded && !e.entityClientModelOnly)) {
           if (!entity.entityFolderName || !entity.entityFileName || sensitiveFieldsOf(entity).length === 0) continue;
           const folder = `${clientSrcDir}app/entities/${entity.entityFolderName}`;
-          const components = [
-            { file: `${folder}/list/${entity.entityFileName}.ts`, name: 'SensitiveValue', from: 'sensitive-value' },
-            { file: `${folder}/detail/${entity.entityFileName}-detail.ts`, name: 'SensitiveValue', from: 'sensitive-value' },
-          ];
+          // A write-only field shows only Set / Not set in the list and detail; the masked display is for readable ones.
+          const components = sensitiveFieldsOf(entity).some(field => !field.fieldWriteOnly)
+            ? [
+                { file: `${folder}/list/${entity.entityFileName}.ts`, name: 'SensitiveValue', from: 'sensitive-value' },
+                { file: `${folder}/detail/${entity.entityFileName}-detail.ts`, name: 'SensitiveValue', from: 'sensitive-value' },
+              ]
+            : [];
           if (!entity.readOnly) {
             components.push({
               file: `${folder}/update/${entity.entityFileName}-update.ts`,

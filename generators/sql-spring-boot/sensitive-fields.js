@@ -43,9 +43,12 @@ export function prepareSensitiveField({ application, entity, field }) {
   if (!isTextField(field)) {
     throw new Error(`${where}: @sensitive applies to a String or TextBlob field, not ${field.fieldType}.`);
   }
-  if ((field.options?.customAnnotation ?? []).includes('DISPLAY_IN_GUI_RELATIONSHIP_LINK')) {
+  // A @sensitive link field is allowed: DISPLAY_IN_GUI_RELATIONSHIP_LINK also decides what a linking entity's mapper copies
+  // into its embedded copy, and a @sensitive value may be returned, so it keeps travelling there; the screens never use
+  // a @sensitive field as a link's label (isScreenLabelField). A write-only value is never returned, so it cannot be one.
+  if (value === SENSITIVE_WRITE_ONLY && (field.options?.customAnnotation ?? []).includes('DISPLAY_IN_GUI_RELATIONSHIP_LINK')) {
     throw new Error(
-      `${where}: a @sensitive field cannot carry DISPLAY_IN_GUI_RELATIONSHIP_LINK - a relationship link's label would show its value.`,
+      `${where}: a write-only field cannot carry DISPLAY_IN_GUI_RELATIONSHIP_LINK - a linking entity's copy would need a value that is never returned.`,
     );
   }
   if ((field.options?.customAnnotation ?? []).includes('VECTOR')) {

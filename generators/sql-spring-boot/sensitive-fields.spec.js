@@ -57,6 +57,16 @@ const LINKED_ENTITIES = [
   },
 ];
 
+// As LINKED_ENTITIES, but Vault's apiKey is @sensitive AND a link field - listed first, so nothing can pick it as "the" label
+// by position.
+const LINKED_SENSITIVE_LABEL_ENTITIES = [
+  vault([
+    { fieldName: 'apiKey', fieldType: 'String', options: { sensitive: true, customAnnotation: ['DISPLAY_IN_GUI_RELATIONSHIP_LINK', ''] } },
+    { fieldName: 'label', fieldType: 'String', options: { customAnnotation: ['DISPLAY_IN_GUI_RELATIONSHIP_LINK', ''] } },
+  ]),
+  LINKED_ENTITIES[1],
+];
+
 const runServer = entities =>
   helpers
     .runJHipster('server')
@@ -186,6 +196,30 @@ describe('@sensitive fields (sql-spring-boot)', () => {
     });
   });
 
+  describe('a @sensitive field that is also a link field', () => {
+    // DISPLAY_IN_GUI_RELATIONSHIP_LINK decides what a linking entity's mapper copies into its embedded copy of the
+    // linked entity. A @sensitive value may be returned (only a write-only one never is), so it keeps travelling with the
+    // linking entity - readers of that response need it - while the screens never use it as a label.
+    let error;
+    beforeAll(async () => {
+      error = await refusal(runServer(LINKED_SENSITIVE_LABEL_ENTITIES));
+    });
+
+    it('generates', () => {
+      expect(error).toBeUndefined();
+    });
+
+    it("the linking entity's mapper still copies the sensitive value into its embedded copy", () => {
+      const file = `${JAVA}/service/mapper/OwnerMapper.java`;
+      result.assertFileContent(file, '@Mapping(target = "label", source = "label")');
+      result.assertFileContent(file, '@Mapping(target = "apiKey", source = "apiKey")');
+    });
+
+    it('the linked entity still prints the sensitive value as set / missing', () => {
+      result.assertFileContent(`${JAVA}/service/dto/VaultDTO.java`, `", apiKey=" + (getApiKey() == null ? "missing" : "set") +`);
+    });
+  });
+
   describe('refuses what it cannot keep secret', () => {
     it('a write-only field that is required (an update never carries it)', async () => {
       expect(
@@ -199,20 +233,20 @@ describe('@sensitive fields (sql-spring-boot)', () => {
       ).toMatch(/Vault\.secretHash.*write-only.*required/);
     });
 
-    it('a sensitive field that labels a relationship link (the label would show the value)', async () => {
+    it('a write-only field that is a link field (a linking entity would need a value it is never given)', async () => {
       expect(
         await refusal(
           runServer([
             vault([
               {
-                fieldName: 'apiKey',
+                fieldName: 'secretHash',
                 fieldType: 'String',
-                options: { sensitive: true, customAnnotation: ['DISPLAY_IN_GUI_RELATIONSHIP_LINK', ''] },
+                options: { sensitive: 'writeOnly', customAnnotation: ['DISPLAY_IN_GUI_RELATIONSHIP_LINK', ''] },
               },
             ]),
           ]),
         ),
-      ).toMatch(/Vault\.apiKey.*DISPLAY_IN_GUI_RELATIONSHIP_LINK/);
+      ).toMatch(/Vault\.secretHash.*DISPLAY_IN_GUI_RELATIONSHIP_LINK/);
     });
 
     it('a write-only field on an entity without a mapstruct DTO', async () => {

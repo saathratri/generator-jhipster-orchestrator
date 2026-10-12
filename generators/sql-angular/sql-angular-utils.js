@@ -4,7 +4,7 @@
  * Licensed under the MIT License; see LICENSE in the repository root.
  */
 
-import { isDisplayInGuiLinkField } from '../sql-spring-boot/lazy-relationship-utils.js';
+import { isDisplayInGuiLinkField, isScreenLabelField } from '../sql-spring-boot/lazy-relationship-utils.js';
 import { saathratriConstants } from '../sql-spring-boot/saathratri-constants.js';
 
 export const angularSaathratriUtils = {
@@ -25,7 +25,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (isDisplayInGuiLinkField(field)) {
+        if (isScreenLabelField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
@@ -91,7 +91,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (isDisplayInGuiLinkField(field)) {
+        if (isScreenLabelField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
@@ -129,7 +129,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (isDisplayInGuiLinkField(field)) {
+        if (isScreenLabelField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }
@@ -167,7 +167,7 @@ export const angularSaathratriUtils = {
 
     for (const field of otherEntity.fields.filter(field => !field.hidden)) {
       if (field.options) {
-        if (isDisplayInGuiLinkField(field)) {
+        if (isScreenLabelField(field)) {
           if (optionToDisplayInGui) {
             optionToDisplayInGui += ` + '${field.options.customAnnotation[1]}' + `;
           }

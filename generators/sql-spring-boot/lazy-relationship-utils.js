@@ -102,7 +102,7 @@ export function getDisplayLabelField(otherEntity) {
   const fields = otherEntity?.fields;
   if (!Array.isArray(fields)) return null;
   for (const f of fields) {
-    if (isDisplayInGuiLinkField(f)) {
+    if (isScreenLabelField(f)) {
       return f.fieldName;
     }
   }
@@ -116,6 +116,15 @@ export function getDisplayLabelField(otherEntity) {
 export function isDisplayInGuiLinkField(field) {
   const ca = field?.options?.customAnnotation || field?.customAnnotation;
   return Array.isArray(ca) && ca[0] === 'DISPLAY_IN_GUI_RELATIONSHIP_LINK';
+}
+
+/**
+ * Whether a screen may use `field` as a relationship link's label (or a label search filter): a link field that is not
+ * @sensitive. A @sensitive link field still travels in the linking entity's embedded copy (isDisplayInGuiLinkField), but
+ * a label or a filter would show or carry its value.
+ */
+export function isScreenLabelField(field) {
+  return isDisplayInGuiLinkField(field) && !(field.fieldSensitive || field.options?.sensitive);
 }
 
 /**
